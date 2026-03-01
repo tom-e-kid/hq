@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+._*
+
+# エディタ
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# 環境変数・シークレット
+.env
+.env.*
+
+.claude/*.local*
+.devflows
+.cache
+.hq
+
+# HQ CLI
+tools/bin/
+tools/hq/.tmp-*
