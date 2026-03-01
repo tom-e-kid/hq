@@ -58,6 +58,10 @@ mise run build              # Build to tools/bin/hq
 mise run install            # Build and install to ~/.local/bin/hq
 ```
 
+### AGENTS.md — Codex Reviewer Demo
+
+`AGENTS.md` is a demo configuration for using [OpenAI Codex](https://openai.com/index/openai-codex/) as an automated code reviewer. It defines review scope, severity reporting, and fix policies so that Codex can act as a pull-request reviewer on this repository.
+
 ## Data Directory (`db/`)
 
 HQ reads data from a `db/` directory. The path is resolved in this order:
