@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/tom-e-kid/hq/tools/hq/internal/config"
 	"github.com/tom-e-kid/hq/tools/hq/internal/model"
 	"github.com/tom-e-kid/hq/tools/hq/internal/parser"
@@ -96,7 +97,21 @@ func wordTickCmd() tea.Cmd {
 	})
 }
 
-var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+var (
+	helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+
+	modalBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorAccent).
+				Padding(1, 2)
+
+	modalTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(colorTitle)
+
+	modalHelpStyle = lipgloss.NewStyle().
+			Foreground(colorSubtle)
+)
 
 func (a App) Init() tea.Cmd {
 	return tea.Batch(
@@ -115,57 +130,29 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				text := strings.TrimSpace(a.textInput.Value())
 				a.addingItem = false
-				if a.dashboard != nil {
-					a.dashboard.AddingTodo = false
-					a.dashboard.AddingMilestone = false
-				}
 				if text != "" {
 					return a, addTodoCmd(a.addItemFile, text)
 				}
-				a.updateViewport()
 				return a, nil
 			case "esc":
 				a.addingItem = false
-				if a.dashboard != nil {
-					a.dashboard.AddingTodo = false
-					a.dashboard.AddingMilestone = false
-					a.updateViewport()
-				}
 				return a, nil
 			case "ctrl+c":
 				return a, tea.Quit
 			default:
 				var cmd tea.Cmd
 				a.textInput, cmd = a.textInput.Update(msg)
-				if a.dashboard != nil {
-					inputView := a.textInput.View()
-					if a.addItemSection == SectionTodo {
-						a.dashboard.AddTodoInputView = inputView
-					} else if a.addItemSection == SectionMilestones {
-						a.dashboard.AddMilestoneInputView = inputView
-					}
-					a.updateViewport()
-				}
 				return a, cmd
 			}
 		}
 		// Non-key messages (cursor blink, etc.): update textinput, then fall through
 		var tiCmd tea.Cmd
 		a.textInput, tiCmd = a.textInput.Update(msg)
-		if a.dashboard != nil {
-			inputView := a.textInput.View()
-			if a.addItemSection == SectionTodo {
-				a.dashboard.AddTodoInputView = inputView
-			} else if a.addItemSection == SectionMilestones {
-				a.dashboard.AddMilestoneInputView = inputView
-			}
-		}
 		// For system messages (resize, data load), continue to normal handling below
 		switch msg.(type) {
 		case tea.WindowSizeMsg, dataLoadedMsg, fileChangedMsg:
 			// fall through
 		default:
-			a.updateViewport()
 			return a, tiCmd
 		}
 	}
@@ -231,11 +218,8 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						a.textInput.PromptStyle = lipgloss.NewStyle().Foreground(colorGreen)
 						a.textInput.Placeholder = "new task..."
 						a.textInput.CharLimit = 200
+						a.textInput.Width = a.modalInputWidth() - 4
 						cmd := a.textInput.Focus()
-						a.dashboard.AddingTodo = true
-						a.dashboard.AddTodoCursor = a.dashboard.TodoCursor
-						a.dashboard.AddTodoInputView = a.textInput.View()
-						a.updateViewport()
 						return a, cmd
 					}
 					// Block toggle for recurring tasks
@@ -261,11 +245,8 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						a.textInput.PromptStyle = lipgloss.NewStyle().Foreground(colorGreen)
 						a.textInput.Placeholder = "YYYY-MM-DD description..."
 						a.textInput.CharLimit = 200
+						a.textInput.Width = a.modalInputWidth() - 4
 						cmd := a.textInput.Focus()
-						a.dashboard.AddingMilestone = true
-						a.dashboard.AddMilestoneCursor = a.dashboard.MilestoneCursor
-						a.dashboard.AddMilestoneInputView = a.textInput.View()
-						a.updateViewport()
 						return a, cmd
 					}
 					// Block toggle for recurring milestones
@@ -296,6 +277,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			a.viewport.Width = msg.Width
 			a.viewport.Height = msg.Height - footerH
+		}
+		if a.addingItem {
+			a.textInput.Width = a.modalInputWidth() - 4
 		}
 		if a.dashboard != nil {
 			a.dashboard.Width = msg.Width
@@ -388,7 +372,92 @@ func (a App) View() string {
 		return "Loading..."
 	}
 	footer := helpStyle.Render(" q:quit  r:refresh  Tab:section  j/k:scroll  ←/→:month  ␣:toggle/add")
-	return a.viewport.View() + "\n" + footer
+	bg := a.viewport.View() + "\n" + footer
+	if a.addingItem {
+		return overlayCenter(bg, a.renderModal(), a.width, a.height)
+	}
+	return bg
+}
+
+// modalInputWidth calculates the text input width for the modal dialog.
+func (a App) modalInputWidth() int {
+	w := a.width * 55 / 100
+	if w < 40 {
+		w = 40
+	}
+	if w > 80 {
+		w = 80
+	}
+	return w
+}
+
+// renderModal builds a bordered modal box with title, text input, and help text.
+func (a App) renderModal() string {
+	w := a.modalInputWidth()
+
+	title := "New Task"
+	if a.addItemSection == SectionMilestones {
+		title = "New Milestone"
+	}
+
+	content := modalTitleStyle.Render(title) + "\n\n" +
+		a.textInput.View() + "\n\n" +
+		modalHelpStyle.Render("Enter: confirm  Esc: cancel")
+
+	return modalBorderStyle.Width(w).Render(content)
+}
+
+// overlayCenter composites fg (modal) centered on top of bg (dashboard).
+// Each affected line is split into left/right background parts with the modal
+// in the middle, preserving ANSI escape sequences.
+func overlayCenter(bg, fg string, width, height int) string {
+	bgLines := strings.Split(bg, "\n")
+	fgLines := strings.Split(fg, "\n")
+
+	for len(bgLines) < height {
+		bgLines = append(bgLines, "")
+	}
+	if len(bgLines) > height {
+		bgLines = bgLines[:height]
+	}
+
+	// Use ansi.StringWidth consistently with Truncate/TruncateLeft
+	fgWidth := 0
+	for _, l := range fgLines {
+		if w := ansi.StringWidth(l); w > fgWidth {
+			fgWidth = w
+		}
+	}
+
+	startY := (height - len(fgLines)) / 2
+	if startY < 0 {
+		startY = 0
+	}
+	startX := (width - fgWidth) / 2
+	if startX < 0 {
+		startX = 0
+	}
+
+	for i, fgLine := range fgLines {
+		y := startY + i
+		if y >= 0 && y < len(bgLines) {
+			bgLine := bgLines[y]
+			fgW := ansi.StringWidth(fgLine)
+
+			// Left: truncate bg to startX, pad if bg is shorter
+			left := ansi.Truncate(bgLine, startX, "")
+			if lw := ansi.StringWidth(left); lw < startX {
+				left += strings.Repeat(" ", startX-lw)
+			}
+
+			// Right: skip past the modal area
+			right := ansi.TruncateLeft(bgLine, startX+fgW, "")
+
+			bgLines[y] = left + fgLine + right
+		}
+	}
+
+	return strings.Join(bgLines, "\n")
 }
 
 func defaultMonthlyIndex(months []model.MonthlyData, now time.Time) int {

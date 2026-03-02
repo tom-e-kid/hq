@@ -8,13 +8,14 @@ import (
 
 var (
 	// Colors
-	colorTitle  = lipgloss.Color("#FFFFFF")
-	colorSubtle = lipgloss.Color("#666666")
-	colorAccent = lipgloss.Color("#7D56F4")
-	colorGreen  = lipgloss.Color("#04B575")
-	colorYellow = lipgloss.Color("#FFCC00")
-	colorRed    = lipgloss.Color("#FF4444")
-	colorDim    = lipgloss.Color("#444444")
+	colorTitle    = lipgloss.Color("#FFFFFF")
+	colorSubtle   = lipgloss.Color("#666666")
+	colorAccent   = lipgloss.Color("#7D56F4")
+	colorGreen    = lipgloss.Color("#04B575")
+	colorYellow   = lipgloss.Color("#FFCC00")
+	colorRed      = lipgloss.Color("#FF4444")
+	colorDim      = lipgloss.Color("#444444")
+	colorCursorBg = lipgloss.Color("#2D2D2D")
 	// Client color palette (assigned by order of appearance)
 	clientColors = []lipgloss.Color{
 		lipgloss.Color("#4A9EFF"), // blue
@@ -91,7 +92,8 @@ var (
 
 	todoCursorStyle = lipgloss.NewStyle().
 			Foreground(colorTitle).
-			Bold(true)
+			Bold(true).
+			Background(colorCursorBg)
 
 	summaryStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#555555")).
@@ -206,6 +208,16 @@ func FutureBlock() string {
 // EmptyBlock returns a fixed-width empty block (outside month).
 func EmptyBlock() string {
 	return "  "
+}
+
+// cursorLine renders a selected item line with ▸ prefix and background highlight.
+func cursorLine(text string) string {
+	return todoCursorStyle.Render("▸ " + text)
+}
+
+// normalLine renders a non-selected item line with blank prefix for alignment.
+func normalLine(text string) string {
+	return "  " + text
 }
 
 func repeat(s string, n int) string {
