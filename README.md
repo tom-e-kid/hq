@@ -191,10 +191,6 @@ The `(branch: ...)` suffix is optional. Entries are displayed in the TUI dashboa
 ---
 title: "2026-03 Monthly Log"
 month: "2026-03"
-hours:
-  total: 120.0
-  client_a: 80.0
-  client_b: 40.0
 ---
 
 ## 20260301

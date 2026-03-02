@@ -9,10 +9,6 @@ func TestParseMonthly(t *testing.T) {
 	content := `---
 title: "2026-02 月間ログ"
 month: "2026-02"
-hours:
-  total: 117.5
-  client_b: 84.5
-  client_a: 33.0
 ---
 
 ## 20260225
@@ -113,10 +109,6 @@ T:
 func TestParseMonthly_CommaDecimal(t *testing.T) {
 	content := `---
 month: "2026-02"
-hours:
-  total: 10.0
-  client_b: 5.0
-  client_a: 5.0
 ---
 
 ## 20260201
