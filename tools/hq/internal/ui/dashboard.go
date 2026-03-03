@@ -30,22 +30,16 @@ type sectionBounds struct {
 
 // DashboardView holds the rendering state for the dashboard.
 type DashboardView struct {
-	Data                  model.DashboardData
-	Width                 int
-	Height                int
-	FocusSection          Section
-	ScrollOffset          map[Section]int
-	WordIndex             int
-	MonthlyIndex          int
-	TodoCursor            int
-	AddingTodo            bool
-	AddTodoCursor         int
-	AddTodoInputView      string
-	MilestoneCursor       int
-	AddingMilestone       bool
-	AddMilestoneCursor    int
-	AddMilestoneInputView string
-	SectionBounds         []sectionBounds
+	Data            model.DashboardData
+	Width           int
+	Height          int
+	FocusSection    Section
+	ScrollOffset    map[Section]int
+	WordIndex       int
+	MonthlyIndex    int
+	TodoCursor      int
+	MilestoneCursor int
+	SectionBounds   []sectionBounds
 }
 
 // NewDashboardView creates a new dashboard view.
@@ -387,7 +381,7 @@ func (dv *DashboardView) renderSection(sec Section, title, content string, width
 func (dv *DashboardView) renderMilestones(width int) string {
 	items := dv.buildMilestoneItems()
 	if len(items) == 0 {
-		return dimText("  No milestones")
+		return normalLine(dimText("No milestones"))
 	}
 
 	// Clamp cursor
@@ -398,70 +392,41 @@ func (dv *DashboardView) renderMilestones(width int) string {
 		dv.MilestoneCursor = 0
 	}
 
-	// Build display lines
-	type msLine struct {
-		text      string
-		itemIndex int
-		isAddRow  bool
-		isInput   bool
-	}
-	var allLines []msLine
-	for i, item := range items {
-		if item.isAddRow {
-			allLines = append(allLines, msLine{itemIndex: i, isAddRow: true})
-			if dv.AddingMilestone && i == dv.AddMilestoneCursor {
-				allLines = append(allLines, msLine{isInput: true, itemIndex: -1})
-			}
-		} else {
-			allLines = append(allLines, msLine{itemIndex: i})
-		}
-	}
-
-	// Find cursor line index
-	cursorLineIdx := 0
-	for i, l := range allLines {
-		if l.itemIndex == dv.MilestoneCursor {
-			cursorLineIdx = i
-			break
-		}
-	}
-
 	// Auto-scroll to keep cursor visible
 	maxVisible := 5
 	offset := dv.ScrollOffset[SectionMilestones]
-	if cursorLineIdx < offset {
-		offset = cursorLineIdx
-	} else if cursorLineIdx >= offset+maxVisible {
-		offset = cursorLineIdx - maxVisible + 1
+	if dv.MilestoneCursor < offset {
+		offset = dv.MilestoneCursor
+	} else if dv.MilestoneCursor >= offset+maxVisible {
+		offset = dv.MilestoneCursor - maxVisible + 1
 	}
 	dv.ScrollOffset[SectionMilestones] = offset
 
-	if offset > len(allLines) {
-		offset = len(allLines)
+	if offset > len(items) {
+		offset = len(items)
 	}
-	visible := allLines[offset:]
+	visible := items[offset:]
 	if len(visible) > maxVisible {
 		visible = visible[:maxVisible]
 	}
 
 	isFocused := dv.FocusSection == SectionMilestones
 	var rendered []string
-	for _, l := range visible {
-		if l.isInput {
-			rendered = append(rendered, "    "+dv.AddMilestoneInputView)
-		} else if l.isAddRow {
-			if isFocused && l.itemIndex == dv.MilestoneCursor {
-				rendered = append(rendered, todoCursorStyle.Render("  + add"))
+	for i, item := range visible {
+		idx := offset + i
+		if item.isAddRow {
+			if isFocused && idx == dv.MilestoneCursor {
+				rendered = append(rendered, cursorLine("+ add"))
 			} else {
-				rendered = append(rendered, dimText("  + add"))
+				rendered = append(rendered, normalLine(dimText("+ add")))
 			}
 		} else {
-			ms := dv.Data.Milestones[items[l.itemIndex].milestoneIdx]
-			var line string
+			ms := dv.Data.Milestones[item.milestoneIdx]
 			check := "[ ]"
 			if ms.Checked {
 				check = "[x]"
 			}
+			var line string
 			if ms.HasDate {
 				var indicator string
 				if ms.Recurring {
@@ -472,15 +437,15 @@ func (dv *DashboardView) renderMilestones(width int) string {
 				dateStr := ms.Date.Format("01-02")
 				remaining := fmt.Sprintf("(残り%d日)", ms.RemainingDays)
 				content := truncateToWidth(ms.Content, width-30)
-				line = fmt.Sprintf("  %s %s %s  %s %s", check, indicator, content, dateStr, remaining)
+				line = fmt.Sprintf("%s %s %s  %s %s", check, indicator, content, dateStr, remaining)
 			} else {
 				content := truncateToWidth(ms.Content, width-10)
-				line = fmt.Sprintf("  %s %s", check, content)
+				line = fmt.Sprintf("%s %s", check, content)
 			}
-			if isFocused && l.itemIndex == dv.MilestoneCursor {
-				rendered = append(rendered, todoCursorStyle.Render(line))
+			if isFocused && idx == dv.MilestoneCursor {
+				rendered = append(rendered, cursorLine(line))
 			} else {
-				rendered = append(rendered, line)
+				rendered = append(rendered, normalLine(line))
 			}
 		}
 	}
@@ -491,10 +456,9 @@ func (dv *DashboardView) renderMilestones(width int) string {
 	}
 
 	result := strings.Join(rendered, "\n")
-	total := len(allLines)
-	if total > maxVisible {
+	if len(items) > maxVisible {
 		shown := offset + len(visible)
-		result += "\n" + dimText(fmt.Sprintf("  (%d-%d / %d)", offset+1, shown, total))
+		result += "\n" + dimText(fmt.Sprintf("  (%d-%d / %d)", offset+1, shown, len(items)))
 	}
 	return result
 }
@@ -686,11 +650,7 @@ func (dv *DashboardView) totalTodoLines() int {
 	if len(items) == 0 {
 		return 1
 	}
-	total := len(items)
-	if dv.AddingTodo {
-		total++ // input line
-	}
-	return total
+	return len(items)
 }
 
 func (dv *DashboardView) todoVisibleLines() int {
@@ -701,7 +661,7 @@ func (dv *DashboardView) todoVisibleLines() int {
 func (dv *DashboardView) renderTodo(width, maxLines int) string {
 	items := dv.buildTodoItems()
 	if len(items) == 0 {
-		return dimText("  No open tasks")
+		return normalLine(dimText("No open tasks"))
 	}
 
 	// Clamp cursor — skip separator lines
@@ -722,13 +682,12 @@ func (dv *DashboardView) renderTodo(width, maxLines int) string {
 		}
 	}
 
-	// Build display lines (items + optional input line)
+	// Build display lines
 	type todoLine struct {
 		text        string
 		itemIndex   int
 		isLabel     bool
 		isSeparator bool
-		isInput     bool
 	}
 	var allLines []todoLine
 	for i, item := range items {
@@ -736,9 +695,6 @@ func (dv *DashboardView) renderTodo(width, maxLines int) string {
 			allLines = append(allLines, todoLine{text: item.text, itemIndex: i, isSeparator: true})
 		} else if item.isLabel {
 			allLines = append(allLines, todoLine{text: item.label, itemIndex: i, isLabel: true})
-			if dv.AddingTodo && i == dv.AddTodoCursor {
-				allLines = append(allLines, todoLine{isInput: true, itemIndex: -1})
-			}
 		} else {
 			allLines = append(allLines, todoLine{text: item.text, itemIndex: i})
 		}
@@ -773,16 +729,14 @@ func (dv *DashboardView) renderTodo(width, maxLines int) string {
 	isFocused := dv.FocusSection == SectionTodo
 	var rendered []string
 	for _, l := range visible {
-		if l.isInput {
-			rendered = append(rendered, "    "+dv.AddTodoInputView)
-		} else if l.isSeparator {
-			rendered = append(rendered, dimText("  ── "+l.text+" ──"))
+		if l.isSeparator {
+			rendered = append(rendered, normalLine(dimText("── "+l.text+" ──")))
 		} else if l.isLabel {
 			label := truncateToWidth(l.text, width-4)
 			if isFocused && l.itemIndex == dv.TodoCursor {
-				rendered = append(rendered, todoCursorStyle.Render("  "+label+" +"))
+				rendered = append(rendered, cursorLine(label+" +"))
 			} else {
-				rendered = append(rendered, todoLabelStyle.Render("  "+label)+" "+dimText("+"))
+				rendered = append(rendered, normalLine(todoLabelStyle.Render(label)+" "+dimText("+")))
 			}
 		} else {
 			item := items[l.itemIndex]
@@ -826,20 +780,20 @@ func (dv *DashboardView) formatTodoLine(item todoItem, width int, isCursor bool)
 			projectSuffix = "  " + dimText("← "+item.label)
 		}
 		content := truncateToWidth(item.text, width-30)
-		line := fmt.Sprintf("  %s %s %s  %s %s%s", check, indicator, content, item.dateStr, remaining, projectSuffix)
+		line := fmt.Sprintf("%s %s %s  %s %s%s", check, indicator, content, item.dateStr, remaining, projectSuffix)
 		if isCursor {
-			return todoCursorStyle.Render(line)
+			return cursorLine(line)
 		}
-		return line
+		return normalLine(line)
 	}
 
 	// Undated task
 	content := truncateToWidth(item.text, width-10)
-	line := fmt.Sprintf("  %s %s", check, content)
+	line := fmt.Sprintf("%s %s", check, content)
 	if isCursor {
-		return todoCursorStyle.Render(line)
+		return cursorLine(line)
 	}
-	return line
+	return normalLine(line)
 }
 
 func (dv *DashboardView) renderMonthlyAndActivity(width int) string {

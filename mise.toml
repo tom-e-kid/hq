@@ -9,4 +9,10 @@ run = "mkdir -p ../../tools/bin && go build -o ../../tools/bin/hq ."
 [tasks.install]
 description = "Install hq to ~/.local/bin"
 depends = ["build"]
-run = "cp tools/bin/hq ~/.local/bin/hq"
+run = '''
+mkdir -p ~/.local/bin
+tmp="$(mktemp ~/.local/bin/hq.XXXXXX)"
+cp tools/bin/hq "$tmp"
+chmod 755 "$tmp"
+mv -f "$tmp" ~/.local/bin/hq
+'''
