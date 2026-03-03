@@ -102,6 +102,18 @@ var (
 	recurringIndicatorStyle = lipgloss.NewStyle().
 				Foreground(colorAccent).
 				Bold(true)
+
+	modalBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorAccent).
+				Padding(1, 2)
+
+	modalTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(colorTitle)
+
+	modalHelpStyle = lipgloss.NewStyle().
+			Foreground(colorSubtle)
 )
 
 // clientStyle returns a style for the given client index using the color palette.

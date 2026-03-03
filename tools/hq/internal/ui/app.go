@@ -97,21 +97,7 @@ func wordTickCmd() tea.Cmd {
 	})
 }
 
-var (
-	helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-
-	modalBorderStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(colorAccent).
-				Padding(1, 2)
-
-	modalTitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(colorTitle)
-
-	modalHelpStyle = lipgloss.NewStyle().
-			Foreground(colorSubtle)
-)
+var helpStyle = lipgloss.NewStyle().Foreground(colorSubtle)
 
 func (a App) Init() tea.Cmd {
 	return tea.Batch(
@@ -209,18 +195,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return a, nil
 					}
 					if item.isLabel {
-						// Start adding a new todo
-						a.addingItem = true
-						a.addItemSection = SectionTodo
-						a.addItemFile = item.filePath
-						a.textInput = textinput.New()
-						a.textInput.Prompt = "+ "
-						a.textInput.PromptStyle = lipgloss.NewStyle().Foreground(colorGreen)
-						a.textInput.Placeholder = "new task..."
-						a.textInput.CharLimit = 200
-						a.textInput.Width = a.modalInputWidth() - 4
-						cmd := a.textInput.Focus()
-						return a, cmd
+						return a, a.startAddItem(SectionTodo, item.filePath, "new task...")
 					}
 					// Block toggle for recurring tasks
 					if item.recurring {
@@ -236,18 +211,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case SectionMilestones:
 				if item, ok := a.dashboard.currentMilestoneItem(); ok {
 					if item.isAddRow {
-						// Start adding a new milestone
-						a.addingItem = true
-						a.addItemSection = SectionMilestones
-						a.addItemFile = item.filePath
-						a.textInput = textinput.New()
-						a.textInput.Prompt = "+ "
-						a.textInput.PromptStyle = lipgloss.NewStyle().Foreground(colorGreen)
-						a.textInput.Placeholder = "YYYY-MM-DD description..."
-						a.textInput.CharLimit = 200
-						a.textInput.Width = a.modalInputWidth() - 4
-						cmd := a.textInput.Focus()
-						return a, cmd
+						return a, a.startAddItem(SectionMilestones, item.filePath, "YYYY-MM-DD description...")
 					}
 					// Block toggle for recurring milestones
 					if item.milestoneIdx >= 0 && item.milestoneIdx < len(a.dashboard.Data.Milestones) {
@@ -379,16 +343,23 @@ func (a App) View() string {
 	return bg
 }
 
+// startAddItem initializes the text input modal for adding a new item.
+func (a *App) startAddItem(section Section, filePath, placeholder string) tea.Cmd {
+	a.addingItem = true
+	a.addItemSection = section
+	a.addItemFile = filePath
+	a.textInput = textinput.New()
+	a.textInput.Prompt = "+ "
+	a.textInput.PromptStyle = lipgloss.NewStyle().Foreground(colorGreen)
+	a.textInput.Placeholder = placeholder
+	a.textInput.CharLimit = 200
+	a.textInput.Width = a.modalInputWidth() - 4
+	return a.textInput.Focus()
+}
+
 // modalInputWidth calculates the text input width for the modal dialog.
 func (a App) modalInputWidth() int {
-	w := a.width * 55 / 100
-	if w < 40 {
-		w = 40
-	}
-	if w > 80 {
-		w = 80
-	}
-	return w
+	return min(max(a.width*55/100, 40), 80)
 }
 
 // renderModal builds a bordered modal box with title, text input, and help text.
@@ -440,21 +411,22 @@ func overlayCenter(bg, fg string, width, height int) string {
 
 	for i, fgLine := range fgLines {
 		y := startY + i
-		if y >= 0 && y < len(bgLines) {
-			bgLine := bgLines[y]
-			fgW := ansi.StringWidth(fgLine)
-
-			// Left: truncate bg to startX, pad if bg is shorter
-			left := ansi.Truncate(bgLine, startX, "")
-			if lw := ansi.StringWidth(left); lw < startX {
-				left += strings.Repeat(" ", startX-lw)
-			}
-
-			// Right: skip past the modal area
-			right := ansi.TruncateLeft(bgLine, startX+fgW, "")
-
-			bgLines[y] = left + fgLine + right
+		if y >= len(bgLines) {
+			break
 		}
+		bgLine := bgLines[y]
+		fgW := ansi.StringWidth(fgLine)
+
+		// Left: truncate bg to startX, pad if bg is shorter
+		left := ansi.Truncate(bgLine, startX, "")
+		if lw := ansi.StringWidth(left); lw < startX {
+			left += strings.Repeat(" ", startX-lw)
+		}
+
+		// Right: skip past the modal area
+		right := ansi.TruncateLeft(bgLine, startX+fgW, "")
+
+		bgLines[y] = left + fgLine + right
 	}
 
 	return strings.Join(bgLines, "\n")

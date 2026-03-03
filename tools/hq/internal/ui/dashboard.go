@@ -392,59 +392,36 @@ func (dv *DashboardView) renderMilestones(width int) string {
 		dv.MilestoneCursor = 0
 	}
 
-	// Build display lines
-	type msLine struct {
-		text      string
-		itemIndex int
-		isAddRow  bool
-	}
-	var allLines []msLine
-	for i, item := range items {
-		if item.isAddRow {
-			allLines = append(allLines, msLine{itemIndex: i, isAddRow: true})
-		} else {
-			allLines = append(allLines, msLine{itemIndex: i})
-		}
-	}
-
-	// Find cursor line index
-	cursorLineIdx := 0
-	for i, l := range allLines {
-		if l.itemIndex == dv.MilestoneCursor {
-			cursorLineIdx = i
-			break
-		}
-	}
-
 	// Auto-scroll to keep cursor visible
 	maxVisible := 5
 	offset := dv.ScrollOffset[SectionMilestones]
-	if cursorLineIdx < offset {
-		offset = cursorLineIdx
-	} else if cursorLineIdx >= offset+maxVisible {
-		offset = cursorLineIdx - maxVisible + 1
+	if dv.MilestoneCursor < offset {
+		offset = dv.MilestoneCursor
+	} else if dv.MilestoneCursor >= offset+maxVisible {
+		offset = dv.MilestoneCursor - maxVisible + 1
 	}
 	dv.ScrollOffset[SectionMilestones] = offset
 
-	if offset > len(allLines) {
-		offset = len(allLines)
+	if offset > len(items) {
+		offset = len(items)
 	}
-	visible := allLines[offset:]
+	visible := items[offset:]
 	if len(visible) > maxVisible {
 		visible = visible[:maxVisible]
 	}
 
 	isFocused := dv.FocusSection == SectionMilestones
 	var rendered []string
-	for _, l := range visible {
-		if l.isAddRow {
-			if isFocused && l.itemIndex == dv.MilestoneCursor {
+	for i, item := range visible {
+		idx := offset + i
+		if item.isAddRow {
+			if isFocused && idx == dv.MilestoneCursor {
 				rendered = append(rendered, cursorLine("+ add"))
 			} else {
 				rendered = append(rendered, normalLine(dimText("+ add")))
 			}
 		} else {
-			ms := dv.Data.Milestones[items[l.itemIndex].milestoneIdx]
+			ms := dv.Data.Milestones[item.milestoneIdx]
 			check := "[ ]"
 			if ms.Checked {
 				check = "[x]"
@@ -465,7 +442,7 @@ func (dv *DashboardView) renderMilestones(width int) string {
 				content := truncateToWidth(ms.Content, width-10)
 				line = fmt.Sprintf("%s %s", check, content)
 			}
-			if isFocused && l.itemIndex == dv.MilestoneCursor {
+			if isFocused && idx == dv.MilestoneCursor {
 				rendered = append(rendered, cursorLine(line))
 			} else {
 				rendered = append(rendered, normalLine(line))
@@ -479,10 +456,9 @@ func (dv *DashboardView) renderMilestones(width int) string {
 	}
 
 	result := strings.Join(rendered, "\n")
-	total := len(allLines)
-	if total > maxVisible {
+	if len(items) > maxVisible {
 		shown := offset + len(visible)
-		result += "\n" + dimText(fmt.Sprintf("  (%d-%d / %d)", offset+1, shown, total))
+		result += "\n" + dimText(fmt.Sprintf("  (%d-%d / %d)", offset+1, shown, len(items)))
 	}
 	return result
 }
