@@ -132,7 +132,28 @@ status: open
 
 If no items qualify: skip this step and report "No follow-up issues to extract".
 
-### 10. Update taskfile
+### 10. Quick-fix triage
+
+Review the issues extracted in step 9. For each issue, judge whether it can be resolved on the spot with 1–few user confirmations. Criteria for "quick fix":
+
+- The fix approach is clear from the review description (no open design questions)
+- Scope is small (single file or a few lines)
+- No architectural decisions or spec clarification required
+
+For each quick-fix candidate, present:
+
+- Issue title and severity
+- Target file(s) and line(s)
+- Proposed fix approach (from the review or your own assessment)
+
+Then use AskUserQuestion:
+
+- "Fix now" — implement the fix, run pre-commit format (same as step 8), stage, and commit with message `fix: <concise description>`. Update the issue file: set `status: resolved` in frontmatter
+- "Skip" — leave as open issue, move to the next candidate
+
+After processing all candidates (or if none qualify), continue to step 11.
+
+### 11. Update taskfile
 
 Append a new section to the taskfile:
 
@@ -147,13 +168,17 @@ Append a new section to the taskfile:
 
 ### Issues Extracted
 - <list of created issue files with severity, or "None">
+
+### Quick-fixed
+- <list of issues resolved on the spot with commit hashes, or "None">
 ```
 
-### 11. Report results
+### 12. Report results
 
 Output a final summary:
 
 - **Committed**: file count + commit hash (or "None")
 - **Rejected**: file count + reasons (or "None")
 - **Issues created**: list with severity and title (or "None")
+- **Quick-fixed**: list with title and commit hash (or "None")
 - **Taskfile updated**: confirmation
