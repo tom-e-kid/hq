@@ -103,6 +103,10 @@ var (
 				Foreground(colorAccent).
 				Bold(true)
 
+	warningIndicatorStyle = lipgloss.NewStyle().
+				Foreground(colorYellow).
+				Bold(true)
+
 	modalBorderStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(colorAccent).
@@ -125,12 +129,14 @@ func clientStyle(index int) lipgloss.Style {
 // MilestoneUrgencyIndicator returns a colored indicator based on remaining days.
 func MilestoneUrgencyIndicator(days int) string {
 	switch {
-	case days <= 7:
+	case days <= 0:
 		return urgencyRedStyle.Render("●")
-	case days <= 14:
+	case days <= 3:
 		return urgencyYellowStyle.Render("●")
-	default:
+	case days <= 7:
 		return urgencyGreenStyle.Render("●")
+	default:
+		return lipgloss.NewStyle().Foreground(colorSubtle).Render("●")
 	}
 }
 

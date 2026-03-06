@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -32,6 +35,9 @@ purpose: "test"
 	if ms.RemainingDays != 8 {
 		t.Errorf("expected 8 remaining days, got %d", ms.RemainingDays)
 	}
+	if ms.Overdue {
+		t.Error("expected overdue=false for future milestone")
+	}
 	if ms.FilePath != "test/milestones.md" {
 		t.Errorf("unexpected file path: %q", ms.FilePath)
 	}
@@ -43,11 +49,48 @@ purpose: "test"
 	if !ms2.Checked {
 		t.Error("expected checked")
 	}
-	if ms2.RemainingDays != 0 {
-		t.Errorf("expected 0 remaining days for past milestone, got %d", ms2.RemainingDays)
+	if ms2.RemainingDays >= 0 {
+		t.Errorf("expected negative remaining days for past milestone, got %d", ms2.RemainingDays)
+	}
+	if ms2.Overdue {
+		t.Error("expected overdue=false for checked past milestone")
 	}
 	if ms2.Line != 7 {
 		t.Errorf("expected line 7, got %d", ms2.Line)
+	}
+}
+
+func TestParseMilestones_Overdue(t *testing.T) {
+	content := `- [ ] 2026-03-01 overdue task
+- [x] 2026-03-01 done past task
+- [ ] 2026-03-10 upcoming task
+`
+	now := time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
+	milestones := ParseMilestones(content, "test.md", now)
+
+	if len(milestones) != 3 {
+		t.Fatalf("expected 3 milestones, got %d", len(milestones))
+	}
+
+	// Overdue unchecked
+	if !milestones[0].Overdue {
+		t.Error("expected overdue=true for unchecked past milestone")
+	}
+	if milestones[0].RemainingDays != -4 {
+		t.Errorf("expected -4 remaining days, got %d", milestones[0].RemainingDays)
+	}
+
+	// Checked past — not overdue
+	if milestones[1].Overdue {
+		t.Error("expected overdue=false for checked past milestone")
+	}
+
+	// Future — not overdue
+	if milestones[2].Overdue {
+		t.Error("expected overdue=false for future milestone")
+	}
+	if milestones[2].RemainingDays != 5 {
+		t.Errorf("expected 5 remaining days, got %d", milestones[2].RemainingDays)
 	}
 }
 
@@ -418,5 +461,241 @@ func TestNextWeeklyWrapAround(t *testing.T) {
 	expected := time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
 	if !date.Equal(expected) {
 		t.Errorf("expected %v, got %v", expected, date)
+	}
+}
+
+// --- Template parsing tests ---
+
+func TestParseRecurringTemplates(t *testing.T) {
+	content := `---
+title: milestones
+---
+
+- @monthly 10 保険期限
+- @month-end 請求処理
+- @yearly 03-15 確定申告
+- @weekly mon ミーティング
+- [ ] 2026-03-05 リリース
+- [ ] undated task
+`
+	templates := ParseRecurringTemplates(content)
+	if len(templates) != 4 {
+		t.Fatalf("expected 4 templates, got %d", len(templates))
+	}
+
+	if templates[0].ruleType != "monthly" || templates[0].param != "10" || templates[0].content != "保険期限" {
+		t.Errorf("unexpected template 0: %+v", templates[0])
+	}
+	if templates[1].ruleType != "month-end" || templates[1].content != "請求処理" {
+		t.Errorf("unexpected template 1: %+v", templates[1])
+	}
+	if templates[2].ruleType != "yearly" || templates[2].param != "03-15" || templates[2].content != "確定申告" {
+		t.Errorf("unexpected template 2: %+v", templates[2])
+	}
+	if templates[3].ruleType != "weekly" || templates[3].param != "mon" || templates[3].content != "ミーティング" {
+		t.Errorf("unexpected template 3: %+v", templates[3])
+	}
+}
+
+func TestParseRecurringTemplates_NoCheckboxLinesOnly(t *testing.T) {
+	content := `- [ ] @monthly 10 checkbox monthly
+- @monthly 10 template monthly
+`
+	templates := ParseRecurringTemplates(content)
+	if len(templates) != 1 {
+		t.Fatalf("expected 1 template (checkbox-less only), got %d", len(templates))
+	}
+	if templates[0].content != "template monthly" {
+		t.Errorf("unexpected content: %q", templates[0].content)
+	}
+}
+
+func TestParseRecurringTemplates_InvalidSkipped(t *testing.T) {
+	content := `- @monthly 0 invalid day
+- @monthly 32 invalid day
+- @yearly 13-15 invalid month
+`
+	templates := ParseRecurringTemplates(content)
+	if len(templates) != 0 {
+		t.Fatalf("expected 0 templates for invalid rules, got %d", len(templates))
+	}
+}
+
+// --- Materialization tests ---
+
+func TestMaterializeRecurring(t *testing.T) {
+	dir := t.TempDir()
+	projDir := filepath.Join(dir, "projects")
+	if err := os.MkdirAll(projDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	initial := `---
+title: milestones
+---
+
+- @monthly 10 保険期限
+- [ ] 2026-03-05 リリース
+`
+	msFile := filepath.Join(projDir, "_milestones.md")
+	if err := os.WriteFile(msFile, []byte(initial), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	if err := MaterializeRecurring(dir, now); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(msFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+
+	// Should have appended "- [ ] 2026-03-10 保険期限"
+	if !strings.Contains(content, "- [ ] 2026-03-10 保険期限") {
+		t.Errorf("expected materialized milestone, got:\n%s", content)
+	}
+
+	// Original content preserved
+	if !strings.Contains(content, "- @monthly 10 保険期限") {
+		t.Error("template should be preserved")
+	}
+	if !strings.Contains(content, "- [ ] 2026-03-05 リリース") {
+		t.Error("existing milestone should be preserved")
+	}
+}
+
+func TestMaterializeRecurring_NoDuplicates(t *testing.T) {
+	dir := t.TempDir()
+	projDir := filepath.Join(dir, "projects")
+	if err := os.MkdirAll(projDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// File already has the materialized instance
+	initial := `- @monthly 10 保険期限
+- [ ] 2026-03-10 保険期限
+`
+	msFile := filepath.Join(projDir, "_milestones.md")
+	if err := os.WriteFile(msFile, []byte(initial), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	if err := MaterializeRecurring(dir, now); err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := os.ReadFile(msFile)
+	// Should not duplicate
+	count := strings.Count(string(data), "- [ ] 2026-03-10 保険期限")
+	if count != 1 {
+		t.Errorf("expected 1 instance, found %d in:\n%s", count, string(data))
+	}
+}
+
+func TestMaterializeRecurring_CheckedInstanceCountsAsExisting(t *testing.T) {
+	dir := t.TempDir()
+	projDir := filepath.Join(dir, "projects")
+	if err := os.MkdirAll(projDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Checked instance already exists
+	initial := `- @monthly 10 保険期限
+- [x] 2026-03-10 保険期限
+`
+	msFile := filepath.Join(projDir, "_milestones.md")
+	if err := os.WriteFile(msFile, []byte(initial), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	if err := MaterializeRecurring(dir, now); err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := os.ReadFile(msFile)
+	// Should not add another instance
+	if strings.Contains(string(data), "- [ ] 2026-03-10 保険期限") {
+		t.Errorf("should not add unchecked instance when checked one exists:\n%s", string(data))
+	}
+}
+
+func TestMaterializeRecurring_NoFile(t *testing.T) {
+	dir := t.TempDir()
+	// No milestones file — should not error
+	if err := MaterializeRecurring(dir, time.Now()); err != nil {
+		t.Errorf("expected nil error for missing file, got %v", err)
+	}
+}
+
+// --- Sort tests ---
+
+func TestSortMilestones(t *testing.T) {
+	content := `- [ ] undated task
+- [ ] 2026-03-10 upcoming
+- [ ] 2026-03-01 overdue
+- [x] 2026-02-15 done past
+- [ ] 2026-03-15 later
+`
+	now := time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
+	milestones := ParseMilestones(content, "test.md", now)
+	SortMilestones(milestones)
+
+	// Expected order: overdue(03-01), dated by date asc(02-15, 03-10, 03-15), undated
+	if len(milestones) != 5 {
+		t.Fatalf("expected 5, got %d", len(milestones))
+	}
+	expected := []string{"overdue", "done past", "upcoming", "later", "undated task"}
+	for i, e := range expected {
+		if milestones[i].Content != e {
+			t.Errorf("milestones[%d] = %q, want %q", i, milestones[i].Content, e)
+		}
+	}
+}
+
+// --- Visibility rules tests ---
+
+func TestVisibilityRules(t *testing.T) {
+	content := `- [ ] 2026-03-10 future unchecked
+- [x] 2026-03-10 future checked
+- [ ] 2026-03-01 overdue unchecked
+- [x] 2026-03-01 past checked
+- [ ] undated unchecked
+- [x] undated checked
+`
+	now := time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	milestones := ParseMilestones(content, "test.md", now)
+
+	// Apply the same visibility rules as the CLI
+	var visible []string
+	for _, m := range milestones {
+		if m.HasDate {
+			if m.Checked && m.Date.Before(today) {
+				continue
+			}
+		} else if m.Checked {
+			continue
+		}
+		visible = append(visible, m.Content)
+	}
+
+	expected := []string{
+		"future unchecked",
+		"future checked",
+		"overdue unchecked",
+		"undated unchecked",
+	}
+	if len(visible) != len(expected) {
+		t.Fatalf("expected %d visible, got %d: %v", len(expected), len(visible), visible)
+	}
+	for i, e := range expected {
+		if visible[i] != e {
+			t.Errorf("visible[%d] = %q, want %q", i, visible[i], e)
+		}
 	}
 }

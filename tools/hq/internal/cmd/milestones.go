@@ -36,6 +36,12 @@ func runMilestonesList(basePath string, args []string) int {
 	}
 
 	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	if err := parser.MaterializeRecurring(basePath, now); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+	}
+
 	milestones, err := parser.LoadMilestones(basePath, now)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -43,13 +49,18 @@ func runMilestonesList(basePath string, args []string) int {
 	}
 
 	if !showAll {
-		open := milestones[:0]
+		filtered := milestones[:0]
 		for _, m := range milestones {
-			if !m.Checked {
-				open = append(open, m)
+			if m.HasDate {
+				if m.Checked && m.Date.Before(today) {
+					continue
+				}
+			} else if m.Checked {
+				continue
 			}
+			filtered = append(filtered, m)
 		}
-		milestones = open
+		milestones = filtered
 	}
 
 	if jsonOut {
@@ -79,18 +90,16 @@ func runMilestonesList(basePath string, args []string) int {
 		if m.Checked {
 			mark = "x"
 		}
-		prefix := ""
-		if m.Recurring {
-			prefix = m.RecurringRule + " "
-		}
 		dateStr := ""
-		if m.HasDate {
+		if m.Overdue {
+			dateStr = fmt.Sprintf("! %s (%d日超過) ", m.Date.Format("2006-01-02"), -m.RemainingDays)
+		} else if m.HasDate {
 			dateStr = m.Date.Format("2006-01-02") + " "
 			if !m.Checked {
 				dateStr += fmt.Sprintf("(%dd) ", m.RemainingDays)
 			}
 		}
-		fmt.Printf("  %3d. [%s] %s%s%s\n", m.Line, mark, prefix, dateStr, m.Content)
+		fmt.Printf("  %3d. [%s] %s%s\n", m.Line, mark, dateStr, m.Content)
 	}
 	return 0
 }

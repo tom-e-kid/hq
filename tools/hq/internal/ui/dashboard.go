@@ -82,19 +82,24 @@ func (dv *DashboardView) ScrollDown() {
 		}
 		if next < len(items) {
 			dv.TodoCursor = next
+			return
 		}
-		return
 	case SectionMilestones:
 		items := dv.buildMilestoneItems()
 		if dv.MilestoneCursor < len(items)-1 {
 			dv.MilestoneCursor++
+			return
 		}
-		return
+	default:
+		m := dv.maxScroll(dv.FocusSection)
+		if dv.ScrollOffset[dv.FocusSection] < m {
+			dv.ScrollOffset[dv.FocusSection]++
+			return
+		}
 	}
-	max := dv.maxScroll(dv.FocusSection)
-	if dv.ScrollOffset[dv.FocusSection] < max {
-		dv.ScrollOffset[dv.FocusSection]++
-	}
+	// At boundary — move to next section
+	dv.NextSection()
+	dv.enterSectionTop()
 }
 
 func (dv *DashboardView) ScrollUp() {
@@ -108,16 +113,54 @@ func (dv *DashboardView) ScrollUp() {
 		}
 		if prev >= 0 {
 			dv.TodoCursor = prev
+			return
 		}
-		return
 	case SectionMilestones:
 		if dv.MilestoneCursor > 0 {
 			dv.MilestoneCursor--
+			return
 		}
-		return
+	default:
+		if dv.ScrollOffset[dv.FocusSection] > 0 {
+			dv.ScrollOffset[dv.FocusSection]--
+			return
+		}
 	}
-	if dv.ScrollOffset[dv.FocusSection] > 0 {
-		dv.ScrollOffset[dv.FocusSection]--
+	// At boundary — move to prev section
+	dv.PrevSection()
+	dv.enterSectionBottom()
+}
+
+// enterSectionTop sets the cursor/scroll to the first item when entering a section from above.
+func (dv *DashboardView) enterSectionTop() {
+	switch dv.FocusSection {
+	case SectionMilestones:
+		dv.MilestoneCursor = 0
+	case SectionTodo:
+		items := dv.buildTodoItems()
+		dv.TodoCursor = 0
+		for dv.TodoCursor < len(items) && items[dv.TodoCursor].isSeparator {
+			dv.TodoCursor++
+		}
+	default:
+		dv.ScrollOffset[dv.FocusSection] = 0
+	}
+}
+
+// enterSectionBottom sets the cursor/scroll to the last item when entering a section from below.
+func (dv *DashboardView) enterSectionBottom() {
+	switch dv.FocusSection {
+	case SectionMilestones:
+		items := dv.buildMilestoneItems()
+		dv.MilestoneCursor = len(items) - 1
+	case SectionTodo:
+		items := dv.buildTodoItems()
+		dv.TodoCursor = len(items) - 1
+		for dv.TodoCursor > 0 && items[dv.TodoCursor].isSeparator {
+			dv.TodoCursor--
+		}
+	default:
+		dv.ScrollOffset[dv.FocusSection] = dv.maxScroll(dv.FocusSection)
 	}
 }
 
@@ -174,8 +217,12 @@ type milestoneItem struct {
 func (dv *DashboardView) buildMilestoneItems() []milestoneItem {
 	var items []milestoneItem
 	for i, ms := range dv.Data.Milestones {
-		// Hide recurring milestones more than 10 days away
-		if ms.Recurring && ms.RemainingDays > 10 {
+		// Visibility: hide checked past items and checked undated items
+		if ms.HasDate {
+			if ms.Checked && ms.RemainingDays < 0 {
+				continue
+			}
+		} else if ms.Checked {
 			continue
 		}
 		items = append(items, milestoneItem{
@@ -427,13 +474,14 @@ func (dv *DashboardView) renderMilestones(width int) string {
 				check = "[x]"
 			}
 			var line string
-			if ms.HasDate {
-				var indicator string
-				if ms.Recurring {
-					indicator = recurringIndicatorStyle.Render("@")
-				} else {
-					indicator = MilestoneUrgencyIndicator(ms.RemainingDays)
-				}
+			if ms.Overdue {
+				indicator := warningIndicatorStyle.Render("⚠")
+				dateStr := ms.Date.Format("01-02")
+				overdue := fmt.Sprintf("(%d日超過)", -ms.RemainingDays)
+				content := truncateToWidth(ms.Content, width-30)
+				line = fmt.Sprintf("%s %s %s  %s %s", check, indicator, content, dateStr, overdue)
+			} else if ms.HasDate {
+				indicator := MilestoneUrgencyIndicator(ms.RemainingDays)
 				dateStr := ms.Date.Format("01-02")
 				remaining := fmt.Sprintf("(残り%d日)", ms.RemainingDays)
 				content := truncateToWidth(ms.Content, width-30)
