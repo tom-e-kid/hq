@@ -10,6 +10,7 @@ type Milestone struct {
 	Done          int       `json:"done"`
 	Total         int       `json:"total"`
 	Checked       bool      `json:"checked"`
+	Overdue       bool      `json:"overdue"`
 	HasDate       bool      `json:"has_date"`
 	Recurring     bool      `json:"recurring"`
 	RecurringRule string    `json:"recurring_rule"` // "@monthly 10", "@month-end", etc.

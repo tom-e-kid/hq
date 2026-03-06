@@ -86,7 +86,9 @@ type wordTickMsg struct{}
 
 func loadDataCmd(basePath string, taskFiles []parser.TaskFileRole) tea.Cmd {
 	return func() tea.Msg {
-		data, err := parser.LoadAll(basePath, time.Now(), taskFiles)
+		now := time.Now()
+		_ = parser.MaterializeRecurring(basePath, now)
+		data, err := parser.LoadAll(basePath, now, taskFiles)
 		return dataLoadedMsg{data: data, err: err}
 	}
 }
@@ -212,13 +214,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if item, ok := a.dashboard.currentMilestoneItem(); ok {
 					if item.isAddRow {
 						return a, a.startAddItem(SectionMilestones, item.filePath, "YYYY-MM-DD description...")
-					}
-					// Block toggle for recurring milestones
-					if item.milestoneIdx >= 0 && item.milestoneIdx < len(a.dashboard.Data.Milestones) {
-						ms := a.dashboard.Data.Milestones[item.milestoneIdx]
-						if ms.Recurring {
-							return a, nil
-						}
 					}
 					// Toggle existing milestone
 					if item.filePath != "" && item.line > 0 {

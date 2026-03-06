@@ -103,6 +103,10 @@ var (
 				Foreground(colorAccent).
 				Bold(true)
 
+	warningIndicatorStyle = lipgloss.NewStyle().
+				Foreground(colorYellow).
+				Bold(true)
+
 	modalBorderStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(colorAccent).
