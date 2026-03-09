@@ -6,6 +6,7 @@ Centralized management of monthly logs, project info, and knowledge base — des
 
 - **db/** — Data directory (monthly logs, project info, knowledge base, inbox). Not included in this repo; location is configured via `~/.hq/settings.json` (`data_dir`)
 - **plugin/** — Claude Code plugin (skills, commands)
+- **apps/** — Standalone web applications (e.g., schema-visualizer)
 - **tools/** — CLI tools (Go binary)
 
 ## .hq Directory

@@ -18,6 +18,10 @@
 .cache
 .hq
 
+# Apps
+node_modules/
+dist/
+
 # HQ CLI
 tools/bin/
 tools/cli/.tmp-*
