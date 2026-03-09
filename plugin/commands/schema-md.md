@@ -4,8 +4,10 @@ Drizzle ORM の schema 定義ファイルを読み込み、構造化された DB
 
 ## 入出力
 
-- **入力**: プロジェクト内の Drizzle schema 定義（`pgTable` 等を含む `.ts` ファイル）
-- **出力**: `docs/schema.md`
+- **入力**: プロジェクト内の Drizzle schema 定義（`pgTable` 等を含む `.ts` ファイル）**のみ**
+- **出力**: `docs/schema-YYYYMMDD-HHMMSS.md`（実行時のローカル日時をタイムスタンプとして付与）
+
+**重要**: 既存の `docs/schema*.md` ファイルは一切参照しない。常に schema 定義ファイルのみをインプットとしてゼロから生成する。
 
 まず Drizzle の schema 定義ファイルを特定する。典型的なパス:
 - `src/db/schema.ts`（単一ファイル）
@@ -50,7 +52,7 @@ schema 定義ファイルから以下を抽出する:
 - 中間テーブルは両端のテーブルの後に配置する
 - ゼロパディング 2 桁（01〜99）
 
-## Step 4: docs/schema.md 生成
+## Step 4: docs/schema-YYYYMMDD-HHMMSS.md 生成
 
 以下の固定フォーマットで出力する。
 
@@ -118,14 +120,16 @@ schema 定義ファイルから以下を抽出する:
 
 ```
 parent_table (XX-01)
- ├─< child_table (XX-02)        fk_column → parent.id
- ├──○ nullable_ref (XX-03)      fk_column → parent.id   SET NULL
- └── required_ref (XX-04)       fk_column → parent.id   CASCADE
+ ├─< child_table (XX-02)        fk_column → parent.id          CASCADE
+ ├──○ nullable_child (XX-03)    fk_column → parent.id          SET NULL
+ └─< another_child (XX-04)      fk_column → parent.id          CASCADE
 ```
 
 （主要な親テーブルを起点にツリーを構成する。全 FK 関係を網羅する）
 
-凡例: ─< 1:N (CASCADE)  ──○ N:1 (SET NULL)  ── N:1 (CASCADE)
+**ルール: 常に親テーブル起点で記載する。** 子テーブルが持つ FK を、参照先の親テーブルのツリー配下に `─<` または `──○` で列挙する。子テーブル視点の N:1 記法（`──`）は使用しない。これにより記号が2種類に統一され、方向の揺らぎがなくなる。
+
+凡例: `─<` 1:N (CASCADE)　`──○` 1:N (SET NULL)
 ````
 
 ---
