@@ -1,122 +1,122 @@
 # schema-md: Drizzle schema.ts → docs/schema.md
 
-Drizzle ORM の schema 定義ファイルを読み込み、構造化された DB スキーマドキュメントを生成する。
+Generate a structured DB schema document from Drizzle ORM schema definitions.
 
-## 入出力
+## Input / Output
 
-- **入力**: プロジェクト内の Drizzle schema 定義（`pgTable` 等を含む `.ts` ファイル）**のみ**
-- **出力**: `docs/schema-YYYYMMDD-HHMMSS.md`（実行時のローカル日時をタイムスタンプとして付与）
+- **Input**: Drizzle schema definition files only (`.ts` files containing `pgTable`, etc.)
+- **Output**: `docs/schema-YYYYMMDD-HHMMSS.md` (timestamped with local datetime at execution)
 
-**重要**: 既存の `docs/schema*.md` ファイルは一切参照しない。常に schema 定義ファイルのみをインプットとしてゼロから生成する。
+**Important**: Never reference existing `docs/schema*.md` files. Always generate from scratch using only the schema definition files as input.
 
-まず Drizzle の schema 定義ファイルを特定する。典型的なパス:
-- `src/db/schema.ts`（単一ファイル）
-- `src/db/schema/*.ts`（分割構成）
-- `apps/*/src/db/schema.ts`（モノレポ）
+Locate the Drizzle schema definition files. Typical paths:
+- `src/db/schema.ts` (single file)
+- `src/db/schema/*.ts` (split layout)
+- `apps/*/src/db/schema.ts` (monorepo)
 
-見つからない場合はユーザーに確認する。
+If not found, ask the user.
 
-## Step 1: スキーマ解析
+## Step 1: Schema Analysis
 
-schema 定義ファイルから以下を抽出する:
+Extract the following from the schema definition files:
 
-- テーブル名（`pgTable('table_name', ...)` の第1引数）
-- カラム定義（名前、型、制約チェーン）
-- PK（`.primaryKey()` / `primaryKey({ columns: [...] })`）
-- FK（`.references(() => table.column, { onDelete: '...' })` / `foreignKey({ ... })`）
-- UNIQUE（`.unique()` / `unique().on(...)`)
-- INDEX（`index().on(...)`）
-- DEFAULT（`.default(value)` / `.defaultNow()` / `.$defaultFn(...)`）
+- Table names (first argument of `pgTable('table_name', ...)`)
+- Column definitions (name, type, constraint chain)
+- PK (`.primaryKey()` / `primaryKey({ columns: [...] })`)
+- FK (`.references(() => table.column, { onDelete: '...' })` / `foreignKey({ ... })`)
+- UNIQUE (`.unique()` / `unique().on(...)`)
+- INDEX (`index().on(...)`)
+- DEFAULT (`.default(value)` / `.defaultNow()` / `.$defaultFn(...)`)
 
-## Step 2: カテゴリ分類
+## Step 2: Category Classification
 
-全テーブルをドメイン的に意味のあるカテゴリにグルーピングする。
+Group all tables into domain-meaningful categories.
 
-**分類の方針:**
-- schema.ts 内のコメント区切り（`// --- xxx ---` 等）をヒントにする
-- FK の依存関係グラフから、密結合なテーブル群をまとめる
-- 共通パターン（同じ親テーブルへの FK、共通カラム構成）を持つテーブル群をまとめる
-- 1カテゴリあたり 1〜10 テーブル程度が適切。多すぎれば分割、少なすぎれば統合を検討する
+**Classification approach:**
+- Use comment separators in schema.ts (`// --- xxx ---`, etc.) as hints
+- Cluster tightly-coupled tables based on FK dependency graphs
+- Group tables sharing common patterns (same parent FK, similar column structure)
+- Target 1–10 tables per category. Split if too many, merge if too few
 
-**各カテゴリに付与する属性:**
-- **ID**: 英大文字 2 文字の短縮 ID（例: `AU`, `TN`, `MD`）。ドメインを端的に表す略語を選ぶ
-- **ラベル**: 英語の短い名称（例: `Auth`, `Tenant`, `Master`）
-- **説明**: 日本語の1行説明
+**Attributes for each category:**
+- **ID**: 2-letter uppercase abbreviation (e.g., `AU`, `TN`, `MD`). Choose a concise domain abbreviation
+- **Label**: Short English name (e.g., `Auth`, `Tenant`, `Master`)
+- **Description**: One-line description in Japanese
 
-## Step 3: テーブル ID 採番
+## Step 3: Table ID Assignment
 
-各テーブルに `カテゴリID-連番` 形式の ID を振る（例: `AU-01`, `TN-02`）。
+Assign each table an ID in the format `CategoryID-SequenceNumber` (e.g., `AU-01`, `TN-02`).
 
-連番ルール:
-- カテゴリ内で親テーブルを先、子テーブルを後にする（FK 依存順）
-- 中間テーブルは両端のテーブルの後に配置する
-- ゼロパディング 2 桁（01〜99）
+Sequencing rules:
+- Parent tables come before child tables within a category (FK dependency order)
+- Junction tables are placed after both endpoint tables
+- Zero-padded 2-digit numbers (01–99)
 
-## Step 4: docs/schema-YYYYMMDD-HHMMSS.md 生成
+## Step 4: Generate docs/schema-YYYYMMDD-HHMMSS.md
 
-以下の固定フォーマットで出力する。
+Output in the following fixed format.
 
 ---
 
-### 出力フォーマット
+### Output Format
 
 ````markdown
 # DB Schema
 
-## 概要
+## Overview
 
-（1〜2文でスキーマ全体を要約。テーブル総数、カテゴリ数、使用 ORM、DB を含める）
+(1–2 sentence summary of the entire schema. Include total table count, category count, ORM, and DB.)
 
-### テーブル ID 体系
+### Table ID System
 
-各テーブルにはカテゴリプレフィックス + 連番の ID を付与し、議論・参照時の共通言語とする。
+Each table is assigned a category prefix + sequence number ID for use as a shared reference in discussions.
 
-| プレフィックス | カテゴリ | テーブル数 | 説明 |
+| Prefix | Category | Table Count | Description |
 | --- | --- | --- | --- |
-| XX | Label | N | 日本語説明 |
-（全カテゴリ分の行）
+| XX | Label | N | Japanese description |
+(rows for all categories)
 
-## カテゴリ別テーブル一覧
+## Tables by Category
 
-| ID | テーブル名 | 概要 |
+| ID | Table Name | Summary |
 | --- | --- | --- |
 | **XX - Label** | | |
-| XX-01 | table_name | 日本語の簡潔な概要 |
-（全テーブル分。カテゴリごとに太字ヘッダ行で区切る）
+| XX-01 | table_name | Concise Japanese summary |
+(all tables; bold header row separates each category)
 
-## 理解のポイント
+## Key Design Patterns
 
-（スキーマを読み解く上で重要な設計パターンを解説する。以下のような観点:）
-（- ドメイン固有の構造やユニーク制約の意図）
-（- 共通パターン（共通カラム構成を持つテーブル群 等））
-（- マルチテナントやスコープ構造）
-（- FK の on_delete 戦略の使い分け（CASCADE vs SET NULL の意図））
-（※ テーブル ID を括弧で参照する。例: `chunk_type（MD-06）`）
+(Explain important design patterns for understanding the schema. Consider:)
+(- Domain-specific structures and unique constraint purposes)
+(- Common patterns such as tables with shared column structures)
+(- Multi-tenant or scoping structures)
+(- FK on_delete strategy differences — intent behind CASCADE vs SET NULL)
+(Reference table IDs in parentheses, e.g., `chunk_type (MD-06)`)
 
-## 各カテゴリ詳細
+## Category Details
 
 ---
 
 ### XX - Label
 
-（カテゴリの補足説明があれば1〜2行で記載）
+(1–2 line supplementary description of the category if needed)
 
 #### XX-01: table_name
 
-| カラム | 型 | 制約 |
+| Column | Type | Constraints |
 | --- | --- | --- |
-| column_name | type | 制約情報 |
+| column_name | type | constraint info |
 
-- **PK**: `(col1, col2)`（複合 PK の場合）
-- **UNIQUE**: `(col1, col2)`（複合 UNIQUE の場合）
-- **INDEX**: `col1`（インデックスがある場合）
-- 補足事項（設計意図の説明が必要な場合）
+- **PK**: `(col1, col2)` (for composite PK)
+- **UNIQUE**: `(col1, col2)` (for composite UNIQUE)
+- **INDEX**: `col1` (if indexed)
+- Additional notes (if design intent needs explanation)
 
-（カテゴリごとに `---` で区切る）
+(separate categories with `---`)
 
 ---
 
-## リレーション図
+## Relation Diagram
 
 ```
 parent_table (XX-01)
@@ -125,34 +125,34 @@ parent_table (XX-01)
  └─< another_child (XX-04)      fk_column → parent.id          CASCADE
 ```
 
-（主要な親テーブルを起点にツリーを構成する。全 FK 関係を網羅する）
+(Build trees rooted at major parent tables. Cover all FK relationships.)
 
-**ルール: 常に親テーブル起点で記載する。** 子テーブルが持つ FK を、参照先の親テーブルのツリー配下に `─<` または `──○` で列挙する。子テーブル視点の N:1 記法（`──`）は使用しない。これにより記号が2種類に統一され、方向の揺らぎがなくなる。
+**Rule: Always write from the parent table's perspective.** List child table FKs under the referenced parent using `─<` or `──○`. Do not use child-perspective N:1 notation (`──`). This unifies notation to two symbols and eliminates directional ambiguity.
 
-凡例: `─<` 1:N (CASCADE)　`──○` 1:N (SET NULL)
+Legend: `─<` 1:N (CASCADE)  `──○` 1:N (SET NULL)
 ````
 
 ---
 
-### 制約欄の表記規約
+### Constraint Column Conventions
 
-| schema.ts の記述 | 制約欄の表記 |
+| schema.ts expression | Constraint column |
 |---|---|
 | `.primaryKey()` | `PK` |
 | `.$defaultFn(() => crypto.randomUUID())` | `PK, UUID auto` |
 | `.notNull()` | `NOT NULL` |
-| （`.notNull()` なし、PK でもない） | （空欄 = nullable） |
+| (no `.notNull()`, not PK) | (blank = nullable) |
 | `.unique()` | `UNIQUE` |
 | `.default(value)` | `DEFAULT value` |
 | `.defaultNow()` | `DEFAULT now()` |
-| `.$onUpdate(() => new Date())` | `auto update`（DEFAULT と併記） |
+| `.$onUpdate(() => new Date())` | `auto update` (alongside DEFAULT) |
 | `.references(() => t.id, { onDelete: 'cascade' })` | `FK → t(id) CASCADE` |
 | `.references(() => t.id, { onDelete: 'set null' })` | `FK → t(id) SET NULL` |
 
-NOT NULL + DEFAULT + FK 等が重なる場合はカンマ区切りで併記する。
+Use comma-separated notation when multiple constraints overlap (e.g., NOT NULL + DEFAULT + FK).
 
-### 日本語記述ルール
+### Language Rules
 
-- テーブル概要・カテゴリ説明・理解のポイント: 日本語
-- カラム制約: 英語略語（PK, FK, NOT NULL, UNIQUE, CASCADE, SET NULL, DEFAULT）
-- 外部ライブラリ由来のテーブルがあれば公式ドキュメントへのリンクを補足する
+- Table summaries, category descriptions, key design patterns: use the user's language (match the language they are using in the conversation)
+- Column constraints: English abbreviations (PK, FK, NOT NULL, UNIQUE, CASCADE, SET NULL, DEFAULT)
+- For tables originating from external libraries, include links to official documentation
