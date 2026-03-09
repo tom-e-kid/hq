@@ -35,6 +35,8 @@ func (rp resolvedProject) resourcePaths(cfg config.Settings, resType string) []s
 // resolveProject resolves the target project from cwd.
 // It scans projects/*/README.md for repo: fields, resolves them to
 // filesystem paths, and checks if cwd is inside one of them.
+// If a README.md lacks a repo: field, falls back to the repos mapping
+// in <basePath>/.hq/settings.json.
 // Falls back to inbox if no match.
 func resolveProject(basePath string) resolvedProject {
 	cwd, err := os.Getwd()
@@ -52,30 +54,42 @@ func resolveProject(basePath string) resolvedProject {
 	homeDir, _ := os.UserHomeDir()
 	srcRoot := filepath.Join(homeDir, "dev", "src")
 
+	// Load repos mapping from <basePath>/.hq/settings.json for fallback
+	dataDirSettings := config.LoadDataDir(basePath)
+
 	for _, readmePath := range matches {
+		// Extract org/project from path: .../projects/{org}/{project}/README.md
+		rel, _ := filepath.Rel(filepath.Join(basePath, "projects"), readmePath)
+		parts := strings.Split(rel, string(filepath.Separator))
+		if len(parts) < 3 {
+			continue
+		}
+		projectKey := parts[0] + "/" + parts[1]
+
+		// Try repo: from README.md frontmatter first
+		repo := ""
 		data, err := os.ReadFile(readmePath)
-		if err != nil {
-			continue
+		if err == nil {
+			fm, _, fmErr := parser.ExtractFrontmatter(string(data))
+			if fmErr == nil && fm != nil {
+				if r, ok := fm["repo"].(string); ok {
+					repo = r
+				}
+			}
 		}
-		fm, _, err := parser.ExtractFrontmatter(string(data))
-		if err != nil || fm == nil {
-			continue
+
+		// Fallback to repos mapping in .hq/settings.json
+		if repo == "" && dataDirSettings.Repos != nil {
+			repo = dataDirSettings.Repos[projectKey]
 		}
-		repo, ok := fm["repo"].(string)
-		if !ok || repo == "" {
+
+		if repo == "" {
 			continue
 		}
 
 		// Resolve repo to filesystem path
 		repoPath := filepath.Join(srcRoot, repo)
 		if !strings.HasPrefix(cwd, repoPath) {
-			continue
-		}
-
-		// Extract org/project from path: .../projects/{org}/{project}/README.md
-		rel, _ := filepath.Rel(filepath.Join(basePath, "projects"), readmePath)
-		parts := strings.Split(rel, string(filepath.Separator))
-		if len(parts) < 3 {
 			continue
 		}
 

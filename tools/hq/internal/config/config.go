@@ -15,8 +15,9 @@ type Resource struct {
 
 // Settings holds the HQ configuration.
 type Settings struct {
-	DataDir   string     `json:"data_dir"`
-	Resources []Resource `json:"resources,omitempty"`
+	DataDir   string            `json:"data_dir"`
+	Resources []Resource        `json:"resources,omitempty"`
+	Repos     map[string]string `json:"repos,omitempty"`
 
 	// Deprecated: use Resources instead. Kept for backward compat parsing.
 	TaskFile  string   `json:"task_file,omitempty"`
@@ -145,6 +146,21 @@ func Load() Settings {
 		return Settings{}
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "settings.json"))
+	if err != nil {
+		return Settings{}
+	}
+	var s Settings
+	if err := json.Unmarshal(data, &s); err != nil {
+		return Settings{}
+	}
+	return s
+}
+
+// LoadDataDir reads <dataDir>/.hq/settings.json and returns the settings.
+// This is used to load project-level settings (e.g., repos mapping).
+// Returns zero-value Settings if the file does not exist.
+func LoadDataDir(dataDir string) Settings {
+	data, err := os.ReadFile(filepath.Join(dataDir, ".hq", "settings.json"))
 	if err != nil {
 		return Settings{}
 	}
