@@ -20,10 +20,17 @@ export default function App() {
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set())
 
   const schemaFile = new URLSearchParams(window.location.search).get('schema') ?? 'schema.yaml'
+  const [notFound, setNotFound] = useState(false)
   useEffect(() => {
     fetch(`/${schemaFile}`)
-      .then((r) => r.text())
-      .then((text) => setSchema(parseSchema(text)))
+      .then((r) => {
+        if (!r.ok || r.headers.get('content-type')?.includes('text/html')) {
+          setNotFound(true)
+          return null
+        }
+        return r.text()
+      })
+      .then((text) => text && setSchema(parseSchema(text)))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [schemaFile])
 
@@ -96,6 +103,32 @@ export default function App() {
     return (
       <div style={{ color: '#ef4444', padding: 40, fontFamily: 'monospace' }}>
         Error loading schema: {error}
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div style={{ color: '#94a3b8', padding: 40, fontFamily: "'JetBrains Mono', 'Fira Code', monospace", background: '#06090f', minHeight: '100vh' }}>
+        <h2 style={{ color: '#e2e8f0', marginBottom: 24 }}>Schema file not found: <code style={{ color: '#f97316' }}>{schemaFile}</code></h2>
+        <div style={{ lineHeight: 1.8, maxWidth: 700 }}>
+          <p style={{ color: '#cbd5e1', marginBottom: 16 }}>Specify a YAML file using one of the following methods:</p>
+          <h3 style={{ color: '#e2e8f0', fontSize: 14, marginBottom: 8 }}>1. Query parameter</h3>
+          <pre style={{ background: '#0f1724', padding: '12px 16px', borderRadius: 6, marginBottom: 20, fontSize: 13 }}>
+            <span style={{ color: '#64748b' }}>{'# '}</span><span style={{ color: '#cbd5e1' }}>{'http://localhost:5173/?schema=your-file.yaml'}</span>
+          </pre>
+          <h3 style={{ color: '#e2e8f0', fontSize: 14, marginBottom: 8 }}>2. Place YAML in a search path</h3>
+          <pre style={{ background: '#0f1724', padding: '12px 16px', borderRadius: 6, marginBottom: 20, fontSize: 13, lineHeight: 1.8 }}>
+            <span style={{ color: '#64748b' }}>{'# Searched in order:\n'}</span>
+            <span style={{ color: '#cbd5e1' }}>{'apps/schema-visualizer/   (this app)\n'}</span>
+            <span style={{ color: '#cbd5e1' }}>{'docs/                    (project root)\n'}</span>
+            <span style={{ color: '#cbd5e1' }}>{'$SCHEMA_DIR              (env variable)'}</span>
+          </pre>
+          <h3 style={{ color: '#e2e8f0', fontSize: 14, marginBottom: 8 }}>3. SCHEMA_DIR environment variable</h3>
+          <pre style={{ background: '#0f1724', padding: '12px 16px', borderRadius: 6, fontSize: 13 }}>
+            <span style={{ color: '#cbd5e1' }}>{'SCHEMA_DIR=/path/to/docs bun run dev'}</span>
+          </pre>
+        </div>
       </div>
     )
   }
