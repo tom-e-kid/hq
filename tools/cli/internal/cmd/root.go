@@ -108,7 +108,7 @@ Commands:
   ui                    Launch the TUI dashboard (default when no command given)
   monthly [YYYY.MM]     Show monthly time summary (defaults to current month)
   tasks                 List, add, or complete tasks
-  notes                 List, view, or add notes
+  notes                 List, view, add, or copy notes
   milestones            List, add, or complete milestones
   help                  Show this help message
 
@@ -145,6 +145,7 @@ Notes:
   hq notes --role <role>  Target specific notes resource (e.g. ideas)
   hq notes view <file>    View a note
   hq notes add --title <t> --body <b> [--tags t1,t2] [--role <role>]
+  hq notes copy <file|dir> [--role <role>]  Copy a file or directory into notes
 
 Milestones:
   hq milestones              List open milestones

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,6 +21,8 @@ func runNotes(basePath string, cfg config.Settings, args []string) int {
 			return runNotesView(basePath, cfg, target, args[1:])
 		case "add":
 			return runNotesAdd(basePath, cfg, target, args[1:])
+		case "copy":
+			return runNotesCopy(basePath, cfg, target, args[1:])
 		}
 	}
 	return runNotesList(basePath, cfg, target, args)
@@ -151,5 +154,36 @@ func runNotesAdd(basePath string, cfg config.Settings, target targetFlags, args 
 		return 1
 	}
 	fmt.Printf("Created: %s\n", path)
+	return 0
+}
+
+func runNotesCopy(basePath string, cfg config.Settings, target targetFlags, args []string) int {
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: hq notes copy <file|dir> [--role <role>]")
+		return 1
+	}
+
+	source := args[0]
+
+	// Resolve to absolute path
+	if !filepath.IsAbs(source) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			return 1
+		}
+		source = filepath.Join(cwd, source)
+	}
+
+	proj := resolveTarget(basePath, target)
+	res := resolveNotesResource(cfg, target.role)
+	targetDir := proj.resourcePath(res)
+
+	dest, err := parser.CopyNote(targetDir, source)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return 1
+	}
+	fmt.Printf("Copied: %s\n", dest)
 	return 0
 }

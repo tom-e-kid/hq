@@ -2,7 +2,8 @@
 name: ops
 description: >
   Manage HQ TODOs and notes. Responds to requests like
-  "show HQ TODOs", "add a note", "list notes", "HQ inbox", etc.
+  "show HQ TODOs", "add a note", "list notes", "HQ inbox",
+  "HQ notes copy: @file", etc.
 ---
 
 ## Role
@@ -92,6 +93,19 @@ hq notes add --title "<title>" --body "<body>" [--tags t1,t2] [--role <role>] [-
 ```
 
 - The `notes/` directory is created automatically by the CLI
+
+## Copy Operation
+
+Copy an external file or directory into a project's notes directory.
+
+```bash
+hq notes copy <file|dir> [--inbox | --project <org/project>] [--role <role>]
+```
+
+- The user may use `@file` mentions which Claude resolves to absolute paths automatically
+- Supports both files and directories (directories are copied recursively)
+- If a file/directory with the same name already exists, the CLI returns an error
+  - In that case, confirm with the user whether to overwrite, then remove the existing one and retry
 
 ## Constraints
 

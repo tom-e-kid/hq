@@ -85,6 +85,72 @@ func CreateNote(notesDir, title, body string, tags []string, date time.Time) (st
 	return path, os.WriteFile(path, []byte(sb.String()), 0644)
 }
 
+// CopyNote copies a file or directory into the target notes directory.
+// Returns the destination path. Returns an error if the destination already exists.
+func CopyNote(notesDir, source string) (string, error) {
+	if err := os.MkdirAll(notesDir, 0755); err != nil {
+		return "", err
+	}
+
+	srcInfo, err := os.Stat(source)
+	if err != nil {
+		return "", fmt.Errorf("source not found: %s", source)
+	}
+
+	destName := filepath.Base(source)
+	dest := filepath.Join(notesDir, destName)
+
+	if _, err := os.Stat(dest); err == nil {
+		return "", fmt.Errorf("already exists: %s", dest)
+	}
+
+	if srcInfo.IsDir() {
+		return dest, copyDir(source, dest)
+	}
+	return dest, copyFile(source, dest)
+}
+
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, srcInfo.Mode())
+}
+
+func copyDir(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return err
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			if err := copyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func toKebabCase(s string) string {
 	s = strings.ToLower(s)
 	s = strings.Map(func(r rune) rune {
