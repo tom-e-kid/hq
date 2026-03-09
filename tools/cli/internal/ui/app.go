@@ -10,9 +10,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/tom-e-kid/hq/tools/hq/internal/config"
-	"github.com/tom-e-kid/hq/tools/hq/internal/model"
-	"github.com/tom-e-kid/hq/tools/hq/internal/parser"
+	"github.com/tom-e-kid/hq/tools/cli/internal/config"
+	"github.com/tom-e-kid/hq/tools/cli/internal/model"
+	"github.com/tom-e-kid/hq/tools/cli/internal/parser"
 )
 
 // App is the main Bubble Tea model.

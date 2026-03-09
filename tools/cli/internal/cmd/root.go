@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/config"
+	"github.com/tom-e-kid/hq/tools/cli/internal/config"
 )
 
 // Run is the main entry point for the hq CLI.

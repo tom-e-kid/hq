@@ -1,4 +1,4 @@
-module github.com/tom-e-kid/hq/tools/hq
+module github.com/tom-e-kid/hq/tools/cli
 
 go 1.25.5
 

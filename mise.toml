@@ -3,7 +3,7 @@ go = "latest"
 
 [tasks.build]
 description = "Build hq binary"
-dir = "tools/hq"
+dir = "tools/cli"
 run = "mkdir -p ../../tools/bin && go build -o ../../tools/bin/hq ."
 
 [tasks.install]

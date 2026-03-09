@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/tom-e-kid/hq/tools/hq/internal/model"
+	"github.com/tom-e-kid/hq/tools/cli/internal/model"
 )
 
 // Section identifiers for keyboard navigation.

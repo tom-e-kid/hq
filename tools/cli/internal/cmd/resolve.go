@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/config"
-	"github.com/tom-e-kid/hq/tools/hq/internal/parser"
+	"github.com/tom-e-kid/hq/tools/cli/internal/config"
+	"github.com/tom-e-kid/hq/tools/cli/internal/parser"
 )
 
 // resolvedProject holds the result of project resolution from cwd.

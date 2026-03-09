@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/model"
+	"github.com/tom-e-kid/hq/tools/cli/internal/model"
 )
 
 // Shared recurring regexes (used by both milestones and tasks parsers).

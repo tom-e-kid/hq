@@ -8,7 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fsnotify/fsnotify"
-	"github.com/tom-e-kid/hq/tools/hq/internal/config"
+	"github.com/tom-e-kid/hq/tools/cli/internal/config"
 )
 
 // WatchFiles watches markdown files for changes and sends fileChangedMsg.

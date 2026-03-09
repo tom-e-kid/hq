@@ -29,7 +29,7 @@ Two levels of `.hq` exist:
 
 ## Building Tools
 
-- `mise run build` — Build `tools/hq` binary to `tools/bin/hq`
+- `mise run build` — Build `tools/cli` binary to `tools/bin/hq`
 - `mise run install` — Build and install to `~/.local/bin/hq`
 
 ## Language Policy

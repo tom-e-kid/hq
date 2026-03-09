@@ -5,8 +5,8 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/tom-e-kid/hq/tools/hq/internal/config"
-	"github.com/tom-e-kid/hq/tools/hq/internal/ui"
+	"github.com/tom-e-kid/hq/tools/cli/internal/config"
+	"github.com/tom-e-kid/hq/tools/cli/internal/ui"
 )
 
 func runUI(basePath string, cfg config.Settings) int {

@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/config"
-	"github.com/tom-e-kid/hq/tools/hq/internal/model"
+	"github.com/tom-e-kid/hq/tools/cli/internal/config"
+	"github.com/tom-e-kid/hq/tools/cli/internal/model"
 )
 
 var wipRegex = regexp.MustCompile(`^- (.+?):\s+(.+?)(?:\s+\(branch:\s*(.+?)\))?$`)

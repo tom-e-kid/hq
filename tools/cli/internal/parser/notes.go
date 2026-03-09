@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/model"
+	"github.com/tom-e-kid/hq/tools/cli/internal/model"
 )
 
 // ListNotes discovers .md files in the given directories and extracts frontmatter.

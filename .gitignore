@@ -20,4 +20,4 @@
 
 # HQ CLI
 tools/bin/
-tools/hq/.tmp-*
+tools/cli/.tmp-*

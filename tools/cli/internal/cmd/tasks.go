@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/config"
-	"github.com/tom-e-kid/hq/tools/hq/internal/parser"
+	"github.com/tom-e-kid/hq/tools/cli/internal/config"
+	"github.com/tom-e-kid/hq/tools/cli/internal/parser"
 )
 
 func runTasks(basePath string, cfg config.Settings, args []string) int {

@@ -3,7 +3,7 @@ package parser
 import (
 	"time"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/model"
+	"github.com/tom-e-kid/hq/tools/cli/internal/model"
 )
 
 // LoadAll loads all dashboard data from the given base path.

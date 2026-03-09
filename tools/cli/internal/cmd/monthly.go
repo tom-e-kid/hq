@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tom-e-kid/hq/tools/hq/internal/parser"
+	"github.com/tom-e-kid/hq/tools/cli/internal/parser"
 )
 
 func runMonthly(basePath string, args []string) int {
