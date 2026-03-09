@@ -159,7 +159,7 @@ func runNotesAdd(basePath string, cfg config.Settings, target targetFlags, args 
 
 func runNotesCopy(basePath string, cfg config.Settings, target targetFlags, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: hq notes copy <file|dir> [--role <role>]")
+		fmt.Fprintln(os.Stderr, "usage: hq notes copy <file|dir> [--inbox | --project <org/project>] [--role <role>]")
 		return 1
 	}
 

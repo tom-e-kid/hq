@@ -14,7 +14,7 @@ bun run dev
 
 ```
 http://localhost:5173/                    → docs/schema.yaml
-http://localhost:5173/?schema=sample.yaml → apps/schema-visualizer/sample.yaml
+http://localhost:5173/?schema=schema.example.yaml → apps/schema-visualizer/schema.example.yaml
 ```
 
 YAML ファイルの検索順: `apps/schema-visualizer/` → `docs/` → `SCHEMA_DIR`（Vite カスタムミドルウェア）。

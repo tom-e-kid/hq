@@ -145,7 +145,7 @@ Notes:
   hq notes --role <role>  Target specific notes resource (e.g. ideas)
   hq notes view <file>    View a note
   hq notes add --title <t> --body <b> [--tags t1,t2] [--role <role>]
-  hq notes copy <file|dir> [--role <role>]  Copy a file or directory into notes
+  hq notes copy <file|dir> [--inbox | --project <org/project>] [--role <role>]  Copy a file or directory into notes
 
 Milestones:
   hq milestones              List open milestones
