@@ -7,7 +7,12 @@ import { defineConfig } from 'vite'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 // YAML ファイルの検索パス（先にマッチした方を返す）
-const yamlSearchPaths = [__dirname, resolve(__dirname, '../../docs')]
+// SCHEMA_DIR 環境変数で外部プロジェクトの docs を追加可能
+const yamlSearchPaths = [
+  __dirname,
+  resolve(__dirname, '../../docs'),
+  ...(process.env.SCHEMA_DIR ? [resolve(process.env.SCHEMA_DIR)] : []),
+]
 
 export default defineConfig({
   plugins: [

@@ -17,7 +17,14 @@ http://localhost:5173/                    → docs/schema.yaml
 http://localhost:5173/?schema=sample.yaml → apps/schema-visualizer/sample.yaml
 ```
 
-YAML ファイルの検索順: `apps/schema-visualizer/` → `docs/`（Vite カスタムミドルウェア）。
+YAML ファイルの検索順: `apps/schema-visualizer/` → `docs/` → `SCHEMA_DIR`（Vite カスタムミドルウェア）。
+
+外部プロジェクトの YAML を読み込む場合は `SCHEMA_DIR` 環境変数でディレクトリを指定する:
+
+```bash
+SCHEMA_DIR=~/dev/src/github.com/tom-e-kid/chunk/docs bun run dev
+# → http://localhost:5173/?schema=schema-20260309-164352.yaml
+```
 
 ## 操作
 
