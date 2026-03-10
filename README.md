@@ -23,9 +23,29 @@ A Claude Code plugin that provides skills and commands for HQ operations.
 | Command | Description |
 |---------|-------------|
 | `/hq:pr` | Create or update a GitHub Pull Request |
-| `/hq:code-review` | Review code changes on the current branch |
+| `/hq:code-review` | Review code changes on the current branch (includes security alert scan) |
+| `/hq:accept-review` | Evaluate code review results, commit accepted fixes, and extract follow-up issues |
+| `/hq:estimate` | Collect requirements and organize work item estimates with risks and blockers |
+| `/hq:schema-md` | Generate Markdown documentation from Drizzle ORM schema definitions |
+| `/hq:schema-yaml` | Convert schema Markdown to `chunk-schema/v1` YAML (for schema-visualizer) |
 | `/hq:memory` | Record a lesson learned to memory |
-| `/hq:close` | Clean up completed task files |
+| `/hq:close` | Clean up completed task files and remove WIP entries |
+
+### apps/ — Standalone Web Applications
+
+#### schema-visualizer
+
+An interactive ER diagram viewer for `chunk-schema/v1` YAML files, built with React and Vite.
+
+- Load schema from `docs/schema.yaml` or via `?schema=` query parameter
+- Click tables to highlight relations, scroll to zoom, drag to pan
+- Filter tables by category
+
+```bash
+cd apps/schema-visualizer
+bun install
+bun run dev
+```
 
 ### tools/ — HQ CLI
 
@@ -44,7 +64,7 @@ The TUI dashboard displays a live, interactive overview in the terminal:
 ```
 hq                          Launch TUI dashboard (default)
 hq tasks                    List, add, or complete tasks
-hq notes                    List, view, or add notes
+hq notes                    List, view, add, or copy notes
 hq milestones               List, add, or complete milestones
 hq monthly [YYYY.MM]        Show monthly time summary
 ```
