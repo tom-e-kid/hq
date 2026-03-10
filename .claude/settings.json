@@ -1,0 +1,19 @@
+{
+  "attribution": { "commit": "", "pr": "" },
+  "permissions": {
+    "allow": [
+      "Bash(bun:*)",
+      "Bash(find:*)",
+      "Bash(git:*)",
+      "Bash(sed:*)",
+      "Bash(sort:*)",
+      "WebFetch(domain:telemetry.vercel.com)",
+      "Write",
+      "Update"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  }
+}
