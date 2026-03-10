@@ -42,7 +42,7 @@ All `.hq/` paths below should be prefixed with `$GIT_ROOT/`.
 
 ```bash
 # Gather all environment info in one command
-"${CLAUDE_PLUGIN_ROOT}/skills/ios-dev/scripts/ios-env-info.sh"
+"${CLAUDE_PLUGIN_ROOT}/plugin/skills/ios-dev/scripts/ios-env-info.sh"
 ```
 
 This script outputs:
@@ -95,14 +95,14 @@ FORMAT_CHECK_CMD="git diff --name-only --diff-filter=AM | grep '\\.swift$' | xar
 
 ## Helper Scripts
 
-All scripts are located in `${CLAUDE_PLUGIN_ROOT}/skills/ios-dev/scripts/`.
+All scripts are located in `${CLAUDE_PLUGIN_ROOT}/plugin/skills/ios-dev/scripts/`.
 
 ### ios-env-info.sh
 
 Gathers environment information for configuration:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/ios-dev/scripts/ios-env-info.sh [workspace]
+${CLAUDE_PLUGIN_ROOT}/plugin/skills/ios-dev/scripts/ios-env-info.sh [workspace]
 ```
 
 ### ios-build.sh
@@ -110,7 +110,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/ios-dev/scripts/ios-env-info.sh [workspace]
 Runs build and extracts warnings:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/ios-dev/scripts/ios-build.sh [latest|minimum] [--save-baseline <path>]
+${CLAUDE_PLUGIN_ROOT}/plugin/skills/ios-dev/scripts/ios-build.sh [latest|minimum] [--save-baseline <path>]
 ```
 
 ### ios-warnings-diff.sh
@@ -118,7 +118,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/ios-dev/scripts/ios-build.sh [latest|minimum] [--sa
 Compares warnings against baseline:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/ios-dev/scripts/ios-warnings-diff.sh <baseline_file> [current_warnings_file]
+${CLAUDE_PLUGIN_ROOT}/plugin/skills/ios-dev/scripts/ios-warnings-diff.sh <baseline_file> [current_warnings_file]
 ```
 
 ## Warning Baseline

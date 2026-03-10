@@ -11,13 +11,13 @@ Generate a `chunk-schema/v1` compliant YAML file from a schema document (`.md`).
 
 1. Identify the input file (argument or latest `docs/schema-*.md`)
 2. Read the input file and extract table structures and relation information
-3. Refer to `${CLAUDE_PLUGIN_ROOT}/../apps/schema-visualizer/README.md` "Input Spec — chunk-schema/v1" (L29-124) as the format specification
+3. Refer to `${CLAUDE_PLUGIN_ROOT}/apps/schema-visualizer/README.md` "Input Spec — chunk-schema/v1" (L29-124) as the format specification
 4. Cross-check column nullable/default details against the Drizzle schema definition files in the project
 5. Generate a `chunk-schema/v1` compliant YAML and write to the output file
 
 ## Format Specification Reference
 
-**Strictly follow the `chunk-schema/v1` spec defined in `${CLAUDE_PLUGIN_ROOT}/../apps/schema-visualizer/README.md` L29-124.**
+**Strictly follow the `chunk-schema/v1` spec defined in `${CLAUDE_PLUGIN_ROOT}/apps/schema-visualizer/README.md` L29-124.**
 
 Key structure (see README.md for full details):
 - Top level: `format`, `database`, `categories`, `tables`, `relations`
