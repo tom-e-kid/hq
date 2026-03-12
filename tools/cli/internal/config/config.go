@@ -26,16 +26,10 @@ type Settings struct {
 }
 
 // SectionVisible returns whether the named section should be displayed.
-// Returns true if the section is not configured (default visible).
+// Sections not present in the map default to visible.
 func (s Settings) SectionVisible(name string) bool {
-	if s.Sections == nil {
-		return true
-	}
 	visible, ok := s.Sections[name]
-	if !ok {
-		return true
-	}
-	return visible
+	return !ok || visible
 }
 
 var defaultResources = []Resource{

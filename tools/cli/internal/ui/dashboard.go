@@ -340,29 +340,33 @@ func (dv *DashboardView) Render() string {
 		)
 	}
 
+	// contentStrings extracts the content strings from rendered sections.
+	contentStrings := func() []string {
+		out := make([]string, len(sections))
+		for i, s := range sections {
+			out[i] = s.content
+		}
+		return out
+	}
+
 	if showTodo {
 		// Calculate TODO flex height by measured rendering so section borders never clip.
 		todoTitle := fmt.Sprintf("TODO — %d open", dv.Data.TotalOpenTasks())
 		bestTodoLines := 1
-		maxProbeLines := max(1, dv.Height)
-		strs := make([]string, len(sections))
-		for i, s := range sections {
-			strs[i] = s.content
-		}
-		for lines := 1; lines <= maxProbeLines; lines++ {
+		base := contentStrings()
+		for lines := 1; lines <= max(1, dv.Height); lines++ {
 			probe := *dv
 			probe.ScrollOffset = cloneScrollOffsets(dv.ScrollOffset)
 			todoContent := probe.renderTodo(contentWidth-4, lines)
 			todoSection := probe.renderSection(SectionTodo, todoTitle, todoContent, contentWidth)
-			candidate := append(append([]string{}, strs...), todoSection)
+			candidate := append(append([]string{}, base...), todoSection)
 			if showMonthly {
 				candidate = append(candidate, monthlyRendered)
 			}
-			if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, candidate...)) <= dv.Height {
-				bestTodoLines = lines
-				continue
+			if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, candidate...)) > dv.Height {
+				break
 			}
-			break
+			bestTodoLines = lines
 		}
 
 		sections = append(sections, renderedSection{
@@ -379,8 +383,7 @@ func (dv *DashboardView) Render() string {
 	// Record section Y boundaries for mouse click detection.
 	dv.SectionBounds = nil
 	y := 0
-	strs := make([]string, len(sections))
-	for i, s := range sections {
+	for _, s := range sections {
 		h := lipgloss.Height(s.content)
 		if s.section >= 0 {
 			dv.SectionBounds = append(dv.SectionBounds, sectionBounds{
@@ -389,11 +392,10 @@ func (dv *DashboardView) Render() string {
 				EndY:    y + h,
 			})
 		}
-		strs[i] = s.content
 		y += h
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, strs...)
+	return lipgloss.JoinVertical(lipgloss.Left, contentStrings()...)
 }
 
 func (dv *DashboardView) renderHeader(width int) string {
