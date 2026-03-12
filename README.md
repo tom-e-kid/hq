@@ -117,9 +117,14 @@ db/
 
 ```json
 {
-  "data_dir": "/path/to/hq/db"
+  "data_dir": "/path/to/hq/db",
+  "sections": {
+    "monthly": false
+  }
 }
 ```
+
+`sections` controls dashboard section visibility. Set a section to `false` to hide it. Available sections: `milestones`, `wip`, `todo`, `monthly`. Omitted sections default to visible.
 
 **`<project>/.hq/settings.json`** — Per-project configuration:
 
