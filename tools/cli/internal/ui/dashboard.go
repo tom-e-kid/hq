@@ -28,6 +28,14 @@ type sectionBounds struct {
 	EndY    int // exclusive
 }
 
+// sectionNames maps Section constants to their config key names.
+var sectionNames = map[Section]string{
+	SectionMilestones: "milestones",
+	SectionWIP:        "wip",
+	SectionTodo:       "todo",
+	SectionMonthly:    "monthly",
+}
+
 // DashboardView holds the rendering state for the dashboard.
 type DashboardView struct {
 	Data            model.DashboardData
@@ -40,6 +48,7 @@ type DashboardView struct {
 	TodoCursor      int
 	MilestoneCursor int
 	SectionBounds   []sectionBounds
+	HiddenSections  map[Section]bool
 }
 
 // NewDashboardView creates a new dashboard view.
@@ -64,11 +73,21 @@ func (dv *DashboardView) SectionAtY(y int) Section {
 }
 
 func (dv *DashboardView) NextSection() {
-	dv.FocusSection = (dv.FocusSection + 1) % sectionCount
+	for i := 0; i < int(sectionCount); i++ {
+		dv.FocusSection = (dv.FocusSection + 1) % sectionCount
+		if !dv.HiddenSections[dv.FocusSection] {
+			return
+		}
+	}
 }
 
 func (dv *DashboardView) PrevSection() {
-	dv.FocusSection = (dv.FocusSection - 1 + sectionCount) % sectionCount
+	for i := 0; i < int(sectionCount); i++ {
+		dv.FocusSection = (dv.FocusSection - 1 + sectionCount) % sectionCount
+		if !dv.HiddenSections[dv.FocusSection] {
+			return
+		}
+	}
 }
 
 func (dv *DashboardView) ScrollDown() {
@@ -252,7 +271,7 @@ func (dv *DashboardView) currentMilestoneItem() (milestoneItem, bool) {
 func (dv *DashboardView) maxScroll(s Section) int {
 	switch s {
 	case SectionWIP:
-		return max(0, len(dv.Data.WIPEntries)-3)
+		return max(0, len(dv.Data.WIPEntries)-5)
 	case SectionTodo:
 		return max(0, dv.totalTodoLines()-dv.todoVisibleLines())
 	default:
@@ -282,74 +301,93 @@ func (dv *DashboardView) Render() string {
 		contentWidth = 40
 	}
 
-	var sections []string
+	type renderedSection struct {
+		content string
+		section Section // -1 for header
+	}
+	var sections []renderedSection
 
 	// Word ticker + header
-	sections = append(sections, dv.renderHeader(contentWidth))
+	sections = append(sections, renderedSection{dv.renderHeader(contentWidth), -1})
 
 	// Milestones
-	sections = append(sections, dv.renderSection(
-		SectionMilestones,
-		"MILESTONES",
-		dv.renderMilestones(contentWidth-4),
-		contentWidth,
-	))
-
-	// WIP
-	sections = append(sections, dv.renderSection(
-		SectionWIP,
-		"WIP",
-		dv.renderWIP(contentWidth-4),
-		contentWidth,
-	))
-
-	// Pre-render Monthly to measure its exact height
-	monthlySection := dv.renderSection(
-		SectionMonthly,
-		dv.monthlyHeader(),
-		dv.renderMonthlyAndActivity(contentWidth-4),
-		contentWidth,
-	)
-
-	// Calculate TODO flex height by measured rendering so section borders never clip.
-	todoTitle := fmt.Sprintf("TODO — %d open", dv.Data.TotalOpenTasks())
-	bestTodoLines := 1
-	maxProbeLines := max(1, dv.Height)
-	for lines := 1; lines <= maxProbeLines; lines++ {
-		probe := *dv
-		probe.ScrollOffset = cloneScrollOffsets(dv.ScrollOffset)
-		todoContent := probe.renderTodo(contentWidth-4, lines)
-		todoSection := probe.renderSection(SectionTodo, todoTitle, todoContent, contentWidth)
-		candidate := append(append([]string{}, sections...), todoSection, monthlySection)
-		if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, candidate...)) <= dv.Height {
-			bestTodoLines = lines
-			continue
-		}
-		break
+	if !dv.HiddenSections[SectionMilestones] {
+		sections = append(sections, renderedSection{
+			dv.renderSection(SectionMilestones, "MILESTONES", dv.renderMilestones(contentWidth-4), contentWidth),
+			SectionMilestones,
+		})
 	}
 
-	// TODO (flex)
-	todoSection := dv.renderSection(
-		SectionTodo,
-		todoTitle,
-		dv.renderTodo(contentWidth-4, bestTodoLines),
-		contentWidth,
-	)
-	sections = append(sections, todoSection)
+	// WIP
+	if !dv.HiddenSections[SectionWIP] {
+		sections = append(sections, renderedSection{
+			dv.renderSection(SectionWIP, "WIP", dv.renderWIP(contentWidth-4), contentWidth),
+			SectionWIP,
+		})
+	}
+
+	showTodo := !dv.HiddenSections[SectionTodo]
+	showMonthly := !dv.HiddenSections[SectionMonthly]
+
+	// Pre-render Monthly to measure its exact height
+	var monthlyRendered string
+	if showMonthly {
+		monthlyRendered = dv.renderSection(
+			SectionMonthly,
+			dv.monthlyHeader(),
+			dv.renderMonthlyAndActivity(contentWidth-4),
+			contentWidth,
+		)
+	}
+
+	// contentStrings extracts the content strings from rendered sections.
+	contentStrings := func() []string {
+		out := make([]string, len(sections))
+		for i, s := range sections {
+			out[i] = s.content
+		}
+		return out
+	}
+
+	if showTodo {
+		// Calculate TODO flex height by measured rendering so section borders never clip.
+		todoTitle := fmt.Sprintf("TODO — %d open", dv.Data.TotalOpenTasks())
+		bestTodoLines := 1
+		base := contentStrings()
+		for lines := 1; lines <= max(1, dv.Height); lines++ {
+			probe := *dv
+			probe.ScrollOffset = cloneScrollOffsets(dv.ScrollOffset)
+			todoContent := probe.renderTodo(contentWidth-4, lines)
+			todoSection := probe.renderSection(SectionTodo, todoTitle, todoContent, contentWidth)
+			candidate := append(append([]string{}, base...), todoSection)
+			if showMonthly {
+				candidate = append(candidate, monthlyRendered)
+			}
+			if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, candidate...)) > dv.Height {
+				break
+			}
+			bestTodoLines = lines
+		}
+
+		sections = append(sections, renderedSection{
+			dv.renderSection(SectionTodo, todoTitle, dv.renderTodo(contentWidth-4, bestTodoLines), contentWidth),
+			SectionTodo,
+		})
+	}
 
 	// Monthly (pinned at bottom)
-	sections = append(sections, monthlySection)
+	if showMonthly {
+		sections = append(sections, renderedSection{monthlyRendered, SectionMonthly})
+	}
 
 	// Record section Y boundaries for mouse click detection.
-	// sections[0]=header, [1]=milestones, [2]=wip, [3]=todo, [4]=monthly
 	dv.SectionBounds = nil
 	y := 0
-	sectionMap := []Section{-1, SectionMilestones, SectionWIP, SectionTodo, SectionMonthly}
-	for i, s := range sections {
-		h := lipgloss.Height(s)
-		if i < len(sectionMap) && sectionMap[i] >= 0 {
+	for _, s := range sections {
+		h := lipgloss.Height(s.content)
+		if s.section >= 0 {
 			dv.SectionBounds = append(dv.SectionBounds, sectionBounds{
-				Section: sectionMap[i],
+				Section: s.section,
 				StartY:  y,
 				EndY:    y + h,
 			})
@@ -357,7 +395,7 @@ func (dv *DashboardView) Render() string {
 		y += h
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	return lipgloss.JoinVertical(lipgloss.Left, contentStrings()...)
 }
 
 func (dv *DashboardView) renderHeader(width int) string {
@@ -517,7 +555,7 @@ func (dv *DashboardView) renderWIP(width int) string {
 	}
 
 	offset := dv.ScrollOffset[SectionWIP]
-	visible := 3
+	visible := 5
 	end := offset + visible
 	if end > len(dv.Data.WIPEntries) {
 		end = len(dv.Data.WIPEntries)

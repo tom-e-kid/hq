@@ -257,6 +257,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			h -= 1 // footer
 		}
 		a.dashboard = NewDashboardView(msg.data, a.width, h)
+		a.dashboard.HiddenSections = a.buildHiddenSections()
 		a.dashboard.WordIndex = a.wordIndex
 		if a.monthlyIndex < 0 {
 			a.monthlyIndex = defaultMonthlyIndex(msg.data.AllMonthly, time.Now())
@@ -267,6 +268,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.dashboard.TodoCursor = a.todoCursor
 		a.dashboard.MilestoneCursor = a.milestoneCursor
 		a.dashboard.FocusSection = a.focusSection
+		if a.dashboard.HiddenSections[a.dashboard.FocusSection] {
+			a.dashboard.NextSection()
+		}
 		a.updateViewport()
 
 	case wordTickMsg:
@@ -425,6 +429,17 @@ func overlayCenter(bg, fg string, width, height int) string {
 	}
 
 	return strings.Join(bgLines, "\n")
+}
+
+// buildHiddenSections converts config.Settings.Sections into a map[Section]bool.
+func (a App) buildHiddenSections() map[Section]bool {
+	hidden := make(map[Section]bool)
+	for sec, name := range sectionNames {
+		if !a.cfg.SectionVisible(name) {
+			hidden[sec] = true
+		}
+	}
+	return hidden
 }
 
 func defaultMonthlyIndex(months []model.MonthlyData, now time.Time) int {

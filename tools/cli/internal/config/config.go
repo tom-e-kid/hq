@@ -18,10 +18,18 @@ type Settings struct {
 	DataDir   string            `json:"data_dir"`
 	Resources []Resource        `json:"resources,omitempty"`
 	Repos     map[string]string `json:"repos,omitempty"`
+	Sections  map[string]bool   `json:"sections,omitempty"`
 
 	// Deprecated: use Resources instead. Kept for backward compat parsing.
 	TaskFile  string   `json:"task_file,omitempty"`
 	NotesDirs []string `json:"notes_dirs,omitempty"`
+}
+
+// SectionVisible returns whether the named section should be displayed.
+// Sections not present in the map default to visible.
+func (s Settings) SectionVisible(name string) bool {
+	visible, ok := s.Sections[name]
+	return !ok || visible
 }
 
 var defaultResources = []Resource{
