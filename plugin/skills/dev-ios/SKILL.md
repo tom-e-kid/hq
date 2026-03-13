@@ -76,18 +76,19 @@ SCRIPTS_DIR="<absolute path to ${CLAUDE_PLUGIN_ROOT}/plugin/skills/dev-ios/scrip
 WORKSPACE="<workspace>"
 SCHEME="<scheme>"
 DEPLOYMENT_TARGET="<version>"
+BUNDLE_ID="<bundle_identifier>"
 
 # Latest OS build
 LATEST_OS="<latest_version>"
 LATEST_DEVICE="<device_name>"
 LATEST_DEST="platform=iOS Simulator,name=<device>,OS=<version>"
-BUILD_CMD_LATEST="xcodebuild -workspace \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$LATEST_DEST\" clean build"
+BUILD_CMD_LATEST="xcodebuild -workspace|-project \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$LATEST_DEST\" clean build"
 
 # Minimum OS build (for compatibility check)
 MIN_OS="<minimum_version>"
 MIN_DEVICE="<device_name>"
 MIN_DEST="platform=iOS Simulator,name=<device>,OS=<version>"
-BUILD_CMD_MINIMUM="xcodebuild -workspace \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$MIN_DEST\" clean build"
+BUILD_CMD_MINIMUM="xcodebuild -workspace|-project \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$MIN_DEST\" clean build"
 
 # Warning filter (excludes noise)
 WARNINGS_FILTER="grep -i 'warning:' | grep -v 'Metadata extraction skipped' | grep -v 'Could not get trait set' | sort -u"
@@ -115,6 +116,14 @@ Runs build and extracts warnings:
 
 ```bash
 $SCRIPTS_DIR/ios-build.sh [latest|minimum] [--save-baseline <path>]
+```
+
+### ios-run.sh
+
+Runs the app on iOS Simulator:
+
+```bash
+$SCRIPTS_DIR/ios-run.sh [--restart|--reinstall|--stop|--shutdown]
 ```
 
 ### ios-warnings-diff.sh
