@@ -33,7 +33,7 @@ WARNINGS_LOG="$FEATURE_DIR/warnings.log"
 
 # Load configuration
 if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo "Error: $CONFIG_FILE not found. Run /hq:ios-dev first."
+    echo "Error: $CONFIG_FILE not found. Run /hq:dev-ios first."
     exit 2
 fi
 source "$CONFIG_FILE"

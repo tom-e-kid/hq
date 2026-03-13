@@ -16,7 +16,8 @@ A Claude Code plugin that provides skills and commands for HQ operations.
 |-------|-------------|
 | `dev` | Development workflow — branch management, task tracking, plan-then-implement cycle |
 | `ops` | HQ operations — TODO and notes CRUD via `hq` CLI |
-| `ios-dev` | iOS/Xcode build configuration and verification |
+| `dev-ios` | iOS/Xcode build configuration and verification |
+| `reviewer` | Code review standards — review criteria, security alerts, reporting format |
 
 **Commands:**
 
@@ -80,7 +81,7 @@ mise run install            # Build and install to ~/.local/bin/hq
 
 ### AGENTS.md — Codex Reviewer Demo
 
-`AGENTS.md` is a demo configuration for using [OpenAI Codex](https://openai.com/index/openai-codex/) as an automated code reviewer. It defines review scope, severity reporting, and fix policies so that Codex can act as a pull-request reviewer on this repository.
+`AGENTS.md` is a demo configuration for using [OpenAI Codex](https://openai.com/index/openai-codex/) as an automated code reviewer. It inlines review criteria and policies so that it works standalone in any project. The canonical source for review standards is `plugin/skills/reviewer/SKILL.md`; AGENTS.md is kept in sync manually.
 
 ## Data Directory (`db/`)
 

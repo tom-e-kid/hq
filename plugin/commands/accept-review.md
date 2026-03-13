@@ -90,7 +90,7 @@ Use AskUserQuestion with options:
 
    - If no formatter detected, skip silently
 2. Stage accepted files: `git add <accepted files>`
-3. Commit: `git commit -m "refactor: apply code review fixes"` (or user-provided message from step 7)
+3. Commit with the user-provided message from step 7 (default: `refactor: apply code review fixes`). Follow the commit format defined in `/hq:dev`.
 
 ### 9. Extract follow-up issues
 
@@ -101,34 +101,9 @@ Scan the code review section for:
 
 For each item found:
 
-1. `mkdir -p $GIT_ROOT/docs/issues/`
+1. `mkdir -p $GIT_ROOT/.hq/backlog/`
 2. List existing `CR-*.md` files in that directory to determine the next available number (start at 001)
-3. Write `$GIT_ROOT/docs/issues/CR-<NNN>.md` with this template:
-
-```markdown
----
-severity: <critical|high|medium|low>
-source: code-review
-date: <YYYY-MM-DD>
-status: open
----
-
-# <Title>
-
-## Context
-- **Branch**: <branch name>
-- **Review date**: <timestamp from the Code Review section>
-- **File(s)**: <target files/lines>
-
-## Issue
-<description of the issue>
-
-## Impact
-<impact description>
-
-## Proposed Fix
-<approach if available from the review, otherwise "TBD">
-```
+3. Write `$GIT_ROOT/.hq/backlog/CR-<NNN>.md` using the backlog template defined in the `/hq:dev` skill's **Backlog** section. Set `source: code-review`.
 
 If no items qualify: skip this step and report "No follow-up issues to extract".
 

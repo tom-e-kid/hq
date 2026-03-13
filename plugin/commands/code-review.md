@@ -62,47 +62,12 @@ Exclude the following from review:
 
 ### 7. Security Alert Scan
 
-This step is independent of the Security item in Step 10. No fixes or judgments are required — only detection and reporting.
+Scan the full diff against all categories defined in the **Security Alert Policy** section of `plugin/skills/reviewer/SKILL.md`. Do not judge whether findings are intentional or safe — just find and report. At the end of this step, explicitly state either **"Alerts found"** or **"No alerts found"**.
 
-Scan the full diff for **all** of the following categories. Do not judge whether findings are intentional or safe — just find and report. At the end of this step, explicitly state either **"Alerts found"** or **"No alerts found"**.
+**Command-specific rules**:
 
-#### Credentials & Secrets
-
-- API keys / secrets (`AKIA`, `sk-`, `ghp_`, `Bearer`, etc.)
-- Reading environment variables whose names contain: `KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `CREDENTIAL`
-- Hardcoded strings that resemble secrets or tokens
-- Credentials written to logs or sent externally
-
-#### External Communication
-
-- HTTP/HTTPS requests, WebSocket connections
-- DNS resolution or references to external hosts
-- Outbound integrations (email, Slack, webhooks, etc.)
-
-#### File & System Operations
-
-- File access outside the project directory
-- File deletion or unconditional overwrite
-- Permission or ownership changes
-
-#### Dynamic Code Execution
-
-- `eval()`, `exec()`, `Function()`, `subprocess`, `os.system()`, or equivalent
-- Dynamic imports resolved at runtime
-- Serialization/deserialization of untrusted data (e.g., `pickle`, `JSON.parse` on external input)
-
-#### Out-of-Scope Changes
-
-- Modifications to files outside the reviewed diff
-- Addition or version change of dependencies
-- Changes to configuration files (`.env`, `*.config.*`, `*.yaml`, etc.)
-  — `.env` changes should be reported here, not under Credentials & Secrets
-- Note: Appending to `$GIT_ROOT/.hq/tasks/<branch>.md` at the end of this command is an explicitly permitted out-of-scope change. Do not raise an alert for this operation.
-
-#### Explainability
-
-- For each alert item, include a one-line explanation of **why this code exists** based on context.
-- If no clear justification can be inferred, flag it explicitly as: `Reason: unclear — human review required` and provide a detailed description of the concern.
+- `.env` changes should be reported under Out-of-Scope Changes, not under Credentials & Secrets
+- Appending to `$GIT_ROOT/.hq/tasks/<branch>.md` at the end of this command is an explicitly permitted out-of-scope change. Do not raise an alert for this operation.
 
 **If Credentials & Secrets are detected**: warn the user with the file name and line number. Use AskUserQuestion to confirm whether to continue the review.
 
@@ -124,31 +89,10 @@ Also run the linter if available (e.g., `bun run lint`).
 
 ### 10. Review and report
 
-Review the diff against these criteria:
+Review the diff against the criteria in the **What To Check** section of `plugin/skills/reviewer/SKILL.md`. Apply the **Fix Policy** and **Reporting Format** from the same skill.
 
-- **Readability & conciseness**: Identify verbose or unnecessary code and simplify where possible
-- **Correctness**: Check for spec deviations, potential bugs, and missed edge cases
-- **Performance**: Look for redundant computations, unnecessary re-renders, heavy operations, and inefficient data processing. Fix where possible
-- **Security**: Check for insufficient input validation, XSS/injection risks, and permission gaps. Fix where possible
-
-**Fix policy**:
-
-- Fix minor, safely applicable issues directly (do NOT commit — leave as unstaged diffs)
-- For high-impact issues, propose a dedicated task instead of forcing a fix
-
-**Report findings by severity**: Critical / High / Medium / Low. Each item must include:
-
-- Target file and line number
-- Description of the issue
-- Impact
-- Action taken (fixed / not fixed with reason / proposed as task)
+**Command-specific override**: Do NOT commit fixes — leave changes as unstaged diffs.
 
 Security alerts from Step 7 are reported in a dedicated `### Security Alerts` subsection, separate from severity-based findings.
-
-**Summary** at the end:
-
-- List of modified files (by the review itself)
-- Remaining issues (with ticket proposals if needed)
-- Verification results (lint/build)
 
 **Task file update**: If `$GIT_ROOT/.hq/tasks/<branch>.md` exists, append the review results as a `## Code Review <YYYY-MM-DD HH:MM>` section. Summarize findings concisely within this section.

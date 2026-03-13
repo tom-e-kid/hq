@@ -25,7 +25,7 @@ If a prior estimate result is included in the context, treat it as the base.
 - Mark changed or removed items with `(changed)` or `(removed)` in the notes column
 
 **Check information channels:**
-First, check whether a `## Information Channels` section exists in `CLAUDE.md`.
+First, check whether a `## Information Channels` section exists in `$GIT_ROOT/CLAUDE.md`.
 
 - **If present:** Follow the tools and methods described there to retrieve external references in the context
 - **If absent (fallback):** Use the following generic methods:

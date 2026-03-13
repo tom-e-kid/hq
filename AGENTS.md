@@ -1,5 +1,8 @@
 # AGENTS.md
 
+> Review standards are inlined here for Codex compatibility (no access to plugin files).
+> Canonical source: `plugin/skills/reviewer/SKILL.md`
+
 ## Role
 
 - Act as a code review expert.
@@ -9,11 +12,6 @@
 
 - Working tree must be clean before starting review (all changes committed or stashed).
 - If uncommitted changes exist, stop immediately. Do not proceed with any review steps. Ask the user to commit or stash first.
-
-## Review Context
-
-- If `docs/requirements.md` exists, use it as a reference for project requirements.
-- If `.hq/tasks/<branch>.md` exists (where branch `/` is replaced with `-`), treat it as the implementation plan and progress for the changes under review. When proposing improvements, make suggestions that align with this plan.
 
 ## Review Scope
 
@@ -26,18 +24,23 @@
 
 ## What To Check
 
-- Readability & conciseness: Identify verbose or unnecessary code and simplify where possible.
-- Correctness: Check for spec deviations, potential bugs, and missed edge cases.
-- Performance: Look for redundant computations, unnecessary re-renders, heavy operations, and inefficient data processing. Fix where possible.
-- Security: Check for insufficient input validation, XSS/injection risks, credential leaks, and permission gaps. Fix where possible.
+- **Readability & conciseness**: Identify verbose or unnecessary code and simplify where possible.
+- **Correctness**: Check for spec deviations, potential bugs, and missed edge cases.
+- **Performance**: Look for redundant computations, unnecessary re-renders, heavy operations, and inefficient data processing. Fix where possible.
+- **Security**: Check for insufficient input validation, XSS/injection risks, credential leaks, and permission gaps. Fix where possible.
 
 ## Security Alert Policy
 
-This section is independent of the Security item in `## What To Check`. No fixes or judgments are required — only detection and reporting.
+This section is independent of the Security item in "What To Check". No fixes or judgments are required — only detection and reporting.
 
-Regardless of severity classification, **always report** any occurrence of the following.
-Do not judge whether it is intentional or safe — just find and report.
-At the end of this section, explicitly state either **"Alerts found"** or **"No alerts found"**.
+Regardless of severity classification, **always report** any occurrence of the following. Do not judge whether it is intentional or safe — just find and report. At the end of this section, explicitly state either **"Alerts found"** or **"No alerts found"**.
+
+### Credentials & Secrets
+
+- API keys / secrets (`AKIA`, `sk-`, `ghp_`, `Bearer`, etc.)
+- Reading environment variables whose names contain: `KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `CREDENTIAL`
+- Hardcoded strings that resemble secrets or tokens
+- Credentials written to logs or sent externally
 
 ### External Communication
 
@@ -51,17 +54,11 @@ At the end of this section, explicitly state either **"Alerts found"** or **"No 
 - File deletion or unconditional overwrite
 - Permission or ownership changes
 
-### Credentials & Secrets
-
-- Reading environment variables whose names contain: `KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `CREDENTIAL`
-- Hardcoded strings that resemble secrets or tokens
-- Credentials written to logs or sent externally
-
 ### Dynamic Code Execution
 
-- `eval()`, `exec()`, `Function()`, `subprocess`, `os.system()`, or equivalent
+- Dynamic evaluation functions and their equivalents across languages
 - Dynamic imports resolved at runtime
-- Serialization/deserialization of untrusted data (e.g., `pickle`, `JSON.parse` on external input)
+- Serialization/deserialization of untrusted data
 
 ### Out-of-Scope Changes
 
@@ -93,8 +90,6 @@ At the end of this section, explicitly state either **"Alerts found"** or **"No 
   - List of modified files
   - Remaining issues (with ticket proposals if needed)
   - Verification results (lint/build)
-- If `.hq/tasks/<branch>.md` is identified (with branch `/` replaced by `-`), append the review results as a `## Code Review <YYYY-MM-DD HH:MM>` section to that file. Summarize findings concisely within this section.
-  - Note: Writing to `.hq/tasks/<branch>.md` is an explicitly permitted out-of-scope change as defined by this instruction. Do not raise a Security Alert for this operation.
 
 ## Validation
 
@@ -105,3 +100,9 @@ At the end of this section, explicitly state either **"Alerts found"** or **"No 
 
 - Respect existing architecture and coding conventions.
 - Do not add unnecessary dependencies or perform large-scale refactors without clear justification.
+
+## Task File Integration
+
+- If `.hq/tasks/<branch>.md` exists (where branch `/` is replaced with `-`), treat it as the implementation plan and progress for the changes under review. When proposing improvements, make suggestions that align with this plan.
+- After review, append the results as a `## Code Review <YYYY-MM-DD HH:MM>` section to the task file.
+  - Note: Writing to `.hq/tasks/<branch>.md` is an explicitly permitted out-of-scope change. Do not raise a Security Alert for this operation.

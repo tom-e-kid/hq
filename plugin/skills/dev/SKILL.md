@@ -36,7 +36,7 @@ Read and internalize past lessons before starting work.
 
 ### Step 2: Platform Setup
 
-- If `.xcworkspace` or `.xcodeproj` exists → run `/hq:ios-dev` to prepare `.hq/build/config.sh`
+- If `.xcworkspace` or `.xcodeproj` exists → run `/hq:dev-ios` to prepare `.hq/build/config.sh`
 - If `.hq/build/config.sh` already exists → skip
 
 ### Step 3: Plan → Taskfile
@@ -179,3 +179,67 @@ When the user corrects a mistake or points out a better approach:
 1. Fix the immediate issue first
 2. **Before moving on**, run `/hq:memory` to record the lesson
 3. Do NOT skip step 2 — this is as important as the fix itself
+
+## Commit Message Format
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>: <concise description>
+```
+
+**Types**: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `perf`, `ci`, `build`
+
+- Keep messages concise, single line
+- Focus on the "why" or "what changed", not the "how"
+- Examples: `feat: add user authentication`, `fix: resolve null pointer in login flow`
+
+## Backlog
+
+Out-of-scope items discovered during development are captured in `.hq/backlog/`.
+
+### Storage & Naming
+
+- **Path**: `$GIT_ROOT/.hq/backlog/` (gitignored via `.hq/`, transient operational data)
+- **Naming**: `<PREFIX>-<NNN>.md` where NNN is zero-padded sequential number
+  - `CR-` — code review findings
+  - `DEV-` — development session observations
+  - `REQ-` — off-topic user requests
+
+### Template
+
+```markdown
+---
+severity: <critical|high|medium|low>
+source: <code-review|dev-session|user-request>
+date: <YYYY-MM-DD>
+status: open
+---
+
+# <Title>
+
+## Context
+- **Branch**: <branch name>
+- **Source**: <where this was found>
+- **File(s)**: <target files/lines>
+
+## Issue
+<description of the issue>
+
+## Impact
+<impact description>
+
+## Proposed Fix
+<approach if available, otherwise "TBD">
+```
+
+## Capturing Out-of-Scope Items
+
+During development, you may discover issues or receive requests that fall outside the current task scope. Instead of addressing them immediately (risking scope creep) or ignoring them (losing the insight), capture them to the backlog:
+
+1. **Identify**: Recognize the item is out of scope for the current task
+2. **Capture**: Create a backlog entry in `.hq/backlog/` using the template above
+   - Determine the appropriate prefix (`DEV-` for observations, `REQ-` for user requests)
+   - Check existing files to get the next sequential number
+3. **Reference**: Note the backlog item in the current taskfile's Changes section (e.g., "→ captured as DEV-003")
+4. **Continue**: Return to the current task without addressing the captured item
