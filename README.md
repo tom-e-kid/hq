@@ -16,7 +16,7 @@ A Claude Code plugin that provides skills and commands for HQ operations.
 |-------|-------------|
 | `dev` | Development workflow — branch management, task tracking, plan-then-implement cycle |
 | `ops` | HQ operations — TODO and notes CRUD via `hq` CLI |
-| `dev-ios` | iOS/Xcode build configuration and verification |
+| `dev-ios` | iOS/Xcode build, run, and environment configuration |
 | `reviewer` | Code review standards — review criteria, security alerts, reporting format |
 
 **Commands:**
@@ -64,6 +64,7 @@ The TUI dashboard displays a live, interactive overview in the terminal:
 
 ```
 hq                          Launch TUI dashboard (default)
+hq ui                       Launch TUI dashboard (explicit)
 hq tasks                    List, add, or complete tasks
 hq notes                    List, view, add, or copy notes
 hq milestones               List, add, or complete milestones
@@ -98,15 +99,16 @@ db/
 ├── projects/
 │   ├── _milestones.md             # Shared milestones (checkbox list with dates/recurring rules)
 │   ├── _words.md                  # Word ticker entries (bullet list displayed in TUI header)
+│   ├── _/
+│   │   └── inbox/
+│   │       ├── tasks.md           # Inbox tasks (no project association)
+│   │       └── notes/             # Inbox notes
 │   ├── <org>/
 │   │   └── <project>/
 │   │       ├── README.md          # Project metadata (frontmatter: title, repo, tags)
 │   │       ├── tasks.md           # Project tasks (checkbox list)
 │   │       └── notes/             # Project notes (one .md per note)
 │   └── ...
-├── inbox/
-│   ├── tasks.md                   # Inbox tasks (no project association)
-│   └── notes/                     # Inbox notes
 └── logs/
     └── YYYY/
         └── MM.md                  # Monthly log (time entries + daily journal)
