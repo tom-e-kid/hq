@@ -61,9 +61,9 @@ resolve_app_path() {
     build_settings=$(xcodebuild -showBuildSettings "$ws_flag" "$WORKSPACE" -scheme "$SCHEME" -destination "$LATEST_DEST" 2>/dev/null)
 
     local products_dir
-    products_dir=$(echo "$build_settings" | grep '^\s*BUILT_PRODUCTS_DIR' | head -1 | awk '{print $3}')
+    products_dir=$(printf '%s\n' "$build_settings" | sed -n 's/^[[:space:]]*BUILT_PRODUCTS_DIR = //p' | head -1)
     local product_name
-    product_name=$(echo "$build_settings" | grep '^\s*FULL_PRODUCT_NAME' | head -1 | awk '{print $3}')
+    product_name=$(printf '%s\n' "$build_settings" | sed -n 's/^[[:space:]]*FULL_PRODUCT_NAME = //p' | head -1)
 
     if [[ -z "$products_dir" || -z "$product_name" ]]; then
         echo "Error: Could not resolve app path from build settings."
@@ -79,20 +79,24 @@ resolve_app_path() {
 }
 
 resolve_device_udid() {
-    UDID=$(xcrun simctl list devices available -j | python3 -c "
-import json, sys
+    UDID=$(xcrun simctl list devices available -j | TARGET_DEVICE="$LATEST_DEVICE" TARGET_OS="$LATEST_OS" python3 -c '
+import json
+import os
+import sys
+
 data = json.load(sys.stdin)
-target_device = '${LATEST_DEVICE}'
-target_os = '${LATEST_OS}'
-runtime_suffix = 'iOS-' + target_os.replace('.', '-')
-for runtime, devices in data.get('devices', {}).items():
+target_device = os.environ["TARGET_DEVICE"]
+target_os = os.environ["TARGET_OS"]
+runtime_suffix = "iOS-" + target_os.replace(".", "-")
+
+for runtime, devices in data.get("devices", {}).items():
     if runtime_suffix in runtime:
         for d in devices:
-            if d['name'] == target_device:
-                print(d['udid'])
+            if d["name"] == target_device:
+                print(d["udid"])
                 sys.exit(0)
 sys.exit(1)
-" 2>/dev/null)
+' 2>/dev/null)
 
     if [[ -z "${UDID:-}" ]]; then
         echo "Error: Could not find simulator for ${LATEST_DEVICE} (iOS ${LATEST_OS})."
@@ -104,6 +108,7 @@ boot_simulator() {
     echo "Booting simulator (${LATEST_DEVICE}, iOS ${LATEST_OS})..."
     xcrun simctl boot "$UDID" 2>/dev/null || true
     open -a Simulator
+    xcrun simctl bootstatus "$UDID" -b >/dev/null
 }
 
 terminate_app() {
@@ -138,11 +143,13 @@ case "$MODE" in
         launch_app
         ;;
     restart)
+        boot_simulator
         terminate_app
         launch_app
         ;;
     reinstall)
         resolve_app_path
+        boot_simulator
         terminate_app
         install_app
         launch_app

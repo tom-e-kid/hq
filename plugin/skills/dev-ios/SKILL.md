@@ -49,11 +49,13 @@ This script outputs:
 - Workspace/project path
 - Available schemes
 - Deployment target
+- Bundle identifier candidates
 - Installed iOS runtimes
 - Available simulators
 
 Based on the output, ask user to confirm:
 - Which scheme to use
+- Which bundle identifier to use
 - Latest iOS version and device
 - Minimum iOS version and device
 
@@ -73,6 +75,8 @@ PLATFORM="ios"
 SCRIPTS_DIR="<absolute path to ${CLAUDE_PLUGIN_ROOT}/plugin/skills/dev-ios/scripts>"
 
 # Project settings
+# Use `-workspace` for `.xcworkspace` and `-project` for `.xcodeproj`
+PROJECT_FLAG="<-workspace|-project>"
 WORKSPACE="<workspace>"
 SCHEME="<scheme>"
 DEPLOYMENT_TARGET="<version>"
@@ -82,13 +86,13 @@ BUNDLE_ID="<bundle_identifier>"
 LATEST_OS="<latest_version>"
 LATEST_DEVICE="<device_name>"
 LATEST_DEST="platform=iOS Simulator,name=<device>,OS=<version>"
-BUILD_CMD_LATEST="xcodebuild -workspace|-project \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$LATEST_DEST\" clean build"
+BUILD_CMD_LATEST="xcodebuild $PROJECT_FLAG \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$LATEST_DEST\" clean build"
 
 # Minimum OS build (for compatibility check)
 MIN_OS="<minimum_version>"
 MIN_DEVICE="<device_name>"
 MIN_DEST="platform=iOS Simulator,name=<device>,OS=<version>"
-BUILD_CMD_MINIMUM="xcodebuild -workspace|-project \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$MIN_DEST\" clean build"
+BUILD_CMD_MINIMUM="xcodebuild $PROJECT_FLAG \"$WORKSPACE\" -scheme \"$SCHEME\" -destination \"$MIN_DEST\" clean build"
 
 # Warning filter (excludes noise)
 WARNINGS_FILTER="grep -i 'warning:' | grep -v 'Metadata extraction skipped' | grep -v 'Could not get trait set' | sort -u"

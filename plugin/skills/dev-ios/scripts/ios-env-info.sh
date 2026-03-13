@@ -37,11 +37,24 @@ else
 fi
 echo ""
 
+# Resolve project file once for metadata lookups
+PROJECT_FILE=$(echo "$WORKSPACE" | sed 's/\.xcworkspace/.xcodeproj/' || echo "$WORKSPACE")
+PROJECT_PBXPROJ="$PROJECT_FILE/project.pbxproj"
+
 # Get deployment target
 echo "## Deployment Target"
-PROJECT_FILE=$(echo "$WORKSPACE" | sed 's/\.xcworkspace/.xcodeproj/' || echo "$WORKSPACE")
-if [[ -d "$PROJECT_FILE" ]]; then
-    grep -r "IPHONEOS_DEPLOYMENT_TARGET" "$PROJECT_FILE/project.pbxproj" 2>/dev/null | \
+if [[ -f "$PROJECT_PBXPROJ" ]]; then
+    grep "IPHONEOS_DEPLOYMENT_TARGET" "$PROJECT_PBXPROJ" 2>/dev/null | \
+        sed 's/.*= //' | tr -d ';' | sort -u | head -5 || echo "(not found)"
+else
+    echo "(project file not found)"
+fi
+echo ""
+
+# Get bundle identifier candidates
+echo "## Bundle Identifiers"
+if [[ -f "$PROJECT_PBXPROJ" ]]; then
+    grep "PRODUCT_BUNDLE_IDENTIFIER" "$PROJECT_PBXPROJ" 2>/dev/null | \
         sed 's/.*= //' | tr -d ';' | sort -u | head -5 || echo "(not found)"
 else
     echo "(project file not found)"
