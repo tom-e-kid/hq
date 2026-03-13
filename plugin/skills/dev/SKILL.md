@@ -71,6 +71,11 @@ Choose one path:
 
 ## Workflow Guidelines
 
+### Branch & PR Policy
+
+- 1 feature = 1 PR (including bug fixes and investigations)
+- Always work on a feature branch, never directly on the base branch
+
 ### Subagent Strategy
 
 - Use subagents liberally to keep main context window clean

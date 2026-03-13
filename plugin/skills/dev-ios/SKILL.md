@@ -149,3 +149,9 @@ Excluded warnings (noise):
 - `$GIT_ROOT/.hq/build/config.sh` is local only (should be in .gitignore)
 - Reconfigure when Xcode or simulators are updated
 - Both latest and minimum OS builds should use devices that actually exist in the runtime
+
+## Build Verification Rules
+
+- When `.swift` files are modified, always verify the build passes before committing
+- Unless otherwise instructed, build with the **latest** OS configuration (`BUILD_CMD_LATEST`)
+- When the user instructs, verify on both latest and minimum OS configurations
