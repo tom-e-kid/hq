@@ -1,8 +1,10 @@
 # HQ
 
-Centralized management of monthly logs, project info, and knowledge base — designed for AI agent collaboration.
+A development hub for AI-assisted workflows across multiple projects.
 
-All data is stored as plain Markdown with YAML frontmatter. Both humans and AI agents can read and write it directly.
+Each project runs Claude Code with the HQ plugin (dev skills & commands), while a shared data store and CLI dashboard provide cross-project visibility. Codex can also act as a reviewer via AGENTS.md. All data is plain Markdown with YAML frontmatter.
+
+![HQ Concept](docs/hq-concept.png)
 
 ## Components
 
@@ -12,25 +14,25 @@ A Claude Code plugin that provides skills and commands for HQ operations.
 
 **Skills:**
 
-| Skill | Description |
-|-------|-------------|
-| `dev` | Development workflow — branch management, task tracking, plan-then-implement cycle |
-| `ops` | HQ operations — TODO and notes CRUD via `hq` CLI |
-| `dev-ios` | iOS/Xcode build, run, and environment configuration |
-| `reviewer` | Code review standards — review criteria, security alerts, reporting format |
+| Skill      | Description                                                                        |
+| ---------- | ---------------------------------------------------------------------------------- |
+| `dev`      | Development workflow — branch management, task tracking, plan-then-implement cycle |
+| `dev-ios`  | iOS/Xcode build, run, and environment configuration                                |
+| `reviewer` | Code review standards — review criteria, security alerts, reporting format         |
+| `ops`      | HQ operations — TODO and notes CRUD via `hq` CLI                                   |
 
 **Commands:**
 
-| Command | Description |
-|---------|-------------|
-| `/hq:pr` | Create or update a GitHub Pull Request |
-| `/hq:code-review` | Review code changes on the current branch (includes security alert scan) |
+| Command             | Description                                                                       |
+| ------------------- | --------------------------------------------------------------------------------- |
+| `/hq:pr`            | Create or update a GitHub Pull Request                                            |
+| `/hq:code-review`   | Review code changes on the current branch (includes security alert scan)          |
 | `/hq:accept-review` | Evaluate code review results, commit accepted fixes, and extract follow-up issues |
-| `/hq:estimate` | Collect requirements and organize work item estimates with risks and blockers |
-| `/hq:schema-md` | Generate Markdown documentation from Drizzle ORM schema definitions |
-| `/hq:schema-yaml` | Convert schema Markdown to `chunk-schema/v1` YAML (for schema-visualizer) |
-| `/hq:memory` | Record a lesson learned to memory |
-| `/hq:close` | Clean up completed task files and remove WIP entries |
+| `/hq:estimate`      | Collect requirements and organize work item estimates with risks and blockers     |
+| `/hq:schema-md`     | Generate Markdown documentation from Drizzle ORM schema definitions               |
+| `/hq:schema-yaml`   | Convert schema Markdown to `chunk-schema/v1` YAML (for schema-visualizer)         |
+| `/hq:memory`        | Record a lesson learned to memory                                                 |
+| `/hq:close`         | Clean up completed task files and remove WIP entries                              |
 
 ### apps/ — Standalone Web Applications
 
@@ -170,26 +172,30 @@ Use `@` prefixed rules. The next occurrence is calculated automatically.
 
 ```markdown
 # Every month on the 10th
+
 - [ ] @monthly 10 Pay invoice
 
 # Last day of every month
+
 - [ ] @month-end Billing
 
 # Every year on March 15
+
 - [ ] @yearly 03-15 Tax filing
 
 # Every week on Monday
+
 - [ ] @weekly mon Team standup
 ```
 
 **Supported rules:**
 
-| Rule | Format | Example |
-|------|--------|---------|
-| `@monthly` | `@monthly <day>` | `@monthly 10` → 10th of each month |
-| `@month-end` | `@month-end` | Last day of each month (handles 28/29/30/31) |
-| `@yearly` | `@yearly <MM-DD>` | `@yearly 03-15` → March 15 each year |
-| `@weekly` | `@weekly <dow>` | `@weekly mon` → every Monday |
+| Rule         | Format            | Example                                      |
+| ------------ | ----------------- | -------------------------------------------- |
+| `@monthly`   | `@monthly <day>`  | `@monthly 10` → 10th of each month           |
+| `@month-end` | `@month-end`      | Last day of each month (handles 28/29/30/31) |
+| `@yearly`    | `@yearly <MM-DD>` | `@yearly 03-15` → March 15 each year         |
+| `@weekly`    | `@weekly <dow>`   | `@weekly mon` → every Monday                 |
 
 Day-of-week values: `sun`, `mon`, `tue`, `wed`, `thu`, `fri`, `sat`
 

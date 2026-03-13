@@ -1,6 +1,6 @@
 # HQ
 
-Centralized management of monthly logs, project info, and knowledge base — designed for AI agent collaboration.
+A development hub for AI-assisted workflows across multiple projects.
 
 ## Repository Overview
 
