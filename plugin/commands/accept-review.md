@@ -103,7 +103,7 @@ For each item found:
 
 1. `mkdir -p $GIT_ROOT/.hq/backlog/`
 2. List existing `CR-*.md` files in that directory to determine the next available number (start at 001)
-3. Write `$GIT_ROOT/.hq/backlog/CR-<NNN>.md` using the backlog template defined in the `/hq:dev` skill's **Backlog** section. Set `source: code-review`.
+3. Write `$GIT_ROOT/.hq/backlog/CR-<NNN>.md` using the backlog template defined in the `/hq:dev` skill's **Backlog** section. Set `source` to the current branch name.
 
 If no items qualify: skip this step and report "No follow-up issues to extract".
 

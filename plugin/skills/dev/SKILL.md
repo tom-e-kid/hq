@@ -11,6 +11,7 @@ description: >
 
 - **taskfile** — The plan/tracking file at `.hq/tasks/<branch>.md`. One per work branch.
 - **memory** — Lessons learned from past mistakes. Project-specific (`.hq/memory.md`) or global (`~/.hq/memory.md`).
+- **backlog** — Out-of-scope items captured during development, stored in `.hq/backlog/`.
 
 ## MANDATORY: Before Implementation
 
@@ -55,13 +56,18 @@ Choose one path:
 - Write the plan directly to the taskfile — follow the Taskfile Template below
 - Update WIP tracking
 
+**Populating `source`**: Set the taskfile's `source` frontmatter to indicate where this work originated:
+- External tool reference (if identifiable from context): `"<tool>#<id>"` (e.g., `"github_issue#1234"`, `"docbase#98765"`)
+- From backlog: `"backlog#<ID>"` (e.g., `"backlog#DEV-003"`)
+- User-initiated (default): `"user#<brief description>"` (e.g., `"user#add dark mode toggle"`)
+
 **STOP** — check: Does the taskfile exist? If not, create it NOW.
 
 ### Step 4: User Approval Gate
 
-- Present the taskfile contents to the user
+- Present the taskfile contents to the user, including the `source` value
 - **MUST NOT begin implementation until the user approves the plan**
-- If the user requests changes, update the taskfile and re-confirm
+- If the user requests changes (including `source`), update the taskfile and re-confirm
 
 ## Workflow Guidelines
 
@@ -117,6 +123,7 @@ Every taskfile MUST follow this structure:
 ---
 status: in_progress
 description: <one-line summary>
+source: <origin>
 ---
 
 # <Title>
@@ -211,7 +218,7 @@ Out-of-scope items discovered during development are captured in `.hq/backlog/`.
 ```markdown
 ---
 severity: <critical|high|medium|low>
-source: <code-review|dev-session|user-request>
+source: <branch-name>
 date: <YYYY-MM-DD>
 status: open
 ---
@@ -220,7 +227,6 @@ status: open
 
 ## Context
 - **Branch**: <branch name>
-- **Source**: <where this was found>
 - **File(s)**: <target files/lines>
 
 ## Issue
@@ -240,6 +246,7 @@ During development, you may discover issues or receive requests that fall outsid
 1. **Identify**: Recognize the item is out of scope for the current task
 2. **Capture**: Create a backlog entry in `.hq/backlog/` using the template above
    - Determine the appropriate prefix (`DEV-` for observations, `REQ-` for user requests)
+   - Set `source` to the current branch name (links the item back to the task that spawned it)
    - Check existing files to get the next sequential number
 3. **Reference**: Note the backlog item in the current taskfile's Changes section (e.g., "→ captured as DEV-003")
 4. **Continue**: Return to the current task without addressing the captured item
