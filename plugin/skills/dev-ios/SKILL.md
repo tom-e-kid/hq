@@ -11,8 +11,8 @@ Configure and verify Xcode build settings for iOS projects.
 
 ## When to Use
 
-- Called by `/hq:dev` when iOS project detected (`*.xcworkspace` or `*.xcodeproj`)
-- Called manually to reconfigure build settings
+- When configuring build settings for iOS projects (`*.xcworkspace` or `*.xcodeproj`)
+- When manually reconfiguring build settings
 - After Xcode or simulator updates
 
 ## Git Root Resolution
@@ -25,12 +25,15 @@ GIT_ROOT=$(git rev-parse --show-toplevel)
 
 All `.hq/` paths below should be prefixed with `$GIT_ROOT/`.
 
-## Behavior
+## Initialization (on load)
+
+When this skill is loaded into context, perform the following before continuing with the dev-core workflow:
 
 1. Check if `$GIT_ROOT/.hq/build/config.sh` exists
 2. If exists:
    - Read and display current configuration
    - Ask user if they want to reconfigure
+   - If no reconfigure needed → initialization complete
 3. If not exists (or reconfigure requested):
    - Run environment investigation using helper script
    - Present findings to user for confirmation

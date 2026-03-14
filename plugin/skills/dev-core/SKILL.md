@@ -1,5 +1,5 @@
 ---
-name: dev
+name: dev-core
 description: >
   This skill should be used when the user asks to "implement a feature",
   "fix a bug", "start development", "plan implementation", or begins
@@ -37,8 +37,8 @@ Read and internalize past lessons before starting work.
 
 ### Step 2: Platform Setup
 
-- If `.xcworkspace` or `.xcodeproj` exists → run `/hq:dev-ios` to prepare `.hq/build/config.sh`
-- If `.hq/build/config.sh` already exists → skip
+- If a platform skill is loaded in context → follow its initialization steps
+- Otherwise → skip
 
 ### Step 3: Plan → Taskfile
 

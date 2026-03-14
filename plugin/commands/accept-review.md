@@ -78,7 +78,7 @@ Use AskUserQuestion with options:
 
 ### 8. Commit accepted changes
 
-1. **Pre-commit format** (same rules as `/hq:dev`):
+1. **Pre-commit format** (same rules as the `dev-core` skill):
    - Get changed files: `git diff --name-only --diff-filter=AM`
    - Detect project type and run the appropriate formatter on changed files only:
 
@@ -90,7 +90,7 @@ Use AskUserQuestion with options:
 
    - If no formatter detected, skip silently
 2. Stage accepted files: `git add <accepted files>`
-3. Commit with the user-provided message from step 7 (default: `refactor: apply code review fixes`). Follow the commit format defined in `/hq:dev`.
+3. Commit with the user-provided message from step 7 (default: `refactor: apply code review fixes`). Follow the commit format defined in the `dev-core` skill.
 
 ### 9. Extract follow-up issues
 
@@ -103,7 +103,7 @@ For each item found:
 
 1. `mkdir -p $GIT_ROOT/.hq/backlog/`
 2. List existing `CR-*.md` files in that directory to determine the next available number (start at 001)
-3. Write `$GIT_ROOT/.hq/backlog/CR-<NNN>.md` using the backlog template defined in the `/hq:dev` skill's **Backlog** section. Set `source` to the current branch name.
+3. Write `$GIT_ROOT/.hq/backlog/CR-<NNN>.md` using the backlog template defined in the `dev-core` skill's **Backlog** section. Set `source` to the current branch name.
 
 If no items qualify: skip this step and report "No follow-up issues to extract".
 

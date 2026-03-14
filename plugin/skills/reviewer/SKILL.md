@@ -10,7 +10,7 @@ description: >
 
 Code review standards for the HQ plugin ecosystem. This skill is the single source of truth for review criteria, security alerts, and reporting format.
 
-**Prerequisite**: This skill assumes `/hq:dev` conventions (commit format, backlog, etc.).
+**Prerequisite**: This skill assumes `dev-core` skill conventions (commit format, backlog, etc.).
 
 ## Review Context & Scope
 
