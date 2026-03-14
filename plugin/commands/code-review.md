@@ -71,23 +71,7 @@ Scan the full diff against all categories defined in the **Security Alert Policy
 
 **If Credentials & Secrets are detected**: warn the user with the file name and line number. Use AskUserQuestion to confirm whether to continue the review.
 
-### 8. Code simplification check
-
-Launch the `code-simplifier` subagent targeting only the files changed in the diff. Let it check for verbosity, unnecessary code, and simplification opportunities. If it produces fixes, apply them but do NOT commit.
-
-Constraints for the subagent:
-
-- Target only files present in the diff from Step 5
-- Do not modify files outside the diff scope
-- Respect the implementation approach and priorities described in the task file (if found in Step 6)
-
-### 9. Build verification
-
-Detect and run the project's build command (e.g., `bun run build`, `npm run build`). If errors or warnings are found that can be fixed without spec clarification or user judgment, fix them directly but do NOT commit.
-
-Also run the linter if available (e.g., `bun run lint`).
-
-### 10. Review and report
+### 8. Review and report
 
 Review the diff against the criteria in the **What To Check** section of `plugin/skills/reviewer/SKILL.md`. Apply the **Fix Policy** and **Reporting Format** from the same skill.
 

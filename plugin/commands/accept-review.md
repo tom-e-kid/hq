@@ -10,11 +10,13 @@ Evaluate the latest code review on the current branch. Judge review quality, com
 
 Run `git rev-parse --show-toplevel` and store the result as `GIT_ROOT`. Use this as the base for all subsequent path lookups.
 
-### 2. Verify branch
+### 2. Verify branch & load platform skill
 
 Run `git branch --show-current`.
 
 - If on `main` or `master`: report error "Cannot accept review from main/master branch" and stop
+
+Detect and load the platform skill (same logic as `/hq:dev` Step 2).
 
 ### 3. Locate taskfile
 
@@ -78,17 +80,7 @@ Use AskUserQuestion with options:
 
 ### 8. Commit accepted changes
 
-1. **Pre-commit format** (same rules as the `dev-core` skill):
-   - Get changed files: `git diff --name-only --diff-filter=AM`
-   - Detect project type and run the appropriate formatter on changed files only:
-
-     | Indicator | Platform | Command |
-     |---|---|---|
-     | `go.mod` | Go | `gofmt -w <changed .go files>` |
-     | `package.json` | Web | Run `format` script if defined (detect pkg manager from lock file) |
-     | `.xcworkspace` / `.xcodeproj` | iOS | `swift-format -i <changed .swift files>` (skip if not installed) |
-
-   - If no formatter detected, skip silently
+1. **Pre-commit format** (same rules as the `dev-core` skill's Pre-Commit: Format section)
 2. Stage accepted files: `git add <accepted files>`
 3. Commit with the user-provided message from step 7 (default: `refactor: apply code review fixes`). Follow the commit format defined in the `dev-core` skill.
 

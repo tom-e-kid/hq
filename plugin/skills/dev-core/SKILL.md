@@ -85,19 +85,39 @@ Choose one path:
 
 ### Pre-Commit: Format
 
-Before every commit, detect the project type and format **changed files only**.
+Before every commit, format **changed files only**.
 
 1. Get changed files: `git diff --name-only --diff-filter=AM`
-2. Detect project type (check in order, first match wins):
+2. Run formatter:
+   - If a platform skill is loaded → follow its format instructions
+   - Otherwise → detect and run available formatter (e.g., `format` script in `package.json`)
+   - If no formatter detected, skip silently
+3. Stage any formatting changes before committing
 
-| Indicator | Platform | Command |
-|---|---|---|
-| `go.mod` | Go | `gofmt -w <changed .go files>` |
-| `package.json` | Web | Run `format` script if defined (detect pkg manager from lock file: `bun.lockb` → bun, `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, else npm) |
-| `.xcworkspace` / `.xcodeproj` | iOS | `swift-format -i <changed .swift files>` (skip if not installed) |
+### Verification Gates
 
-3. If no formatter detected, skip silently
-4. Stage any formatting changes before committing
+These gates are mandatory when completing a taskfile. Do not skip any gate.
+
+#### Pre-Verification
+
+After all items in the Changes section are checked off, run these **before** starting Verification:
+
+1. Run `/simplify` to review and simplify recently changed code
+2. Run linter:
+   - If a platform skill is loaded → follow its lint instructions
+   - Otherwise → detect and run available linter (e.g., `lint` script in `package.json`)
+   - If no linter detected, skip silently
+3. Fix lint errors, commit, then proceed to Verification
+
+#### Post-Verification
+
+After all Verification items pass and Results are filled in:
+
+1. Run build:
+   - If a platform skill is loaded → follow its build verification instructions
+   - Otherwise → detect and run available build command (e.g., `build` script in `package.json`)
+   - If no build command detected, skip silently
+2. If build errors exist, fix them before marking `status: done`
 
 ### Post-Implementation Commands
 
