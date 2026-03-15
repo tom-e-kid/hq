@@ -218,7 +218,7 @@ Day-of-week values: `sun`, `mon`, `tue`, `wed`, `thu`, `fri`, `sat`
 
 ### WIP Tracking
 
-`~/.hq/wip.md` tracks work-in-progress tasks across all projects. The `dev` skill automatically adds entries when starting a new work branch.
+`~/.hq/wip.md` tracks work-in-progress tasks across all projects. The `/hq:dev` command automatically adds entries when starting a new work branch.
 
 ```markdown
 ---

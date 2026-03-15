@@ -34,3 +34,15 @@ If no platform matches → continue without a platform skill.
 ### 3. Start workflow
 
 Follow the "MANDATORY: Before Implementation" section of the dev-core skill, starting from Step 0.
+
+### 4. Update WIP tracking
+
+After the taskfile is created and approved (dev-core Step 4):
+
+1. Read `~/.hq/wip.md` (create if missing with frontmatter only)
+2. Get the current branch via `git branch --show-current`
+3. If the branch already has an entry, skip
+4. Otherwise append a new line:
+   ```
+   - <project>: <description> (branch: <branch>)
+   ```

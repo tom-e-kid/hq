@@ -50,12 +50,10 @@ Choose one path:
 **A) Using plan mode** (non-trivial tasks with 3+ steps or architectural decisions):
 - Enter plan mode and write the plan to `.claude/plans/` (system constraint)
 - **Immediately after exiting plan mode**, before any implementation code:
-  1. Copy the plan to the taskfile — follow the Taskfile Template below
-  2. Update WIP tracking
+  - Copy the plan to the taskfile — follow the Taskfile Template below
 
 **B) Without plan mode** (smaller but still tracked tasks):
 - Write the plan directly to the taskfile — follow the Taskfile Template below
-- Update WIP tracking
 
 **Populating `source`**: Set the taskfile's `source` frontmatter to indicate where this work originated:
 - External tool reference (if identifiable from context): `"<tool>#<id>"` (e.g., `"github_issue#1234"`, `"docbase#98765"`)
@@ -176,18 +174,6 @@ source: <origin>
 - **Plan**: Background, goals, and implementation approach. When using plan mode (path A), copy the plan here.
 - **Changes**: Each step as a `- [ ]` checkbox. Mark `- [x]` as completed.
 - **Verification**: "How to verify" (planned before implementation) and "Results" (filled after execution). Never mark `status: done` with an empty Results section.
-
-### WIP Tracking
-
-When creating or updating a taskfile:
-
-1. Read `~/.hq/wip.md` (create if missing with frontmatter only)
-2. Get the current branch via `git branch --show-current`
-3. If the branch already has an entry, skip
-4. Otherwise append a new line:
-   ```
-   - <project>: <description> (branch: <branch>)
-   ```
 
 ## Base Branch Detection
 
