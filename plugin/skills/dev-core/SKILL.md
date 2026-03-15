@@ -12,6 +12,7 @@ description: >
 - **taskfile** — The plan/tracking file at `.hq/tasks/<branch>.md`. One per work branch.
 - **memory** — Lessons learned from past mistakes. Project-specific (`.hq/memory.md`) or global (`~/.hq/memory.md`).
 - **backlog** — Out-of-scope items captured during development, stored in `.hq/backlog/`.
+- **platform skill** — Platform-specific skill (`dev-<platform>/SKILL.md`) providing format, lint, and build instructions. Loaded by `/hq:dev` Step 2 via auto-detection or argument.
 
 ## MANDATORY: Before Implementation
 
