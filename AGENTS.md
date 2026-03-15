@@ -94,7 +94,7 @@ Regardless of severity classification, **always report** any occurrence of the f
 ## Validation
 
 - If clear verification targets exist at the start of review, run those checks first and reflect results in the review.
-- Run `lint` and `build` at the end of review and report the results.
+- Lint and build are expected to pass before code review. If failures are found during review, flag them but do not fix — report as findings.
 
 ## Constraints
 
