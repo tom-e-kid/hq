@@ -49,7 +49,7 @@ No direct references exist between skills — adding or removing a platform skil
 | `/hq:schema-md`     | Generate Markdown documentation from Drizzle ORM schema definitions               |
 | `/hq:schema-yaml`   | Convert schema Markdown to `chunk-schema/v1` YAML (for schema-visualizer)         |
 | `/hq:memory`        | Record a lesson learned to memory                                                 |
-| `/hq:close`         | Clean up completed task files and remove WIP entries                              |
+| `/hq:close`         | Archive task files to `.hq/tasks/done/` and clean up branches                    |
 
 ### apps/ — Standalone Web Applications
 
