@@ -33,7 +33,7 @@ If no platform matches → continue without a platform skill.
 
 ### 3. Start workflow
 
-Follow the "MANDATORY: Before Implementation" section of the dev-core skill, starting from Step 0.
+Follow the "MANDATORY: Before Implementation" section of the dev-core skill, starting from Step 1.
 
 ### 4. Update WIP tracking
 

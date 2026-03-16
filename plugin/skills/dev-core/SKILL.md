@@ -10,21 +10,12 @@ description: >
 ## Terminology
 
 - **taskfile** — The plan/tracking file at `.hq/tasks/<branch>.md`. One per work branch.
-- **memory** — Lessons learned from past mistakes. Project-specific (`.hq/memory.md`) or global (`~/.hq/memory.md`).
 - **backlog** — Out-of-scope items captured during development, stored in `.hq/backlog/`.
 - **platform skill** — Platform-specific skill (`dev-<platform>/SKILL.md`) providing format, lint, and build instructions. Loaded by `/hq:dev` Step 2 via auto-detection or argument.
 
 ## MANDATORY: Before Implementation
 
 Complete ALL steps below before writing any implementation code. No exceptions.
-
-### Step 0: Load Memory
-
-Read and internalize past lessons before starting work.
-
-1. If `~/.hq/memory.md` exists → read it (global rules across all projects)
-2. If `.hq/memory.md` exists → read it (project-specific lessons)
-3. Keep these lessons in mind throughout the session — they represent mistakes already made and rules to prevent recurrence
 
 ### Step 1: Work Branch & Base Branch
 
@@ -123,7 +114,6 @@ After all Verification items pass and Results are filled in:
 - `/hq:code-review` — Self-review changes before creating a PR
 - `/hq:pr` — Create or update a GitHub PR for the current branch
 - `/hq:close` — Clean up completed taskfiles after merge
-- `/hq:memory` — Record a lesson from user feedback to memory
 
 ### Execution Principles
 
@@ -187,17 +177,6 @@ Detect the base branch for diffs, PRs, and reviews. Run at Step 1 or when the ta
 3. Save the result:
    - If `main` → silently write to `.hq/settings.json`
    - Otherwise → confirm with the user before saving
-
-## Memory
-
-- **`.hq/memory.md`** — Project-specific lessons (default save target)
-- **`~/.hq/memory.md`** — Global lessons (save when user says "global" or "cross-project")
-
-When the user corrects a mistake or points out a better approach:
-
-1. Fix the immediate issue first
-2. **Before moving on**, run `/hq:memory` to record the lesson
-3. Do NOT skip step 2 — this is as important as the fix itself
 
 ## Commit Message Format
 

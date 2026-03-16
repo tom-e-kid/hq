@@ -46,7 +46,6 @@ No direct references exist between skills — adding or removing a platform skil
 | `/hq:code-review`   | Review code changes on the current branch (includes security alert scan)          |
 | `/hq:accept-review` | Evaluate code review results, commit accepted fixes, and extract follow-up issues |
 | `/hq:estimate`      | Collect requirements and organize work item estimates with risks and blockers     |
-| `/hq:memory`        | Record a lesson learned to memory                                                 |
 | `/hq:close`         | Archive task files to `.hq/tasks/done/` and clean up branches                    |
 
 ### tools/ — HQ CLI
