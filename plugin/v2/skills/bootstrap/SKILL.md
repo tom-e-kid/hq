@@ -25,3 +25,9 @@ If it already exists, rename to `manifest.md.bak` (overwrite existing `.bak`), t
 **Target**: `<project_root>/.claude/rules/workflow.md`
 
 If it already exists, rename to `workflow.md.bak` (overwrite existing `.bak`), then copy [templates/workflow.md](templates/workflow.md). Report what was backed up.
+
+### 4. AGENTS.md
+
+**Target**: `<project_root>/AGENTS.md`
+
+If it already exists, skip and report. If not, copy [templates/agents-md.md](templates/agents-md.md). This provides code review and security scan instructions for non-Claude Code AI agents.
