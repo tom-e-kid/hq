@@ -1,6 +1,6 @@
 {
   "name": "hq",
-  "version": "1.0.0",
-  "skills": "./plugin/skills",
-  "commands": "./plugin/commands"
+  "version": "2.0.0",
+  "skills": "./plugin/v2/skills",
+  "commands": "./plugin/v2/commands"
 }
