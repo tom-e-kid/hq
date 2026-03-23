@@ -9,6 +9,16 @@ description: Verify web app features end-to-end using Playwright CLI against a l
 
 If `.hq/e2e-web.md` exists, its instructions take precedence over the defaults below (e.g., dev server command, DB preparation, test credentials, port). Apply overrides on top of this skill's base flow.
 
+If `.hq/e2e-web.md` does **not** exist, pause before starting and guide the user through setup:
+
+1. Show the template from [templates/e2e-web-overrides.md](templates/e2e-web-overrides.md) so the user knows what's needed
+2. Ask each section one at a time:
+   - **Dev server** — "How do you start the dev server? How do you specify a custom port?"
+   - **DB preparation** — "Is there a seed command for test data? (say 'none' if no DB)"
+   - **Authentication** — "What are the test credentials and login method? (say 'none' if public)"
+3. Create `.hq/e2e-web.md` with the answers, filling in the template
+4. Show the created file to the user for confirmation, then proceed
+
 ## Context
 
 - Project root: !`git rev-parse --show-toplevel`
