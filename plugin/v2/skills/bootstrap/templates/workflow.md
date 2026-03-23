@@ -27,17 +27,27 @@ Every taskfile must:
 
 The `source` line is the traceability anchor — it links taskfiles, commits, and PRs back to the originating requirement or issue.
 
-### Active Taskfile
+### Focus
 
-Track the currently active taskfile in project memory (`memory/active_taskfile.md`):
+**Focus** is a pointer to the taskfile currently driving work. It is stored in `memory/focus.md` and contains the taskfile path and source — not the task content itself.
 
-- **On start**: when beginning work on a taskfile, save its path and source to `active_taskfile.md`
-- **On status query**: when asked "what am I working on?" or similar, read `active_taskfile.md` → read the taskfile → report status
-- **On completion**: when a PR is created or all gates pass, remove `active_taskfile.md`
+- **On start**: save the taskfile path and source to `memory/focus.md`
+- **On status query**: read `memory/focus.md` → read the referenced taskfile → report status
+- **On completion**: when a PR is created or all gates pass, remove `memory/focus.md`
+
+### Focus Resolution
+
+When the user gives a vague instruction (e.g., "M9の作業", "the auth task", "issue 42"), resolve the focus by searching in order:
+
+1. **source match** — scan taskfile frontmatter/content for `source:` lines containing the keyword
+2. **filename match** — search taskfile names for the keyword (e.g., `m9-auth.md`)
+3. **content match** — grep taskfile bodies for the keyword
+
+If exactly one match: set focus automatically. If multiple matches: show candidates and ask the user to choose. If no match: ask the user to specify the taskfile path.
 
 ## Verification Pipeline
 
-Before checking taskfile gates or creating a PR, run the following skills in order. Each step must pass before proceeding to the next.
+Run the following skills when validating work on a branch — whether completing a taskfile, preparing a PR, or reviewing ad-hoc changes. Focus is not required; all skills operate on the git diff.
 
 1. `/security-scan` — security alert check → report to user, get confirmation (fast, fail-fast)
 2. `/code-review` — quality review → fix FB issues

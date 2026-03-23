@@ -46,7 +46,7 @@ Exclude from review:
 
 ### 3. Gather Review Context
 
-- **Active taskfile**: check `memory/active_taskfile.md` — if it exists, read the referenced taskfile to understand planned goals, approach, and gates
+- **Focus**: check `memory/focus.md` — if it exists, read the referenced taskfile to understand planned goals, approach, and gates
 - **Requirements**: if `docs/requirements.md` exists, use as reference
 - **Project overrides**: if `.hq/code-review.md` exists, apply its instructions
 
