@@ -35,7 +35,10 @@ Track the currently active taskfile in project memory (`memory/active_taskfile.m
 ## Feedback Loop
 
 Skills that perform verification or review may output feedback files (FB) to `.hq/<branch>/feedbacks/`.
-FB files must follow the format defined in [feedback.md](feedback.md) — frontmatter with `source` and `taskfile` fields ensures traceability back to the originating requirement.
+
+### FB Output Rules (for skills that generate FB files)
+
+**Directory** — branch name: replace `/` with `-` (e.g., `feat/m9-wiki` → `feat-m9-wiki`).
 
 ```
 .hq/<branch>/feedbacks/              # pending — files here need action
@@ -43,7 +46,11 @@ FB files must follow the format defined in [feedback.md](feedback.md) — frontm
 .hq/<branch>/feedbacks/screenshots/  # evidence (optional)
 ```
 
-After a skill run that produces FB files:
+**Numbering** — check existing files in `feedbacks/` and `feedbacks/done/` to determine the next number. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits).
+
+**Format** — FB files must follow [feedback.md](feedback.md). Frontmatter with `source` and `taskfile` fields ensures traceability back to the originating requirement.
+
+### FB Handling Rules (for the root agent after a skill run)
 
 - Read pending FB files and attempt to fix the issues
 - Run `format` and `build` commands after fixes
