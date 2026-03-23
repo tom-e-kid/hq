@@ -138,7 +138,7 @@ If all items pass, no FB files are generated.
 
 For each failed verification item, create a FB file following the workflow rules (directory, numbering, format).
 
-Additionally, capture a screenshot at the moment of failure and save to `.hq/<branch>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
+Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
 
 ## Rules
 

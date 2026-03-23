@@ -12,9 +12,9 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 ## Context
 
 - Branch: !`git rev-parse --abbrev-ref HEAD`
-- Base branch: !`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"`
-- Commits: !`base=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"); git log --oneline "$base"..HEAD`
-- Changed files: !`base=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"); git diff "$base"...HEAD --stat`
+- Base branch: !`cat .hq/settings.json 2>/dev/null | grep -o '"base_branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"base_branch"[[:space:]]*:[[:space:]]*"//;s/"//' | grep . || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"`
+- Commits: !`base=$(cat .hq/settings.json 2>/dev/null | grep -o '"base_branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"base_branch"[[:space:]]*:[[:space:]]*"//;s/"//' | grep . || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"); git log --oneline "$base"..HEAD`
+- Changed files: !`base=$(cat .hq/settings.json 2>/dev/null | grep -o '"base_branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"base_branch"[[:space:]]*:[[:space:]]*"//;s/"//' | grep . || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"); git diff "$base"...HEAD --stat`
 - Uncommitted changes: !`git status --short`
 - Existing PR: !`gh pr view --json url,state 2>/dev/null || echo "none"`
 

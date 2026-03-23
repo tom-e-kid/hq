@@ -3,6 +3,9 @@
 ## Branch Rules
 
 - **Never work directly on base branches** (`main`, `develop*`) — always create a feature branch
+- **Base branch resolution** (used by all skills): `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → `"main"`
+  - Most projects need no config — git remote HEAD detection works automatically
+  - Set `.hq/settings.json` `{ "base_branch": "<branch>" }` only when an explicit override is needed (e.g., worktree targeting `develop`)
 
 ## Before Commit
 
@@ -32,18 +35,28 @@ Track the currently active taskfile in project memory (`memory/active_taskfile.m
 - **On status query**: when asked "what am I working on?" or similar, read `active_taskfile.md` → read the taskfile → report status
 - **On completion**: when a PR is created or all gates pass, remove `active_taskfile.md`
 
+## Verification Pipeline
+
+Before checking taskfile gates or creating a PR, run the following skills in order. Each step must pass before proceeding to the next.
+
+1. `/security-scan` — security alert check → report to user, get confirmation (fast, fail-fast)
+2. `/code-review` — quality review → fix FB issues
+3. `/e2e-web` — end-to-end verification (if the project has a web app)
+
+If any step produces unresolved issues, do not skip ahead. Fix or get user confirmation before continuing.
+
 ## Feedback Loop
 
-Skills that perform verification or review may output feedback files (FB) to `.hq/<branch>/feedbacks/`.
+Skills that perform verification or review may output feedback files (FB) to `.hq/tasks/<branch>/feedbacks/`.
 
 ### FB Output Rules (for skills that generate FB files)
 
 **Directory** — branch name: replace `/` with `-` (e.g., `feat/m9-wiki` → `feat-m9-wiki`).
 
 ```
-.hq/<branch>/feedbacks/              # pending — files here need action
-.hq/<branch>/feedbacks/done/         # resolved
-.hq/<branch>/feedbacks/screenshots/  # evidence (optional)
+.hq/tasks/<branch>/feedbacks/              # pending — files here need action
+.hq/tasks/<branch>/feedbacks/done/         # resolved
+.hq/tasks/<branch>/feedbacks/screenshots/  # evidence (optional)
 ```
 
 **Numbering** — check existing files in `feedbacks/` and `feedbacks/done/` to determine the next number. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits).
