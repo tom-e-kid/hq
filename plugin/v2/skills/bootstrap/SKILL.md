@@ -8,15 +8,22 @@ Set up foundational project configuration. Run this once when initializing a new
 
 ## Tasks
 
-### 1. Manifest Rule
+For each task, check if the target file already exists. If yes, skip and report. If no, create it from the template.
 
-Place `.claude/rules/manifest.md` in the project root if it doesn't already exist.
+### 1. CLAUDE.md
 
-**Check**: Does `<project_root>/.claude/rules/manifest.md` exist?
+**Target**: `<project_root>/CLAUDE.md`
 
-- **If yes**: Skip. Report that manifest already exists.
-- **If no**: Copy [templates/manifest.md](templates/manifest.md) to `<project_root>/.claude/rules/manifest.md`.
+Copy [templates/claude-md.md](templates/claude-md.md) and fill in the placeholders based on the project's actual codebase (package.json, go.mod, Makefile, etc.).
 
-## Future Tasks
+### 2. Manifest Rule
 
-Additional bootstrap tasks will be added here as needed.
+**Target**: `<project_root>/.claude/rules/manifest.md`
+
+Copy [templates/manifest.md](templates/manifest.md) as-is.
+
+### 3. Workflow Rule
+
+**Target**: `<project_root>/.claude/rules/workflow.md`
+
+Copy [templates/workflow.md](templates/workflow.md) as-is.
