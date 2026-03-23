@@ -31,3 +31,9 @@ If it already exists, rename to `workflow.md.bak` (overwrite existing `.bak`), t
 **Target**: `<project_root>/AGENTS.md`
 
 If it already exists, skip and report. If not, copy [templates/agents-md.md](templates/agents-md.md). This provides code review and security scan instructions for non-Claude Code AI agents.
+
+### 5. .gitignore
+
+**Target**: `<project_root>/.gitignore`
+
+Ensure `.hq/` is listed in `.gitignore`. If the file doesn't exist, create it. If it exists but doesn't contain `.hq/`, append it. If already present, skip and report.
