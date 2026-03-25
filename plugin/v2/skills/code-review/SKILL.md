@@ -21,6 +21,7 @@ If `.hq/code-review.md` exists, its instructions take precedence over the defaul
 - Commits: run `git log --oneline <base-branch>..HEAD` using the Base branch above
 - Changed files: run `git diff <base-branch>...HEAD --stat` using the Base branch above
 - Uncommitted changes: !`git status --short`
+- Focus: !`cat memory/focus.md 2>/dev/null || echo "none"`
 
 ## Instructions
 
@@ -46,7 +47,7 @@ Exclude from review:
 
 ### 3. Gather Review Context
 
-- **Focus**: check `memory/focus.md` — if it exists, read the referenced taskfile to understand planned goals, approach, and gates
+- **Focus**: check `memory/focus.md` — if it exists, extract the `source` and `taskfile` fields from its frontmatter. Read the referenced taskfile to understand planned goals, approach, and gates. If no focus, check `.hq/tasks/<branch>/context.md` as fallback
 - **Requirements**: if `docs/requirements.md` exists, use as reference
 - **Project overrides**: if `.hq/code-review.md` exists, apply its instructions
 
@@ -58,7 +59,7 @@ Review the diff against the **Review Criteria** below.
 
 Report findings using the **Reporting Format** below.
 
-For each actionable issue, output an FB file following the workflow's FB Output Rules. Set `skill: /code-review` in the frontmatter.
+For each actionable issue, output an FB file following the workflow's FB Output Rules. Set `skill: /code-review` in the frontmatter. Set `source` and `taskfile` from `memory/focus.md` (fallback: `.hq/tasks/<branch>/context.md`).
 
 ---
 

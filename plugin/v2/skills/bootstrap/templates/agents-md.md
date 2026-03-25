@@ -33,7 +33,7 @@ Check existing files in `feedbacks/` and `feedbacks/done/` to determine the next
 
 ```markdown
 ---
-source: <origin of the work, e.g. docs/milestones.md#M9>
+source: <read from .hq/tasks/<branch>/context.md, e.g. docs/milestones.md#M9>
 agent: <agent name, e.g. copilot, cursor, codex>
 run_at: <ISO 8601 timestamp>
 ---

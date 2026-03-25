@@ -16,6 +16,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 - Commits: run `git log --oneline <base-branch>..HEAD` using the Base branch above
 - Changed files: run `git diff <base-branch>...HEAD --stat` using the Base branch above
 - Uncommitted changes: !`git status --short`
+- Focus: !`cat memory/focus.md 2>/dev/null || echo "none"`
 - Existing PR: !`gh pr view --json url,state 2>/dev/null || echo "none"`
 
 ## Instructions
@@ -28,11 +29,10 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 2. **Push the branch** if it hasn't been pushed yet:
    - `git push -u origin HEAD`
 
-3. **Resolve source** — find the `source` line that traces this work back to its origin:
-   - Search session context for any taskfile that was referenced (plan files, task descriptions)
-   - If a taskfile has a `source:` frontmatter or line, use it (e.g., `docs/milestones.md#M9`)
-   - If working from a GitHub issue, use `github-issue#<number>`
-   - If the source is unclear, ask the user
+3. **Resolve source** — read the `source` field from `memory/focus.md`:
+   - If focus exists and has a `source:` field, use it
+   - If no focus, check `.hq/tasks/<branch>/context.md` (branch name: replace `/` with `-`)
+   - If neither exists, ask the user
 
 4. **Draft the PR** based on the context above AND session context (what you know about why these changes were made):
    - **Title**: concise, under 70 characters

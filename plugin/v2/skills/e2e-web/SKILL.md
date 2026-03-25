@@ -24,6 +24,7 @@ If `.hq/e2e-web.md` does **not** exist, pause before starting and guide the user
 - Project root: !`git rev-parse --show-toplevel`
 - Current branch: !`git rev-parse --abbrev-ref HEAD`
 - Recently edited files: !`git diff --name-only HEAD~3 2>/dev/null | head -20`
+- Focus: !`cat memory/focus.md 2>/dev/null || echo "none"`
 
 ## Determine Target App
 
@@ -111,7 +112,7 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active taskfile** — if a taskfile is active, read its Verification section and use the unchecked items as the checklist
+1. **Active taskfile** — if `memory/focus.md` exists, read the referenced taskfile's Verification section and use the unchecked items as the checklist
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
 
@@ -136,7 +137,7 @@ If all items pass, no FB files are generated.
 
 ## Feedback Output
 
-For each failed verification item, create a FB file following the workflow rules (directory, numbering, format).
+For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `taskfile` from `memory/focus.md` (fallback: `.hq/tasks/<branch>/context.md`).
 
 Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
 

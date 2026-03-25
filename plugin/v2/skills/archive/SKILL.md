@@ -19,7 +19,7 @@ allowed-tools: Read, Glob, Bash(mv *), Bash(rm *), Bash(ls *), Bash(mkdir *), Wr
 
 If `memory/focus.md` exists:
 
-1. Show the focus info (taskfile path, source)
+1. Read `memory/focus.md` frontmatter and show the `taskfile` and `source` fields
 2. Determine the corresponding task folder in `.hq/tasks/` from the branch name
 3. Ask the user:
    - **"Archive"** — move `.hq/tasks/<branch>/` to `.hq/tasks/done/<branch>/`
