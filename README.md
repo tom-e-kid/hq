@@ -10,9 +10,35 @@ Each project runs Claude Code with the HQ plugin (dev skills & commands), while 
 
 ### plugin/ — Claude Code Plugin
 
-A Claude Code plugin that provides skills and commands for HQ operations.
+A Claude Code plugin that provides skills and commands for AI-assisted development workflows. Two versions coexist under `plugin/v1/` and `plugin/v2/`.
 
-#### dev workflow architecture
+#### v2 (active)
+
+Skills-only architecture. Commands are removed — each skill is loaded into context as needed. Core design principle: **source traceability** via `memory/focus.md` as the single authority for "what I'm working on and why."
+
+**Skills:**
+
+| Skill              | Description                                                                    |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `bootstrap`        | Initialize a project (CLAUDE.md, rules, AGENTS.md, .gitignore)                |
+| `pr`               | Create a pull request with source traceability footer                          |
+| `code-review`      | Review code changes — outputs FB (feedback) files, does not modify code        |
+| `security-scan`    | Detect security-sensitive patterns — detection only, no fixes                  |
+| `archive`          | Archive completed task artifacts to `.hq/tasks/done/`                          |
+| `xcodebuild-config`| Interactive xcodebuild configuration (project, scheme, device, OS)             |
+| `e2e-web`          | End-to-end web verification via Playwright CLI                                 |
+
+**Key differences from v1:**
+
+- No commands — pure skill composition
+- `memory/focus.md` replaces taskfile-centric traceability
+- Code review produces FB files instead of direct code modifications
+- Per-project overrides via `.hq/<skill>.md` files
+- Separate `security-scan` skill (was part of `reviewer` in v1)
+
+#### v1 (legacy — frozen)
+
+Command-driven workflow with orchestration layer. Do not modify.
 
 The `/hq:dev` command acts as an orchestration layer, composing independent skills:
 
