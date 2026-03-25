@@ -16,9 +16,9 @@ If `.hq/security-scan.md` exists, its instructions take precedence over the defa
 
 - Project root: !`git rev-parse --show-toplevel`
 - Current branch: !`git rev-parse --abbrev-ref HEAD`
-- Base branch: !`cat .hq/settings.json 2>/dev/null | grep -o '"base_branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"base_branch"[[:space:]]*:[[:space:]]*"//;s/"//' | grep . || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"`
-- Commits: !`base=$(cat .hq/settings.json 2>/dev/null | grep -o '"base_branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"base_branch"[[:space:]]*:[[:space:]]*"//;s/"//' | grep . || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"); git log --oneline "$base"..HEAD 2>/dev/null`
-- Changed files: !`base=$(cat .hq/settings.json 2>/dev/null | grep -o '"base_branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"base_branch"[[:space:]]*:[[:space:]]*"//;s/"//' | grep . || git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "main"); git diff "$base"...HEAD --stat 2>/dev/null`
+- Base branch: resolve by reading `.hq/settings.json` field `base_branch`, or `git symbolic-ref refs/remotes/origin/HEAD`, or default `main`
+- Commits: run `git log --oneline <base-branch>..HEAD` using the Base branch above
+- Changed files: run `git diff <base-branch>...HEAD --stat` using the Base branch above
 
 ## Instructions
 
