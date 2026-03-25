@@ -13,6 +13,13 @@ A development hub for AI-assisted workflows across multiple projects.
 - `mise run build` — Build `tools/cli` binary to `tools/bin/hq`
 - `mise run install` — Build and install to `~/.local/bin/hq`
 
+## Plugin Development
+
+- Active version: **v2** (`plugin/v2/`)
+- `plugin/v1/` is legacy — do not modify
+- Core principle: **source traceability** — every artifact (taskfile, FB, PR) must trace back to its origin via a `source` field. Work without a traceable source is not allowed.
+- **Focus** (`memory/focus.md`) is the single authority for "what I'm working on and why." All skills read from here. This ensures traceability survives session clears.
+
 ## Language Policy
 
 - Agent instructions (CLAUDE.md, rules, skills, commands): English
