@@ -59,11 +59,31 @@ If exactly one match: set focus automatically. If multiple matches: show candida
 
 ## Verification Pipeline
 
-Run the following skills when validating work on a branch — whether completing a taskfile, preparing a PR, or reviewing ad-hoc changes. Focus is not required; all skills operate on the git diff.
+Run the following checks when validating work on a branch — whether completing a taskfile, preparing a PR, or reviewing ad-hoc changes. Focus is not required; all checks operate on the git diff.
 
-1. `/security-scan` — security alert check → report to user, get confirmation (fast, fail-fast)
-2. `/code-review` — quality review → fix FB issues
-3. `/e2e-web` — end-to-end verification (if the project has a web app)
+### Step 1: Static Analysis (parallel)
+
+Launch `security-scanner` and `code-reviewer` agents **simultaneously** via the Agent tool. Both run autonomously and return summaries with report/FB file paths.
+
+- **security-scanner** — security alert detection → report file
+- **code-reviewer** — quality review → report + FB files
+
+Wait for both agents to complete before proceeding.
+
+### Step 2: Fix FB Issues
+
+Read pending FB files from both agents. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules below.
+
+### Step 3: E2E Verification (interactive)
+
+If the project has a web app, run `/e2e-web` as a skill (interactive — requires user input for setup, login, and verification targets).
+
+### Fallback: Interactive Mode
+
+If you need fine-grained control or mid-scan user interaction, use the skills directly instead of agents:
+
+1. `/security-scan` — pauses on credential detection for user confirmation
+2. `/code-review` — warns about uncommitted changes
 
 If any step produces unresolved issues, do not skip ahead. Fix or get user confirmation before continuing.
 

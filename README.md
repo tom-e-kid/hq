@@ -14,27 +14,37 @@ A Claude Code plugin that provides skills and commands for AI-assisted developme
 
 #### v2 (active)
 
-Skills-only architecture. Commands are removed — each skill is loaded into context as needed. Core design principle: **source traceability** via `memory/focus.md` as the single authority for "what I'm working on and why."
+Skills + agents architecture. Skills define pure analysis criteria, agents handle autonomous workflow execution. Core design principle: **source traceability** via `memory/focus.md` as the single authority for "what I'm working on and why."
 
-**Skills:**
+**Skills** (analysis criteria — invoked via `/skill-name`):
 
 | Skill              | Description                                                                    |
 | ------------------ | ------------------------------------------------------------------------------ |
 | `bootstrap`        | Initialize a project (CLAUDE.md, rules, AGENTS.md, .gitignore)                |
 | `pr`               | Create a pull request with source traceability footer                          |
-| `code-review`      | Review code changes — outputs FB (feedback) files, does not modify code        |
-| `security-scan`    | Detect security-sensitive patterns — detection only, no fixes                  |
+| `code-review`      | Code review criteria — readability, correctness, performance, security         |
+| `security-scan`    | Security scan criteria — credentials, external comms, dynamic code, etc.       |
 | `archive`          | Archive completed task artifacts to `.hq/tasks/done/`                          |
 | `xcodebuild-config`| Interactive xcodebuild configuration (project, scheme, device, OS)             |
 | `e2e-web`          | End-to-end web verification via Playwright CLI                                 |
 
+**Agents** (autonomous execution — launched via Agent tool):
+
+| Agent              | Description                                                                    |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `code-reviewer`    | Autonomous code review — reads `code-review` skill criteria, outputs report + FB files to `.hq/tasks/` |
+| `security-scanner` | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` |
+
+Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. Both agents can run **in parallel** and in the **background**.
+
 **Key differences from v1:**
 
-- No commands — pure skill composition
+- Skills define criteria, agents handle workflow execution
 - `memory/focus.md` replaces taskfile-centric traceability
 - Code review produces FB files instead of direct code modifications
 - Per-project overrides via `.hq/<skill>.md` files
 - Separate `security-scan` skill (was part of `reviewer` in v1)
+- `code-reviewer` and `security-scanner` agents enable parallel verification
 
 #### v1 (legacy — frozen)
 
