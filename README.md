@@ -27,6 +27,8 @@ Skills + agents architecture. Skills define pure analysis criteria, agents handl
 | `archive`          | Archive completed task artifacts to `.hq/tasks/done/`                          |
 | `xcodebuild-config`| Interactive xcodebuild configuration (project, scheme, device, OS)             |
 | `e2e-web`          | End-to-end web verification via Playwright CLI                                 |
+| `worktree-setup`   | Create a new git worktree with local file setup (.env, .claude, .hq configs)   |
+| `worktree-rebase`  | Sync worktree base branch with upstream and rebase working branch              |
 
 **Agents** (autonomous execution — launched via Agent tool):
 
