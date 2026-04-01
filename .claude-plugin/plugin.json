@@ -5,6 +5,5 @@
     "./plugin/v2/agents/code-reviewer.md",
     "./plugin/v2/agents/security-scanner.md"
   ],
-  "skills": "./plugin/v2/skills",
-  "commands": "./plugin/v2/commands"
+  "skills": "./plugin/v2/skills"
 }
