@@ -22,11 +22,11 @@ Every taskfile must:
 - Define **gates** (clear completion criteria) — a taskfile is complete only when all gates pass
 - Before checking gates, run `/simplify` to eliminate redundant or unnecessary code
 
-A taskfile _should_ include a `source` line (`source: <source>#<identifier>`) when practical, but the authoritative source is always `memory/focus.md` — not the taskfile itself.
+A taskfile _should_ include a `source` line (`source: <source>#<identifier>`) when practical, but the authoritative source is always `focus.md` in your Claude Code memory directory — not the taskfile itself.
 
 ### Focus
 
-**Focus** is a pointer to the taskfile currently driving work. It is stored in `memory/focus.md`.
+**Focus** is a pointer to the taskfile currently driving work. It is stored in `focus.md` within your Claude Code memory directory.
 
 **Format** (frontmatter YAML — no free-text body):
 
@@ -42,9 +42,9 @@ source: <origin>#<identifier>
 
 **Lifecycle**:
 
-- **On start**: save `taskfile` and `source` to `memory/focus.md`. Also write the same values to `.hq/tasks/<branch>/context.md` as a persistent backup (branch name: replace `/` with `-`).
-- **On status query**: read `memory/focus.md` → read the referenced taskfile → report status.
-- **On completion**: when a PR is created or all gates pass, remove `memory/focus.md`. The `context.md` backup is left in place — it travels with the task folder.
+- **On start**: save `taskfile` and `source` to `focus.md` in your Claude Code memory directory. Also write the same values to `.hq/tasks/<branch>/context.md` as a persistent backup (branch name: replace `/` with `-`).
+- **On status query**: read `focus.md` from your Claude Code memory directory → read the referenced taskfile → report status.
+- **On completion**: when a PR is created or all gates pass, remove `focus.md` from your Claude Code memory directory. The `context.md` backup is left in place — it travels with the task folder.
 
 ### Focus Resolution
 
@@ -103,7 +103,7 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 
 **Numbering** — check existing files in `feedbacks/` and `feedbacks/done/` to determine the next number. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits).
 
-**Format** — FB files must follow [feedback.md](feedback.md). Read `source` and `taskfile` values from `memory/focus.md` (fallback: `.hq/tasks/<branch>/context.md`) for the frontmatter fields.
+**Format** — FB files must follow [feedback.md](feedback.md). Read `source` and `taskfile` values from `focus.md` in your Claude Code memory directory (fallback: `.hq/tasks/<branch>/context.md`) for the frontmatter fields.
 
 ### FB Handling Rules (for the root agent after a skill run)
 

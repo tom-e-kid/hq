@@ -1,6 +1,9 @@
 {
   "name": "hq",
   "version": "2.0.0",
+  "commands": [
+    "./plugin/v2/commands/goahead.md"
+  ],
   "agents": [
     "./plugin/v2/agents/code-reviewer.md",
     "./plugin/v2/agents/security-scanner.md"
