@@ -4,8 +4,9 @@ A development hub for AI-assisted workflows across multiple projects.
 
 ## Repository Overview
 
-- **db/** — Data directory (monthly logs, project info, knowledge base, inbox). Not included in this repo; location is configured via `~/.hq/settings.json` (`data_dir`)
-- **plugin/** — Claude Code plugin (skills, commands)
+- **.claude-plugin/** — Plugin manifest (`plugin.json`): defines commands, agents, and skills paths
+- **plugin/v2/** — Active plugin version (commands, agents, skills)
+- **plugin/v1/** — Legacy — do not modify
 - **tools/** — CLI tools (Go binary)
 
 ## Building Tools
@@ -15,13 +16,10 @@ A development hub for AI-assisted workflows across multiple projects.
 
 ## Plugin Development
 
-- Active version: **v2** (`plugin/v2/`)
-- `plugin/v1/` is legacy — do not modify
-- Core principle: **source traceability** — every artifact (taskfile, FB, PR) must trace back to its origin via a `source` field. Work without a traceable source is not allowed.
-- **Focus** (`memory/focus.md`) is the single authority for "what I'm working on and why." All skills read from here. This ensures traceability survives session clears.
+- For plugin structure (plugin.json, commands, agents, skills, hooks), always refer to the official Claude Code documentation: https://docs.anthropic.com/en/docs/claude-code/plugins
 
 ## Language Policy
 
 - Agent instructions (CLAUDE.md, rules, skills, commands): English
-- User-facing documents (db/ contents): Japanese
-- Session conversation: match the user's language
+- User-facing documents: follow the user's language
+- Session conversation: follow the user's language
