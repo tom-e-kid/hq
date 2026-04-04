@@ -60,18 +60,18 @@ All work is tracked through GitHub Issues and PRs. The plugin uses three issue t
 ```
 Milestone (optional grouping)
   └── hq:task  — requirement
-        └── hq:plan  — implementation plan
+        └── hq:plan  — implementation plan (sub-issue of hq:task)
               ├── ← Closes → PR
-              └── hq:feedback(s)  — unresolved problems
+              └── hq:feedback(s)  — unresolved problems (standalone, Refs #plan)
 ```
 
 **How it works:**
 
 1. Create an `hq:task` issue describing the requirement
-2. Create an `hq:plan` issue with the implementation plan (references the `hq:task` via `Parent: #N`)
+2. Create an `hq:plan` issue with the implementation plan, then register it as a **sub-issue** of the parent `hq:task` (GitHub sub-issues API)
 3. Work on a feature branch. `focus.md` in Claude Code memory points to the active `hq:plan` issue number
 4. PR uses `Closes #<hq:plan>` (auto-closes on merge) and `Refs #<hq:task>` (cross-reference)
-5. Unresolved review findings can be escalated to `hq:feedback` issues
+5. Unresolved review findings can be escalated to `hq:feedback` issues (standalone issues with `Refs #<plan>` for traceability)
 
 **Recommended `hq:plan` issue body structure:**
 

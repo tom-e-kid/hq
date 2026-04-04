@@ -22,11 +22,16 @@ You are now in **execution mode**. Your job is to carry out the planned work —
 
 Check the following sources in order and use the **first match**:
 
-1. **Plan mode** — if you are currently in plan mode (or have an active plan in this session), that plan is your execution target. Before executing, offer to create an `hq:plan` issue from it: "Create an `hq:plan` issue from this plan before executing?" If yes, create the issue with `gh issue create --title "<title>" --body "<plan content>" --label "hq:plan"` and capture the issue number. When the source `hq:task` issue has a milestone, add `--milestone "<milestone>"` to inherit it. If no, proceed without GitHub tracking.
+1. **Plan mode** — if you are currently in plan mode (or have an active plan in this session), that plan is your execution target. Before executing, offer to create an `hq:plan` issue from it: "Create an `hq:plan` issue from this plan before executing?" If yes, create the issue with `gh issue create --title "<title>" --body "<plan content>" --label "hq:plan"` and capture the issue number. When the source `hq:task` issue has a milestone, add `--milestone "<milestone>"` to inherit it. Then register the new `hq:plan` as a sub-issue of the source `hq:task`:
+   ```
+   PLAN_ID=$(gh api /repos/{owner}/{repo}/issues/<plan> --jq '.id')
+   gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_issue_id="$PLAN_ID"
+   ```
+   If no, proceed without GitHub tracking.
 2. **Focus** — read `focus.md` from your Claude Code memory directory. If it exists, extract the `plan` field (a GitHub issue number). Run `gh issue view <plan> --json body --jq '.body'` to fetch the plan. That issue body is your execution target.
 3. **Argument** — if `$ARGUMENTS` is provided:
    - If it is a number, treat it as an `hq:plan` issue number and fetch with `gh issue view`
-   - If it is a file path, read the local file and offer to create an `hq:plan` issue from its contents
+   - If it is a file path, read the local file and offer to create an `hq:plan` issue from its contents. If created, register it as a sub-issue of the source `hq:task` (same as Step 1)
 4. **No source found** — if none of the above yields a plan, ask the user what to work on. Do NOT proceed without a clear target.
 
 ### Step 2: Read the workflow rule

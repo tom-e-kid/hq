@@ -36,6 +36,7 @@ Milestone (GitHub built-in, optional)
 ```
 
 - `hq:task` and `hq:plan` are separate issues (separation of concerns)
+- `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API)
 - PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
 - PR uses `Refs #<hq:task>` to maintain a link to the requirement
 - Labels are created lazily at first use: `gh label create "hq:plan" --description "HQ implementation plan" 2>/dev/null || true`
@@ -64,6 +65,13 @@ Parent: #<hq:task issue number>
 - `## Gates` — completion criteria. Checkboxes show progress in the GitHub UI
 - `## Verification` — items for E2E testing. The `e2e-web` skill parses this section
 - This structure is **recommended, not enforced**. How you create the plan is up to you — what matters is that it lives in a GitHub Issue labeled `hq:plan`
+
+After creating an `hq:plan` issue, register it as a sub-issue of the parent `hq:task`:
+
+```bash
+PLAN_ID=$(gh api /repos/{owner}/{repo}/issues/<plan> --jq '.id')
+gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_issue_id="$PLAN_ID"
+```
 
 Every `hq:plan` must:
 
