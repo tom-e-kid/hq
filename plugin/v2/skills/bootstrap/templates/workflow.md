@@ -153,11 +153,11 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 
 ### FB Handling Rules (for the root agent after a skill run)
 
-- Read pending FB files and attempt to fix the issues
+- Read pending FB files and assess each: fix only those that are clearly actionable (bugs, typos, logic errors). Leave design-level or scope-ambiguous FBs as-is for user judgment.
 - Run `format` and `build` commands after fixes
-- Re-run the originating skill to verify the fix
+- Re-run the originating skill (full review) to verify fixes and catch regressions
 - When an FB item is resolved, move its file to `feedbacks/done/`
-- Maximum **2 fix attempts** per FB item — if still failing, report to the user
+- Maximum **2 rounds** of the fix → re-verify cycle. After 2 rounds, report all remaining FBs to the user.
 - Do not modify or delete FB files — only move resolved ones to `done/`
 
 ### FB Escalation to `hq:feedback`
