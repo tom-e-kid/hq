@@ -63,16 +63,18 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 
 6. **Show the draft** to the user and ask for confirmation before creating.
 
-7. **Create the PR**:
+7. **Resolve milestone** — check the source `hq:task` issue for a milestone: `gh issue view <source> --json milestone --jq '.milestone.title'`. If one exists, include `--milestone "<milestone>"` when creating the PR.
+
+8. **Create the PR**:
 
    ```
    gh pr create --title "<title>" --body "$(cat <<'EOF'
    <body>
    EOF
-   )"
+   )" --milestone "<milestone if exists>"
    ```
 
-8. **Return the PR URL**.
+9. **Return the PR URL**.
 
 ## Rules
 
@@ -80,6 +82,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 - **Always explain WHY** — not just what was changed, but the motivation and reasoning behind the implementation decisions.
 - **Write for newcomers** — assume the reader is joining the project for the first time. Provide enough context so the PR is self-explanatory.
 - The `Closes #` and `Refs #` lines are required. If no issue numbers can be determined, ask the user before proceeding.
+- If the source `hq:task` issue has a milestone, the PR must inherit it. `hq:feedback` issues do NOT inherit milestones.
 - Match the language and tone of existing PRs in this repo.
 - Do NOT fabricate changes not present in the diff.
 - Keep the summary focused — details go in the Changes section.

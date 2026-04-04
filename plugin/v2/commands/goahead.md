@@ -22,7 +22,7 @@ You are now in **execution mode**. Your job is to carry out the planned work —
 
 Check the following sources in order and use the **first match**:
 
-1. **Plan mode** — if you are currently in plan mode (or have an active plan in this session), that plan is your execution target. Before executing, offer to create an `hq:plan` issue from it: "Create an `hq:plan` issue from this plan before executing?" If yes, run `gh issue create --title "<title>" --body "<plan content>" --label "hq:plan"` and capture the issue number. If no, proceed without GitHub tracking.
+1. **Plan mode** — if you are currently in plan mode (or have an active plan in this session), that plan is your execution target. Before executing, offer to create an `hq:plan` issue from it: "Create an `hq:plan` issue from this plan before executing?" If yes, create the issue with `gh issue create --title "<title>" --body "<plan content>" --label "hq:plan"` and capture the issue number. When the source `hq:task` issue has a milestone, add `--milestone "<milestone>"` to inherit it. If no, proceed without GitHub tracking.
 2. **Focus** — read `focus.md` from your Claude Code memory directory. If it exists, extract the `plan` field (a GitHub issue number). Run `gh issue view <plan> --json body --jq '.body'` to fetch the plan. That issue body is your execution target.
 3. **Argument** — if `$ARGUMENTS` is provided:
    - If it is a number, treat it as an `hq:plan` issue number and fetch with `gh issue view`
