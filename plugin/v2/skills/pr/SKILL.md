@@ -12,11 +12,11 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 ## Context
 
 - Branch: !`git rev-parse --abbrev-ref HEAD`
-- Base branch: resolve by reading `.hq/settings.json` field `base_branch`, or `git symbolic-ref refs/remotes/origin/HEAD`, or default `main`
+- Base branch: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
 - Commits: run `git log --oneline <base-branch>..HEAD` using the Base branch above
 - Changed files: run `git diff <base-branch>...HEAD --stat` using the Base branch above
 - Uncommitted changes: !`git status --short`
-- Focus: !`"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md`
+- Focus: !`cat "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory/focus.md" 2>/dev/null || echo "none"`
 - Existing PR: !`gh pr view --json url,state 2>/dev/null || echo "none"`
 
 ## Instructions
@@ -29,10 +29,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 2. **Push the branch** if it hasn't been pushed yet:
    - `git push -u origin HEAD`
 
-3. **Resolve traceability** — read `focus.md` from your Claude Code memory directory:
-   - If focus exists, extract `plan` and `source` fields (both are GitHub issue numbers)
-   - If no focus, check `.hq/tasks/<branch>/context.md` (branch name: replace `/` with `-`)
-   - If neither exists, ask the user for the `hq:plan` and `hq:task` issue numbers
+3. **Resolve traceability** — read `focus.md` from Claude Code memory directory. Extract `plan` and `source` (GitHub issue numbers). Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). If neither exists, ask the user for the `hq:plan` and `hq:task` issue numbers.
 
 4. **Escalate unresolved FB** — check `.hq/tasks/<branch>/feedbacks/` for pending FB files (not in `done/`):
    - If unresolved FBs exist, show the list to the user

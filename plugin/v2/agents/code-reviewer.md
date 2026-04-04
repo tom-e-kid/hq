@@ -34,8 +34,6 @@ You are a code review agent. Review code changes on the current branch against t
 Read the skill file for review criteria and reporting format:
 `${CLAUDE_PLUGIN_ROOT}/skills/code-review/SKILL.md`
 
-If the path is not resolved, search with Glob: `**/skills/code-review/SKILL.md`
-
 From the skill file, extract and follow:
 - **Review Criteria** — what to check (readability, correctness, performance, security)
 - **Fix Policy** — issues are reported, not fixed directly
@@ -47,10 +45,11 @@ From the skill file, extract and follow:
 
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
-3. **Base branch**: read `.hq/settings.json` field `base_branch`, or `git symbolic-ref refs/remotes/origin/HEAD`, or default `main`
-4. **Focus**: run `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md` — if it returns content other than "none", extract `plan` and `source` fields (both are GitHub issue numbers). Run `gh issue view <plan> --json body --jq '.body'` to fetch the `hq:plan` issue body and understand planned goals, approach, and gates.
-   - Fallback: `.hq/tasks/<branch>/context.md`
-5. **Requirements**: if `docs/requirements.md` exists, use as reference
+3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
+4. **Memory path**: !`echo "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory"`
+5. **Focus**: Read `<memory-path>/focus.md` (from step 4) using the Read tool. If file not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers). Fetch plan: `gh issue view <plan> --json body --jq '.body'`
+   - Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`)
+6. **Requirements**: if `docs/requirements.md` exists, use as reference
 
 ## Execution Flow
 
@@ -75,7 +74,7 @@ From the skill file, extract and follow:
 You MUST save all output files to disk before returning. This is not optional.
 
 ### Report
-1. Resolve branch name for path: replace `/` with `-` (e.g., `feat/auth` → `feat-auth`)
+1. Branch path: replace `/` with `-` in branch name (e.g., `feat/auth` → `feat-auth`)
 2. Create directory if needed: `.hq/tasks/<branch>/reports/`
 3. Write the full review report to `.hq/tasks/<branch>/reports/code-review-<YYYY-MM-DD-HHMM>.md`
 
@@ -85,7 +84,7 @@ You MUST save all output files to disk before returning. This is not optional.
 6. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits)
 7. Set frontmatter fields:
    - `skill: /code-review`
-   - `source` and `plan` from `focus.md` in Claude Code memory (fallback: `.hq/tasks/<branch>/context.md`). Resolve via: `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md`
+   - `source` and `plan`: from focus (step 5)
 
 Use the Write tool for every file — do not just return text.
 

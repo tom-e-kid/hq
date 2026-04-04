@@ -24,7 +24,7 @@ If `.hq/e2e-web.md` does **not** exist, pause before starting and guide the user
 - Project root: !`git rev-parse --show-toplevel`
 - Current branch: !`git rev-parse --abbrev-ref HEAD`
 - Recently edited files: !`git diff --name-only HEAD~3 2>/dev/null | head -20`
-- Focus: !`"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md`
+- Focus: !`cat "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory/focus.md" 2>/dev/null || echo "none"`
 
 ## Determine Target App
 
@@ -112,7 +112,7 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active `hq:plan`** — if `focus.md` exists in your Claude Code memory directory, extract the `plan` field (a GitHub issue number) and run `gh issue view <plan> --json body --jq '.body'` to fetch the `hq:plan` issue body. Parse the `## Verification` section and use the unchecked items as the checklist
+1. **Active `hq:plan`** — read `focus.md` from Claude Code memory directory. Extract `plan` (GitHub issue number). Fetch plan: `gh issue view <plan> --json body --jq '.body'`. Parse the `## Verification` section and use the unchecked items as the checklist
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
 
@@ -137,7 +137,7 @@ If all items pass, no FB files are generated.
 
 ## Feedback Output
 
-For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `focus.md` in your Claude Code memory directory (fallback: `.hq/tasks/<branch>/context.md`).
+For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `focus.md` in Claude Code memory directory. Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`).
 
 Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
 

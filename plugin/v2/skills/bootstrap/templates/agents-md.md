@@ -35,18 +35,20 @@ Check existing files in `feedbacks/` and `feedbacks/done/` to determine the next
 ---
 source: <hq:task issue number, read from .hq/tasks/<branch>/context.md, e.g. 42>
 plan: <hq:plan issue number, read from .hq/tasks/<branch>/context.md, e.g. 123>
-agent: <agent name, e.g. copilot, cursor, codex>
+skill: <agent name, e.g. copilot, cursor, codex>
 run_at: <ISO 8601 timestamp>
 ---
 
 # <concise description of the issue>
 
-- **File**: <target file and line number>
+- **File**: <target file and line number, if applicable>
 - **Severity**: Critical / High / Medium / Low
-- **Description**: <what is wrong>
+- **Description**: <what is wrong or what failed>
 - **Impact**: <why it matters>
-- **Expected**: <what the code should do>
-- **Actual**: <what the code currently does or risks>
+- **Expected**: <what should have happened>
+- **Actual**: <what actually happened>
+- **Evidence**: <path to screenshot or log, if available — omit if none>
+- **Hint**: <suspected code location or fix direction — omit if unknown>
 ```
 
 One FB file per issue. Do not bundle multiple issues into one file.

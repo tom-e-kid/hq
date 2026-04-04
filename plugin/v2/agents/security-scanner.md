@@ -33,8 +33,6 @@ You are a security scanner agent. Scan code changes on the current branch for se
 Read the skill file for scan criteria and reporting format:
 `${CLAUDE_PLUGIN_ROOT}/skills/security-scan/SKILL.md`
 
-If the path is not resolved, search with Glob: `**/skills/security-scan/SKILL.md`
-
 From the skill file, extract and follow:
 - **Alert Policy** — categories and patterns to detect
 - **Scan Rules** — how to apply the policy
@@ -46,8 +44,10 @@ From the skill file, extract and follow:
 
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
-3. **Base branch**: read `.hq/settings.json` field `base_branch`, or `git symbolic-ref refs/remotes/origin/HEAD`, or default `main`
-4. **Focus**: run `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md` — if it returns content other than "none", extract `plan` and `source` fields (both are GitHub issue numbers) for traceability in output files
+3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
+4. **Memory path**: !`echo "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory"`
+5. **Focus**: Read `<memory-path>/focus.md` (from step 4) using the Read tool. If file not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers) for traceability
+   - Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`)
 
 ## Execution Flow
 
@@ -68,7 +68,7 @@ From the skill file, extract and follow:
 
 You MUST save the report to disk before returning. This is not optional.
 
-1. Resolve branch name for path: replace `/` with `-` (e.g., `feat/auth` → `feat-auth`)
+1. Branch path: replace `/` with `-` in branch name (e.g., `feat/auth` → `feat-auth`)
 2. Create directory if needed: `.hq/tasks/<branch>/reports/`
 3. Write the full report to `.hq/tasks/<branch>/reports/security-scan-<YYYY-MM-DD-HHMM>.md`
 4. Use the Write tool to save the file — do not just return text

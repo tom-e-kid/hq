@@ -1,6 +1,6 @@
 ---
 name: worktree-setup
-description: 新規worktreeを作成し、ローカルファイルをセットアップする
+description: Create a new worktree and set up local files
 allowed-tools: Bash(bash *scripts/worktree-setup.sh*)
 ---
 
@@ -12,34 +12,34 @@ allowed-tools: Bash(bash *scripts/worktree-setup.sh*)
 
 ## Instructions
 
-ユーザの要求からブランチ名を特定し、[scripts/worktree-setup.sh](scripts/worktree-setup.sh) を実行する。
+Determine the branch name from the user's request and run [scripts/worktree-setup.sh](scripts/worktree-setup.sh).
 
-### 新規ブランチでworktreeを作成
+### Create worktree with a new branch
 
 ```bash
 bash "${CLAUDE_SKILL_DIR}/scripts/worktree-setup.sh" <base-branch> --branch <new-branch>
 ```
 
-### 既存ブランチでworktreeを作成
+### Create worktree with an existing branch
 
 ```bash
 bash "${CLAUDE_SKILL_DIR}/scripts/worktree-setup.sh" <base-branch>
 ```
 
-### 引数の解決ルール
+### Branch resolution rules
 
-ユーザがブランチ名だけ伝えた場合:
-1. そのブランチがローカルまたはリモートに存在するか確認
-2. 存在する → 既存ブランチとして `<base-branch>` に使用
-3. 存在しない → 新規ブランチ名と解釈し、ベースブランチをユーザに確認（デフォルト: リモートHEADブランチ）
+When the user provides only a branch name:
+1. Check if the branch exists locally or on the remote
+2. Exists → use it as `<base-branch>` (existing branch mode)
+3. Does not exist → treat it as a new branch name and ask the user for the base branch (default: remote HEAD branch)
 
-### スクリプト完了後
+### After script completion
 
-`.claude/settings.local.json` について案内する:
-- メインリポに `.claude/settings.local.json` が存在する場合、その内容を参考に新worktree用の設定が必要か確認する
-- 絶対パスが含まれるため自動コピーは行わない。ユーザの判断を仰ぐ
+Guide the user regarding `.claude/settings.local.json`:
+- If `.claude/settings.local.json` exists in the main repo, check whether similar settings are needed for the new worktree
+- Do not auto-copy because it may contain absolute paths. Ask the user to decide
 
-## エラー時
+## Error Handling
 
-- worktreeディレクトリが既に存在: スクリプトが中断する
-- ブランチがローカル・リモート両方に存在しない: スクリプトが中断する
+- **Worktree directory already exists**: script aborts
+- **Branch not found locally or on remote**: script aborts

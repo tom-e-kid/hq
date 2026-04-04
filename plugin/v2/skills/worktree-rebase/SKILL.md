@@ -1,6 +1,6 @@
 ---
 name: worktree-rebase
-description: Worktreeブランチをメインブランチ(origin/HEAD)にリベースし、リモートも同期する
+description: Rebase worktree branch against main branch (origin/HEAD) and sync remote
 allowed-tools: Bash(bash *scripts/worktree-rebase.sh*)
 ---
 
@@ -12,24 +12,24 @@ allowed-tools: Bash(bash *scripts/worktree-rebase.sh*)
 
 ## Instructions
 
-[scripts/worktree-rebase.sh](scripts/worktree-rebase.sh) を実行する。
+Run [scripts/worktree-rebase.sh](scripts/worktree-rebase.sh):
 
 ```bash
 bash "${CLAUDE_SKILL_DIR}/scripts/worktree-rebase.sh"
 ```
 
-スクリプトが自動で以下を行う:
+The script automatically performs:
 
-1. `origin/HEAD` からメインブランチを特定（例: `develop`）
-2. ディレクトリ名の `@` 以降からworktreeブランチを特定（例: `develop_design_editor`）
-3. 未コミット変更があればstash
-4. worktreeブランチをメインブランチにrebase
-5. worktreeブランチのリモートが乖離していれば `--force-with-lease` でpush
-6. 作業ブランチがworktreeブランチと異なれば、作業ブランチもrebase
-7. stashがあれば復元
+1. Detect main branch from `origin/HEAD` (e.g., `develop`)
+2. Detect worktree branch from the `@` suffix in directory name (e.g., `develop_design_editor`)
+3. Stash uncommitted changes if any
+4. Rebase worktree branch onto main branch
+5. Force-push with `--force-with-lease` if worktree branch remote has diverged
+6. If the current branch differs from worktree branch, rebase it onto the updated worktree branch
+7. Restore stash if one was created
 
-## エラー時
+## Error Handling
 
-- rebaseコンフリクト: スクリプトが中断メッセージを出力する。ユーザに状況を伝え、手動解消を案内する
-- stash popコンフリクト: 同上
-- `origin/HEAD` 未設定: `git remote set-head origin --auto` の実行を案内する
+- **Rebase conflict**: script aborts with a message. Inform the user and guide them through manual resolution
+- **Stash pop conflict**: same as above
+- **`origin/HEAD` not set**: suggest running `git remote set-head origin --auto`

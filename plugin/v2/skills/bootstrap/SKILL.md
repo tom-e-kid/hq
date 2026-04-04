@@ -28,10 +28,11 @@ If it already exists, rename to `workflow.md.bak` (overwrite existing `.bak`), t
 
 **Target**: `<project_root>/.claude/settings.json`
 
-If it already exists, skip and report. If not:
+If it does not exist, copy [templates/settings.json](templates/settings.json) as the starting point.
 
-1. Copy [templates/settings.json](templates/settings.json)
-2. Detect the project type and append platform-specific permissions to `permissions.allow`:
+If it already exists, read the existing file and **merge** — add any entries from the template that are missing in the target, but never remove or overwrite existing entries. This preserves user customizations while ensuring the baseline permissions are present.
+
+After creating or merging, detect the project type and append platform-specific permissions to `permissions.allow` (skip any already present):
 
 | Detection | Permissions to add |
 |-----------|-------------------|

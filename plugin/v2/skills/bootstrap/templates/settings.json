@@ -5,11 +5,13 @@
   },
   "permissions": {
     "allow": [
+      "Bash(cat:*)",
+      "Bash(echo:*)",
       "Bash(find:*)",
       "Bash(gh:*)",
       "Bash(git:*)",
       "Write",
-      "Update"
+      "Edit"
     ]
   }
 }

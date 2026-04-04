@@ -9,7 +9,7 @@ allowed-tools: Read, Glob, Bash(ls *), Bash(mv .hq/tasks/*), Bash(rm -rf .hq/tas
 ## Context
 
 - Project root: !`git rev-parse --show-toplevel`
-- Focus: !`"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md`
+- Focus: !`cat "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory/focus.md" 2>/dev/null || echo "none"`
 - Task folders: !`ls -1 .hq/tasks/ 2>/dev/null | grep -v '^done$' || echo "none"`
 - Archived folders: !`ls -1 .hq/tasks/done/ 2>/dev/null || echo "none"`
 
@@ -19,9 +19,9 @@ allowed-tools: Read, Glob, Bash(ls *), Bash(mv .hq/tasks/*), Bash(rm -rf .hq/tas
 
 If `focus.md` exists in your Claude Code memory directory:
 
-1. Read `focus.md` frontmatter and show the `plan` and `source` fields (both are GitHub issue numbers)
+1. Read `focus.md` from Claude Code memory directory. Extract `plan` and `source` (GitHub issue numbers).
 2. Show the `hq:plan` issue info: `gh issue view <plan> --json title,state --jq '"#" + (.number|tostring) + " " + .title + " (" + .state + ")"'`
-3. Determine the corresponding task folder in `.hq/tasks/` from the branch name
+3. Determine the corresponding task folder in `.hq/tasks/` from the branch name (branch path: `/` → `-`)
 4. **Escalate unresolved FB** — check `feedbacks/` for pending FB files:
    - If unresolved FBs exist, show the list to the user
    - Ask whether to create `hq:feedback` issues on GitHub for each
