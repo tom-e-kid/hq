@@ -24,7 +24,7 @@ description: >
   </example>
 model: sonnet
 color: cyan
-tools: ["Read", "Grep", "Glob", "Bash", "Write"]
+tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write"]
 ---
 
 You are a code review agent. Review code changes on the current branch against the base branch. Report findings with severity classification and output FB files for actionable issues. **Do not modify code directly.**

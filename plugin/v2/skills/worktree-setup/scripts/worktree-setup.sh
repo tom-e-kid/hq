@@ -166,6 +166,8 @@ done < <(cd "$source_dir" && find . -name '.env*' \
   -not -path '*/.hq/*' \
   -not -path '*/vendor/*' \
   -not -path '*/build/*' \
+  -not -name '.env.production*' \
+  -not -name '.env.staging*' \
   -print0 2>/dev/null || true)
 
 # === .hq/settings.json 生成 ===

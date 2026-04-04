@@ -3,7 +3,7 @@ name: archive
 description: >
   Archive completed task artifacts. Moves task folders to done/ or deletes them,
   closes the hq:plan issue, escalates unresolved FB files, and clears focus from memory.
-allowed-tools: Read, Glob, Bash(mv *), Bash(rm *), Bash(ls *), Bash(mkdir *), Bash(gh *), Write
+allowed-tools: Read, Glob, Bash(ls *), Bash(mv .hq/tasks/*), Bash(rm -rf .hq/tasks/*), Bash(mkdir -p .hq/tasks/*), Bash(gh *), Write
 ---
 
 ## Context
