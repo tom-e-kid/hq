@@ -14,7 +14,7 @@ A Claude Code plugin that provides skills and commands for AI-assisted developme
 
 #### v2 (active)
 
-Skills + agents architecture. Skills define pure analysis criteria, agents handle autonomous workflow execution. Core design principle: **source traceability** via `memory/focus.md` as the single authority for "what I'm working on and why."
+Skills, agents, and commands architecture. Skills define pure analysis criteria, agents handle autonomous workflow execution, commands provide user-invoked workflow shortcuts. Core design principle: **source traceability** via `focus.md` in Claude Code memory as the single authority for "what I'm working on and why."
 
 **Skills** (analysis criteria — invoked via `/skill-name`):
 
@@ -39,10 +39,16 @@ Skills + agents architecture. Skills define pure analysis criteria, agents handl
 
 Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. Both agents can run **in parallel** and in the **background**.
 
+**Commands** (user-invoked workflow shortcuts — invoked via `/hq:command-name`):
+
+| Command            | Description                                                                    |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `goahead`          | Start executing the current plan or taskfile following the full workflow with highest priority |
+
 **Key differences from v1:**
 
-- Skills define criteria, agents handle workflow execution
-- `memory/focus.md` replaces taskfile-centric traceability
+- Skills define criteria, agents handle workflow execution, commands provide workflow shortcuts
+- `focus.md` in Claude Code memory replaces taskfile-centric traceability
 - Code review produces FB files instead of direct code modifications
 - Per-project overrides via `.hq/<skill>.md` files
 - Separate `security-scan` skill (was part of `reviewer` in v1)
