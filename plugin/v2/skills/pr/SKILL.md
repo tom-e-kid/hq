@@ -16,7 +16,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 - Commits: run `git log --oneline <base-branch>..HEAD` using the Base branch above
 - Changed files: run `git diff <base-branch>...HEAD --stat` using the Base branch above
 - Uncommitted changes: !`git status --short`
-- Focus: !`cat "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory/focus.md" 2>/dev/null || echo "none"`
+- Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
 - Existing PR: !`gh pr view --json url,state 2>/dev/null || echo "none"`
 
 ## Instructions

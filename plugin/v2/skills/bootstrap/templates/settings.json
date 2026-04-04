@@ -5,8 +5,7 @@
   },
   "permissions": {
     "allow": [
-      "Bash(cat:*)",
-      "Bash(echo:*)",
+      "Bash(bash:*)",
       "Bash(find:*)",
       "Bash(gh:*)",
       "Bash(git:*)",

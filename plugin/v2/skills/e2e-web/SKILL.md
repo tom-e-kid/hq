@@ -24,7 +24,7 @@ If `.hq/e2e-web.md` does **not** exist, pause before starting and guide the user
 - Project root: !`git rev-parse --show-toplevel`
 - Current branch: !`git rev-parse --abbrev-ref HEAD`
 - Recently edited files: !`git diff --name-only HEAD~3 2>/dev/null | head -20`
-- Focus: !`cat "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory/focus.md" 2>/dev/null || echo "none"`
+- Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
 
 ## Determine Target App
 

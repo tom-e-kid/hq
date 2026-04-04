@@ -13,7 +13,7 @@ This command activates **execution mode**. The workflow defined here takes prece
 ## Context
 
 - Branch: !`git branch --show-current 2>/dev/null || echo "(detached)"`
-- Focus: !`cat "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory/focus.md" 2>/dev/null || echo "none"`
+- Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
 - Workflow rule exists: !`test -f .claude/rules/workflow.md && echo "yes" || echo "no"`
 
 ## Instructions

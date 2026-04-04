@@ -45,9 +45,7 @@ From the skill file, extract and follow:
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
-4. **Memory path**: !`echo "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory"`
-5. **Focus**: Read `<memory-path>/focus.md` (from step 4) using the Read tool. If file not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers) for traceability
-   - Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`)
+4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers) for traceability
 
 ## Execution Flow
 

@@ -46,10 +46,8 @@ From the skill file, extract and follow:
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
-4. **Memory path**: !`echo "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory"`
-5. **Focus**: Read `<memory-path>/focus.md` (from step 4) using the Read tool. If file not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers). Fetch plan: `gh issue view <plan> --json body --jq '.body'`
-   - Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`)
-6. **Requirements**: if `docs/requirements.md` exists, use as reference
+4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers). Fetch plan: `gh issue view <plan> --json body --jq '.body'`
+5. **Requirements**: if `docs/requirements.md` exists, use as reference
 
 ## Execution Flow
 
@@ -84,7 +82,7 @@ You MUST save all output files to disk before returning. This is not optional.
 6. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits)
 7. Set frontmatter fields:
    - `skill: /code-review`
-   - `source` and `plan`: from focus (step 5)
+   - `source` and `plan`: from focus (step 4)
 
 Use the Write tool for every file — do not just return text.
 

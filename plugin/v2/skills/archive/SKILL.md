@@ -9,7 +9,7 @@ allowed-tools: Read, Glob, Bash(ls *), Bash(mv .hq/tasks/*), Bash(rm -rf .hq/tas
 ## Context
 
 - Project root: !`git rev-parse --show-toplevel`
-- Focus: !`cat "$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')/memory/focus.md" 2>/dev/null || echo "none"`
+- Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
 - Task folders: !`ls -1 .hq/tasks/ 2>/dev/null | grep -v '^done$' || echo "none"`
 - Archived folders: !`ls -1 .hq/tasks/done/ 2>/dev/null || echo "none"`
 
