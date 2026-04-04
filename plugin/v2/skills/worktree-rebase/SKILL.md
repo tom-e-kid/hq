@@ -1,6 +1,6 @@
 ---
 name: worktree-rebase
-description: Worktreeのベースブランチをupstreamに同期し、作業ブランチをrebaseする
+description: Worktreeブランチをメインブランチ(origin/HEAD)にリベースし、リモートも同期する
 allowed-tools: Bash(bash *scripts/worktree-rebase.sh*)
 ---
 
@@ -20,13 +20,16 @@ bash "${CLAUDE_SKILL_DIR}/scripts/worktree-rebase.sh"
 
 スクリプトが自動で以下を行う:
 
-1. worktreeディレクトリ名の `@` 以降からベースブランチを特定
-2. 未コミット変更があればstash
-3. ベースブランチのupstreamをfetch & ベースブランチを更新
-4. 作業ブランチがベースと異なれば、ベースブランチにrebase
-5. stashがあれば復元
+1. `origin/HEAD` からメインブランチを特定（例: `develop`）
+2. ディレクトリ名の `@` 以降からworktreeブランチを特定（例: `develop_design_editor`）
+3. 未コミット変更があればstash
+4. worktreeブランチをメインブランチにrebase
+5. worktreeブランチのリモートが乖離していれば `--force-with-lease` でpush
+6. 作業ブランチがworktreeブランチと異なれば、作業ブランチもrebase
+7. stashがあれば復元
 
 ## エラー時
 
 - rebaseコンフリクト: スクリプトが中断メッセージを出力する。ユーザに状況を伝え、手動解消を案内する
 - stash popコンフリクト: 同上
+- `origin/HEAD` 未設定: `git remote set-head origin --auto` の実行を案内する
