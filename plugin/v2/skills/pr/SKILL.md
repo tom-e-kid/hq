@@ -29,12 +29,18 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 2. **Push the branch** if it hasn't been pushed yet:
    - `git push -u origin HEAD`
 
-3. **Resolve source** — read `focus.md` from your Claude Code memory directory:
-   - If focus exists and has a `source:` field, use it
+3. **Resolve traceability** — read `focus.md` from your Claude Code memory directory:
+   - If focus exists, extract `plan` and `source` fields (both are GitHub issue numbers)
    - If no focus, check `.hq/tasks/<branch>/context.md` (branch name: replace `/` with `-`)
-   - If neither exists, ask the user
+   - If neither exists, ask the user for the `hq:plan` and `hq:task` issue numbers
 
-4. **Draft the PR** based on the context above AND session context (what you know about why these changes were made):
+4. **Escalate unresolved FB** — check `.hq/tasks/<branch>/feedbacks/` for pending FB files (not in `done/`):
+   - If unresolved FBs exist, show the list to the user
+   - Ask whether to create `hq:feedback` issues on GitHub for each
+   - If yes — for each FB: `gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback"`
+   - Move escalated FB files to `feedbacks/done/`
+
+5. **Draft the PR** based on the context above AND session context (what you know about why these changes were made):
    - **Title**: concise, under 70 characters
    - **Body** in this format:
 
@@ -49,14 +55,15 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
    <optional: caveats, known issues, follow-up items>
 
    ---
-   source: <source>#<unique-identifier>
+   Closes #<hq:plan issue number>
+   Refs #<hq:task issue number>
    ```
 
-   The `source:` line at the end is mandatory. It links this PR to the originating requirement.
+   The `Closes #` and `Refs #` lines are mandatory. They link this PR to the `hq:plan` (auto-closed on merge) and the `hq:task` (cross-referenced).
 
-5. **Show the draft** to the user and ask for confirmation before creating.
+6. **Show the draft** to the user and ask for confirmation before creating.
 
-6. **Create the PR**:
+7. **Create the PR**:
 
    ```
    gh pr create --title "<title>" --body "$(cat <<'EOF'
@@ -65,14 +72,14 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
    )"
    ```
 
-7. **Return the PR URL**.
+8. **Return the PR URL**.
 
 ## Rules
 
-- Derive "what changed" from git. Derive "why" from session context (conversation history, taskfile if referenced).
+- Derive "what changed" from git. Derive "why" from session context (conversation history, `hq:plan` issue if referenced).
 - **Always explain WHY** — not just what was changed, but the motivation and reasoning behind the implementation decisions.
 - **Write for newcomers** — assume the reader is joining the project for the first time. Provide enough context so the PR is self-explanatory.
-- The `source:` line is required. If no source can be determined, ask the user before proceeding.
+- The `Closes #` and `Refs #` lines are required. If no issue numbers can be determined, ask the user before proceeding.
 - Match the language and tone of existing PRs in this repo.
 - Do NOT fabricate changes not present in the diff.
 - Keep the summary focused — details go in the Changes section.

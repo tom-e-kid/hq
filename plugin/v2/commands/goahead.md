@@ -1,7 +1,7 @@
 ---
 name: goahead
-description: Start executing the current plan or taskfile following the full workflow
-allowed-tools: Read, Glob, Grep, Bash(git:*), Agent
+description: Start executing the current hq:plan following the full workflow
+allowed-tools: Read, Glob, Grep, Bash(git:*), Bash(gh:*), Agent
 ---
 
 # GO AHEAD — Execute with Full Workflow Compliance
@@ -22,17 +22,19 @@ You are now in **execution mode**. Your job is to carry out the planned work —
 
 Check the following sources in order and use the **first match**:
 
-1. **Plan mode** — if you are currently in plan mode (or have an active plan in this session), that plan is your taskfile. Exit plan mode and begin executing it step by step.
-2. **Focus** — read `focus.md` from your Claude Code memory directory. If it exists, read the `taskfile` path from it. That file is your execution target.
-3. **Argument** — if `$ARGUMENTS` is provided, treat it as a path to the taskfile and read it.
-4. **No source found** — if none of the above yields a taskfile, ask the user what to work on. Do NOT proceed without a clear target.
+1. **Plan mode** — if you are currently in plan mode (or have an active plan in this session), that plan is your execution target. Before executing, offer to create an `hq:plan` issue from it: "Create an `hq:plan` issue from this plan before executing?" If yes, run `gh issue create --title "<title>" --body "<plan content>" --label "hq:plan"` and capture the issue number. If no, proceed without GitHub tracking.
+2. **Focus** — read `focus.md` from your Claude Code memory directory. If it exists, extract the `plan` field (a GitHub issue number). Run `gh issue view <plan> --json body --jq '.body'` to fetch the plan. That issue body is your execution target.
+3. **Argument** — if `$ARGUMENTS` is provided:
+   - If it is a number, treat it as an `hq:plan` issue number and fetch with `gh issue view`
+   - If it is a file path, read the local file and offer to create an `hq:plan` issue from its contents
+4. **No source found** — if none of the above yields a plan, ask the user what to work on. Do NOT proceed without a clear target.
 
 ### Step 2: Read the workflow rule
 
 Read `.claude/rules/workflow.md` (if it exists). This defines:
 - Branch rules (never work on main/master directly)
 - Pre-commit checks (format, build)
-- Taskfile gates
+- `hq:plan` gates
 - Focus lifecycle
 - Verification pipeline
 - Feedback loop
@@ -44,12 +46,12 @@ You MUST follow every applicable rule in that file throughout execution.
 Before writing any code:
 
 1. **Branch** — verify you are NOT on a base branch (main, master, develop). If you are, stop and ask the user to create a feature branch.
-2. **Focus** — if `focus.md` does not exist in your Claude Code memory directory yet, create it with the taskfile path and source (from the taskfile's `source:` field, or ask the user).
-3. **Understand the taskfile** — read it fully. Identify all tasks, gates, and completion criteria.
+2. **Focus** — if `focus.md` does not exist in your Claude Code memory directory yet, create it with the `plan` issue number and `source` issue number. If the source is unknown, ask the user for the `hq:task` issue number.
+3. **Understand the plan** — read the `hq:plan` issue body fully. Identify all tasks, gates, and completion criteria.
 
 ### Step 4: Execute
 
-Work through the taskfile systematically:
+Work through the plan systematically:
 - Complete each task/step in order
 - After each meaningful unit of work, run `format` and `build` commands (per CLAUDE.md Commands table)
 - Mark progress as you go (update task tracking)
@@ -62,7 +64,7 @@ When you believe all work is complete, run the **Verification Pipeline** defined
 1. Launch `security-scanner` and `code-reviewer` agents in parallel
 2. Fix any FB issues they produce
 3. Run E2E verification if applicable
-4. Confirm all taskfile gates pass
+4. Confirm all `hq:plan` gates pass
 
 ### Step 6: Wrap up
 
@@ -75,5 +77,5 @@ When you believe all work is complete, run the **Verification Pipeline** defined
 - **Do not summarize the plan back** — just execute it.
 - **Do not skip verification** — it is mandatory, not optional.
 - **Do not modify the workflow** — follow it as written.
-- If the taskfile has a checklist, check items off as you complete them.
+- If the `hq:plan` issue has a checklist, check items off as you complete them.
 - If you encounter an error, fix it. If you can't fix it after 2 attempts, report to the user.

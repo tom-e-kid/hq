@@ -48,7 +48,7 @@ From the skill file, extract and follow:
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: read `.hq/settings.json` field `base_branch`, or `git symbolic-ref refs/remotes/origin/HEAD`, or default `main`
-4. **Focus**: run `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md` — if it returns content other than "none", extract `source` and `taskfile` fields. Read the referenced taskfile to understand planned goals, approach, and gates.
+4. **Focus**: run `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md` — if it returns content other than "none", extract `plan` and `source` fields (both are GitHub issue numbers). Run `gh issue view <plan> --json body --jq '.body'` to fetch the `hq:plan` issue body and understand planned goals, approach, and gates.
    - Fallback: `.hq/tasks/<branch>/context.md`
 5. **Requirements**: if `docs/requirements.md` exists, use as reference
 
@@ -59,7 +59,7 @@ From the skill file, extract and follow:
    - `git log <base>..HEAD --oneline`
    - `git diff <base>...HEAD --stat`
    - `git diff <base>...HEAD`
-3. **Review**: evaluate diff against all Review Criteria, informed by focus/taskfile context
+3. **Review**: evaluate diff against all Review Criteria, informed by focus/`hq:plan` context
 4. **Save**: write report and FB files (see File Output below)
 
 ## Agent-Specific Rules
@@ -85,7 +85,7 @@ You MUST save all output files to disk before returning. This is not optional.
 6. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits)
 7. Set frontmatter fields:
    - `skill: /code-review`
-   - `source` and `taskfile` from `focus.md` in Claude Code memory (fallback: `.hq/tasks/<branch>/context.md`). Resolve via: `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md`
+   - `source` and `plan` from `focus.md` in Claude Code memory (fallback: `.hq/tasks/<branch>/context.md`). Resolve via: `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md`
 
 Use the Write tool for every file — do not just return text.
 

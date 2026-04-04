@@ -32,7 +32,7 @@ Identify which app to verify based on the following (in priority order):
 
 1. **Explicit argument** — if the user passes an app path (e.g., `/e2e-web apps/admin`), use it
 2. **Recent edits** — look at the recently edited files in Context; if most changes are under a specific app directory, use it
-3. **Active taskfile** — if a taskfile is active, check which app it relates to
+3. **Active `hq:plan`** — if a plan issue is active, check which app it relates to
 4. **Ask the user** — if ambiguous, ask before proceeding
 
 Once determined, read the target app's package.json (or equivalent build config) to discover available scripts.
@@ -112,7 +112,7 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active taskfile** — if `focus.md` exists in your Claude Code memory directory, read the referenced taskfile's Verification section and use the unchecked items as the checklist
+1. **Active `hq:plan`** — if `focus.md` exists in your Claude Code memory directory, extract the `plan` field (a GitHub issue number) and run `gh issue view <plan> --json body --jq '.body'` to fetch the `hq:plan` issue body. Parse the `## Verification` section and use the unchecked items as the checklist
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
 
@@ -137,7 +137,7 @@ If all items pass, no FB files are generated.
 
 ## Feedback Output
 
-For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `taskfile` from `focus.md` in your Claude Code memory directory (fallback: `.hq/tasks/<branch>/context.md`).
+For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `focus.md` in your Claude Code memory directory (fallback: `.hq/tasks/<branch>/context.md`).
 
 Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
 

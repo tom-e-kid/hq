@@ -1,6 +1,6 @@
 ---
-source: <taskfile source, e.g. docs/milestones.md#M9>
-taskfile: <path to active taskfile, e.g. .hq/tasks/main/taskfiles/m9-auth.md>
+source: <hq:task issue number, e.g. 42>
+plan: <hq:plan issue number, e.g. 123>
 app: <target app path, e.g. apps/web>
 skill: <skill that generated this FB, e.g. /e2e-web>
 run_at: <ISO 8601 timestamp>

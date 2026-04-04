@@ -47,7 +47,7 @@ From the skill file, extract and follow:
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: read `.hq/settings.json` field `base_branch`, or `git symbolic-ref refs/remotes/origin/HEAD`, or default `main`
-4. **Focus**: run `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md` — if it returns content other than "none", extract `source` and `taskfile` fields for traceability in output files
+4. **Focus**: run `"${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-memory.sh" focus.md` — if it returns content other than "none", extract `plan` and `source` fields (both are GitHub issue numbers) for traceability in output files
 
 ## Execution Flow
 

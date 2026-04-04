@@ -2,8 +2,8 @@
 name: archive
 description: >
   Archive completed task artifacts. Moves task folders to done/ or deletes them,
-  and clears focus from memory.
-allowed-tools: Read, Glob, Bash(mv *), Bash(rm *), Bash(ls *), Bash(mkdir *), Write
+  closes the hq:plan issue, escalates unresolved FB files, and clears focus from memory.
+allowed-tools: Read, Glob, Bash(mv *), Bash(rm *), Bash(ls *), Bash(mkdir *), Bash(gh *), Write
 ---
 
 ## Context
@@ -19,15 +19,21 @@ allowed-tools: Read, Glob, Bash(mv *), Bash(rm *), Bash(ls *), Bash(mkdir *), Wr
 
 If `focus.md` exists in your Claude Code memory directory:
 
-1. Read `focus.md` frontmatter and show the `taskfile` and `source` fields
-2. Determine the corresponding task folder in `.hq/tasks/` from the branch name
-3. Ask the user:
+1. Read `focus.md` frontmatter and show the `plan` and `source` fields (both are GitHub issue numbers)
+2. Show the `hq:plan` issue info: `gh issue view <plan> --json title,state --jq '"#" + (.number|tostring) + " " + .title + " (" + .state + ")"'`
+3. Determine the corresponding task folder in `.hq/tasks/` from the branch name
+4. **Escalate unresolved FB** — check `feedbacks/` for pending FB files:
+   - If unresolved FBs exist, show the list to the user
+   - Ask whether to create `hq:feedback` issues on GitHub for each
+   - If yes — for each FB: `gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback"`, then move to `feedbacks/done/`
+5. Ask the user:
    - **"Archive"** — move `.hq/tasks/<branch>/` to `.hq/tasks/done/<branch>/`
    - **"Delete"** — remove `.hq/tasks/<branch>/` entirely
    - **"Cancel"** — do nothing
-4. Execute the chosen action
-5. Remove `focus.md` from your Claude Code memory directory
-6. Report what was done
+6. Execute the chosen action
+7. Close the `hq:plan` issue: `gh issue close <plan>`
+8. Remove `focus.md` from your Claude Code memory directory
+9. Report what was done
 
 ### Case 2: No focus, but task folders exist
 
@@ -35,10 +41,11 @@ If `focus.md` does not exist in Claude Code memory but `.hq/tasks/` contains fol
 
 1. List all task folders with their contents summary (number of FB files, reports, etc.)
 2. Ask the user to select one or more folders
-3. For each selected folder, ask:
+3. For each selected folder, check for unresolved FB files and offer `hq:feedback` escalation (same as Case 1 step 4)
+4. For each selected folder, ask:
    - **"Archive"** — move to `.hq/tasks/done/`
    - **"Delete"** — remove entirely
-4. Execute and report
+5. Execute and report
 
 ### Case 3: Nothing to archive
 

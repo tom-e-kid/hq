@@ -37,3 +37,17 @@ If it already exists, skip and report. If not, copy [templates/agents-md.md](tem
 **Target**: `<project_root>/.gitignore`
 
 Ensure `.hq/` is listed in `.gitignore`. If the file doesn't exist, create it. If it exists but doesn't contain `.hq/`, append it. If already present, skip and report.
+
+### 6. GitHub Labels
+
+**Prerequisites**: `gh auth status` must succeed. If it fails, warn the user and skip this step.
+
+Create the following labels if they don't already exist:
+
+```bash
+gh label create "hq:task" --description "HQ requirement (what to do)" --color "39FF14" 2>/dev/null || true
+gh label create "hq:plan" --description "HQ implementation plan (how to do it)" --color "00D4FF" 2>/dev/null || true
+gh label create "hq:feedback" --description "HQ unresolved feedback from review/verification" --color "FF073A" 2>/dev/null || true
+```
+
+Report which labels were created and which already existed.

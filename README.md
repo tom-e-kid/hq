@@ -14,17 +14,17 @@ A Claude Code plugin that provides skills and commands for AI-assisted developme
 
 #### v2 (active)
 
-Skills, agents, and commands architecture. Skills define pure analysis criteria, agents handle autonomous workflow execution, commands provide user-invoked workflow shortcuts. Core design principle: **source traceability** via `focus.md` in Claude Code memory as the single authority for "what I'm working on and why."
+Skills, agents, and commands architecture. Skills define pure analysis criteria, agents handle autonomous workflow execution, commands provide user-invoked workflow shortcuts. Core design principle: **GitHub Issue-based traceability** — all work is tracked through GitHub Issues and PRs, with `focus.md` in Claude Code memory as a local pointer to the active plan.
 
 **Skills** (analysis criteria — invoked via `/skill-name`):
 
 | Skill              | Description                                                                    |
 | ------------------ | ------------------------------------------------------------------------------ |
 | `bootstrap`        | Initialize a project (CLAUDE.md, rules, AGENTS.md, .gitignore)                |
-| `pr`               | Create a pull request with source traceability footer                          |
+| `pr`               | Create a pull request linked to `hq:plan` and `hq:task` issues                |
 | `code-review`      | Code review criteria — readability, correctness, performance, security         |
 | `security-scan`    | Security scan criteria — credentials, external comms, dynamic code, etc.       |
-| `archive`          | Archive completed task artifacts to `.hq/tasks/done/`                          |
+| `archive`          | Archive task artifacts, close `hq:plan`, escalate unresolved FB to `hq:feedback` |
 | `xcodebuild-config`| Interactive xcodebuild configuration (project, scheme, device, OS)             |
 | `e2e-web`          | End-to-end web verification via Playwright CLI                                 |
 | `worktree-setup`   | Create a new git worktree with local file setup (.env, .claude, .hq configs)   |
@@ -43,12 +43,57 @@ Agents read skill files at runtime for analysis criteria, then handle workflow i
 
 | Command            | Description                                                                    |
 | ------------------ | ------------------------------------------------------------------------------ |
-| `goahead`          | Start executing the current plan or taskfile following the full workflow with highest priority |
+| `goahead`          | Start executing the current `hq:plan` following the full workflow with highest priority |
+
+**Traceability**
+
+All work is tracked through GitHub Issues and PRs. The plugin uses three issue types as semi-proper nouns:
+
+| Label | Role | Description |
+|-------|------|-------------|
+| `hq:task` | Requirement | **What** needs to be done. Contains the task checklist, notes, and references. |
+| `hq:plan` | Implementation plan | **How** to do it. Created per branch/PR. One `hq:task` can have multiple `hq:plan` issues. |
+| `hq:feedback` | Unresolved problem | Issues found during code review or E2E that couldn't be fixed in the current branch. |
+
+**Issue hierarchy:**
+
+```
+Milestone (optional grouping)
+  └── hq:task  — requirement
+        └── hq:plan  — implementation plan
+              ├── ← Closes → PR
+              └── hq:feedback(s)  — unresolved problems
+```
+
+**How it works:**
+
+1. Create an `hq:task` issue describing the requirement
+2. Create an `hq:plan` issue with the implementation plan (references the `hq:task` via `Parent: #N`)
+3. Work on a feature branch. `focus.md` in Claude Code memory points to the active `hq:plan` issue number
+4. PR uses `Closes #<hq:plan>` (auto-closes on merge) and `Refs #<hq:task>` (cross-reference)
+5. Unresolved review findings can be escalated to `hq:feedback` issues
+
+**Recommended `hq:plan` issue body structure:**
+
+```markdown
+Parent: #<hq:task issue number>
+
+## Plan
+<implementation steps>
+
+## Gates
+- [ ] Completion criteria (shown as progress bar in GitHub UI)
+
+## Verification
+- [ ] E2E test items (parsed by the e2e-web skill)
+```
+
+**Prerequisites:** `gh` CLI must be authenticated (`gh auth status`).
 
 **Key differences from v1:**
 
 - Skills define criteria, agents handle workflow execution, commands provide workflow shortcuts
-- `focus.md` in Claude Code memory replaces taskfile-centric traceability
+- GitHub Issue-based traceability replaces local-file-based tracking
 - Code review produces FB files instead of direct code modifications
 - Per-project overrides via `.hq/<skill>.md` files
 - Separate `security-scan` skill (was part of `reviewer` in v1)
