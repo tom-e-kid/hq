@@ -49,3 +49,9 @@ docs/              — Documentation
 | `requirements.md` | Core concepts        |
 | `onboarding.md`   | Setup guide          |
 -->
+
+## Verification
+
+- "Should work" ≠ "does work" — untested code is just a guess
+- Run/build the code, trigger the changed feature, check for errors
+- UI → interact with the element / API → make the call / Data → query the DB / Config → restart and verify

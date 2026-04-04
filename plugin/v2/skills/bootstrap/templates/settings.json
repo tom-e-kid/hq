@@ -1,0 +1,18 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(gh:*)",
+      "Bash(git:*)",
+      "Bash(sed:*)",
+      "Bash(sort:*)",
+      "Bash(tee:*)",
+      "Write",
+      "Update"
+    ]
+  }
+}

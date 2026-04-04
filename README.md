@@ -20,7 +20,7 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 
 | Skill              | Description                                                                    |
 | ------------------ | ------------------------------------------------------------------------------ |
-| `bootstrap`        | Initialize a project (CLAUDE.md, rules, AGENTS.md, .gitignore)                |
+| `bootstrap`        | Initialize a project (see [Bootstrap](#bootstrap-bootstrap) below)             |
 | `pr`               | Create a pull request linked to `hq:plan` and `hq:task` issues                |
 | `code-review`      | Code review criteria — readability, correctness, performance, security         |
 | `security-scan`    | Security scan criteria — credentials, external comms, dynamic code, etc.       |
@@ -98,6 +98,27 @@ Parent: #<hq:task issue number>
 - Per-project overrides via `.hq/<skill>.md` files
 - Separate `security-scan` skill (was part of `reviewer` in v1)
 - `code-reviewer` and `security-scanner` agents enable parallel verification
+
+#### Bootstrap (`/bootstrap`)
+
+Run once when initializing a new project. Pass `agents.md` as argument to also install AGENTS.md.
+
+| Target | Action | Note |
+|--------|--------|------|
+| `CLAUDE.md` | Create if missing | Fill template with project info |
+| `.claude/rules/workflow.md` | **Always overwrite** | Existing file backed up as `.bak` |
+| `.claude/settings.json` | Create if missing | Base template + auto-detected platform permissions |
+| `AGENTS.md` | Create if missing | **Only when `agents.md` argument is given** |
+| `.gitignore` | Append if missing | Adds `.hq/` entry |
+| GitHub Labels | Create if missing | `hq:task`, `hq:plan`, `hq:feedback` |
+
+**Platform detection for settings.json:**
+
+| Project type | Permissions added |
+|-------------|-------------------|
+| Xcode (`*.xcodeproj` / `*.xcworkspace`) | `swift-format`, `xcodebuild`, `xcrun` |
+| TypeScript (`package.json` / `tsconfig.json`) | `bun` |
+| Go (`go.mod`) | `go build`, `go vet` |
 
 #### v1 (legacy — frozen)
 
