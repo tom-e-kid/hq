@@ -32,10 +32,11 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 
 **Agents** (autonomous execution — launched via Agent tool):
 
-| Agent              | Description                                                                    |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `code-reviewer`    | Autonomous code review — reads `code-review` skill criteria, outputs report + FB files to `.hq/tasks/` |
-| `security-scanner` | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` |
+| Agent                      | Description                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `code-reviewer`            | Autonomous code review — reads `code-review` skill criteria, outputs report + FB files to `.hq/tasks/` |
+| `security-scanner`         | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` |
+| `review-comment-analyzer`  | Read-only analysis of a single PR review comment — classifies as Fix/Feedback/Dismiss with evidence. Launched in parallel by `/review-triage` |
 
 Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. Both agents can run **in parallel** and in the **background**.
 
@@ -43,7 +44,119 @@ Agents read skill files at runtime for analysis criteria, then handle workflow i
 
 | Command            | Description                                                                    |
 | ------------------ | ------------------------------------------------------------------------------ |
-| `goahead`          | Start executing the current `hq:plan` following the full workflow with highest priority |
+| `start`            | Full workflow — plan, execute, verify, and PR from an `hq:task`                |
+| `review-triage`    | Triage and respond to PR review comments autonomously (see [flow](#review-triage-flow) below) |
+
+#### Start Flow
+
+`/start` runs the complete hq workflow — from planning through PR creation — for a given `hq:task` issue.
+
+```
+Phase 1: Check Current State
+│  Active work? (focus exists / feature branch with changes)
+│  → Continue existing task → skip to Phase 5
+│  → Interrupt → commit/stash, optionally /archive, switch to base
+│  → No active work → proceed
+│
+Phase 2: Input Source
+│  $ARGUMENTS → parse issue number + supplementary context
+│  (no argument → ask user)
+│
+Phase 3: Planning (mandatory — no code before approval)
+│  ┌─ 3a: Brainstorming ────────────────────────┐
+│  │  Review hq:task, discuss with user,          │
+│  │  investigate codebase, align on scope        │
+│  └─────────────────────────────────────────────┘
+│  ┌─ 3b: Plan Generation ──────────────────────┐
+│  │  Launch Plan subagent → structured plan      │
+│  │  (steps, gates, verification items)          │
+│  └─────────────────────────────────────────────┘
+│  ┌─ 3c: Review & Approval ────────────────────┐
+│  │  Present plan → user feedback → wait for     │
+│  │  explicit approval before proceeding         │
+│  └─────────────────────────────────────────────┘
+│
+Phase 4: Execution Prep
+│  Create hq:plan issue (sub-issue of hq:task)
+│  Create work branch
+│  Set focus (focus.md + .hq/tasks/<branch>/context.md)
+│  Read workflow rules
+│
+Phase 5: Execute
+│  Work through plan step by step
+│  Format & build after each unit
+│  Check off hq:plan checklist items
+│
+Phase 6: Simplify
+│  /simplify → review full changeset
+│  Format & build
+│
+Phase 7: Verification (parallel)
+│  ┌────────────────────────────────────────────┐
+│  │  code-reviewer    ║    security-scanner     │
+│  │  (background)     ║    (background)         │
+│  └──────────┬────────╨────────┬───────────────┘
+│             ▼                 ▼
+│  Fix FB issues (max 2 rounds)
+│  E2E verification (if applicable)
+│
+Phase 8: PR Creation
+│  Check unresolved FBs → escalate to hq:feedback?
+│  /pr → create pull request
+│
+Phase 9: Report
+   Task, plan, branch, changes, verification, PR link
+```
+
+Key design decisions:
+- **Planning is mandatory** — no production code before user-approved plan. Brainstorming is interactive and takes as many turns as needed.
+- **GitHub Issue traceability** — `hq:plan` is a sub-issue of `hq:task`. PR uses `Closes #plan` + `Refs #task`.
+- **Parallel verification** — `code-reviewer` and `security-scanner` agents run simultaneously in the background.
+- **Simplify before verify** — Phase 6 catches cross-cutting improvements (deduplication, unnecessary abstractions) that per-step reviews miss.
+- **Resumable** — if active work is detected, the user can continue from Phase 5 without re-planning.
+
+#### Review-Triage Flow
+
+`/review-triage` checks the current PR for unaddressed review comments (Copilot, human reviewers, etc.), analyzes each one, and autonomously takes the appropriate action.
+
+```
+Phase 1: Preconditions
+│  PR exists? open?
+│
+Phase 2: Fetch
+│  gh api → line-level review comments
+│  Filter: top-level & no reply from PR author
+│  (no unaddressed comments → done)
+│
+Phase 3: Deep Analysis (parallel)
+│  ┌─────────────────────────────────────────────┐
+│  │  review-comment-analyzer (per comment)       │
+│  │  Read code → assess validity → classify      │
+│  │  → self-validate → return structured result  │
+│  └──┬──────────────┬──────────────┬─────────────┘
+│     │              │              │
+│   Fix          Feedback       Dismiss
+│
+Phase 4: Execute
+│  ┌─ Fix (sequential) ──────────────────────────┐
+│  │  Edit code → format → build → test           │
+│  │  (no tests? → code-level verification)       │
+│  │  Commit → push → reply with SHA              │
+│  └──────────────────────────────────────────────┘
+│  ┌─ Feedback + Dismiss (parallel) ─────────────┐
+│  │  Feedback: create hq:feedback issue → reply  │
+│  │  Dismiss: reply with evidence-based reason   │
+│  └──────────────────────────────────────────────┘
+│
+Phase 5: Report
+   Summary: Fix count + SHAs, Feedback issues, Dismiss count
+```
+
+Key design decisions:
+- **Fully autonomous** — no user approval gates. All decisions are self-validated with evidence. The user reviews the results in the PR itself.
+- **Conservative on Fix** — when uncertain about safety, escalates to `hq:feedback` rather than risking a regression.
+- **Regression gate** — Fix changes must pass format, build, and test before commit. When no tests exist, code-level verification is documented in the commit message.
+- **Evidence-based replies** — every reply (Fix, Feedback, Dismiss) cites specific code references, commits, or documentation.
 
 **Traceability**
 
