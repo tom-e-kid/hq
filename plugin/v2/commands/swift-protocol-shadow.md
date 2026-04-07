@@ -35,27 +35,39 @@ In Swift, overriding a protocol's default implementation does not require the `o
 
 ## Output Directory
 
-All intermediate results and the final report are written to `.hq/protocol-shadow/`.
+Results are partitioned by target directory under `.hq/protocol-shadow/<dir-key>/`. This allows results from different directories to coexist. Re-running the same directory clears only that directory's cache.
+
+**`<dir-key>` derivation**: normalize `$ARGUMENTS` by replacing `/` with `-` and stripping leading/trailing `-`. The special case `.` becomes `_root`.
+
+Examples: `Sources` → `Sources`, `Sources/App` → `Sources-App`, `.` → `_root`
 
 ```
 .hq/protocol-shadow/
-├── protocols/        # Step 1: Protocol definitions (structured data)
-├── conformances/     # Step 2-3: Conforming types + signatures + comparison results
-├── findings/         # Step 2-3: Detected mismatches
-├── review.md         # Step 4: Self-review results
-└── report.md         # Step 5: Final report
+├── Sources/
+│   ├── protocols/        # Step 1: Protocol definitions (structured data)
+│   ├── conformances/     # Step 2-3: Conforming types + signatures + comparison results
+│   ├── findings/         # Step 2-3: Detected mismatches
+│   ├── review.md         # Step 4: Self-review results
+│   └── report.md         # Step 5: Final report
+├── Sources-App/
+│   └── ...
+└── _root/
+    └── ...
 ```
+
+Throughout this document, `$OUT` refers to `.hq/protocol-shadow/<dir-key>`.
 
 ## Procedure
 
 ### Step 0: Initialization
 
-1. Remove `.hq/protocol-shadow/` if it exists to start fresh
-2. Create `protocols/`, `conformances/`, `findings/` subdirectories
+1. Derive `<dir-key>` from `$ARGUMENTS`
+2. Remove `$OUT` (`.hq/protocol-shadow/<dir-key>/`) if it exists — only this directory is cleared
+3. Create `protocols/`, `conformances/`, `findings/` subdirectories
 
 ```bash
-rm -rf .hq/protocol-shadow
-mkdir -p .hq/protocol-shadow/{protocols,conformances,findings}
+rm -rf .hq/protocol-shadow/<dir-key>
+mkdir -p .hq/protocol-shadow/<dir-key>/{protocols,conformances,findings}
 ```
 
 ### Step 1: Protocol Collection (Collector Agent)
@@ -66,7 +78,7 @@ Pass the following instructions to each Agent:
 
 > **Role: Collector**
 >
-> Collect protocol definitions from the assigned Swift files and write them to `.hq/protocol-shadow/protocols/`.
+> Collect protocol definitions from the assigned Swift files and write them to `$OUT/protocols/`.
 >
 > **Target files**: `<list of assigned files>`
 >
@@ -76,7 +88,7 @@ Pass the following instructions to each Agent:
 > 3. **Only write out protocols that have default implementations**
 > 4. If `typealias` indirectly defines a closure type, record the expanded type as well
 >
-> **Output**: `.hq/protocol-shadow/protocols/<ProtocolName>.md`
+> **Output**: `$OUT/protocols/<ProtocolName>.md`
 >
 > **Format**:
 > ```markdown
@@ -119,7 +131,7 @@ Pass the following instructions to each Agent:
 >
 > Discover conforming types for the protocol and compare their signatures against the defaults.
 >
-> **Input**: Read `.hq/protocol-shadow/protocols/<ProtocolName>.md` to learn the protocol name, requirements, and default implementations.
+> **Input**: Read `$OUT/protocols/<ProtocolName>.md` to learn the protocol name, requirements, and default implementations.
 >
 > **Steps**:
 > 1. Search the **entire project** (not limited to `$ARGUMENTS`) for conforming types:
@@ -132,7 +144,7 @@ Pass the following instructions to each Agent:
 >    - Expand `typealias` before comparison
 > 4. Write results
 >
-> **Output 1**: `.hq/protocol-shadow/conformances/<ProtocolName>.md`
+> **Output 1**: `$OUT/conformances/<ProtocolName>.md`
 >
 > **Conformances format**:
 > ```markdown
@@ -156,7 +168,7 @@ Pass the following instructions to each Agent:
 > (If no same-named members exist: "Overrides: none — uses all defaults")
 > ```
 >
-> **Output 2**: Only when mismatches are found — `.hq/protocol-shadow/findings/<NNN>.md`
+> **Output 2**: Only when mismatches are found — `$OUT/findings/<NNN>.md`
 >
 > **Findings format**:
 > ```markdown
@@ -187,7 +199,7 @@ After all Analyzer Agents complete, launch a single Reviewer Agent.
 >
 > Verify the preceding steps' results and check for missed detections or false positives.
 >
-> **Input**: Read all files under `.hq/protocol-shadow/` — `protocols/`, `conformances/`, `findings/`
+> **Input**: Read all files under `$OUT/` — `protocols/`, `conformances/`, `findings/`
 >
 > **Verification items**:
 >
@@ -211,7 +223,7 @@ After all Analyzer Agents complete, launch a single Reviewer Agent.
 >    - Verify that parent protocol default implementations are also checked for each protocol in `protocols/`
 >    - Example: if `ChildProtocol: ParentProtocol`, default implementations from `ParentProtocol` must also be compared
 >
-> **Output**: `.hq/protocol-shadow/review.md`
+> **Output**: `$OUT/review.md`
 >
 > **Review format**:
 > ```markdown
@@ -278,5 +290,5 @@ If no mismatches are found, report: "No issues detected."
 
 - Full type inference is only possible with the compiler. This command uses text-based heuristic analysis. Note in the results that false positives and false negatives are possible.
 - When `typealias` indirectly defines a closure type, expand it before comparison.
-- Max 3 Agents running in parallel. If `protocols/` has 4+ files, batch in groups of 3 — wait for completion before launching the next batch.
+- Max 3 Agents running in parallel. If `$OUT/protocols/` has 4+ files, batch in groups of 3 — wait for completion before launching the next batch.
 - Ensure `.hq/protocol-shadow/` is not committed if it's not in `.gitignore`.
