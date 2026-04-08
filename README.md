@@ -217,6 +217,7 @@ All work is tracked through GitHub Issues and PRs. The plugin uses three issue t
 | `hq:task` | Requirement | **What** needs to be done. Contains the task checklist, notes, and references. |
 | `hq:plan` | Implementation plan | **How** to do it. Created per branch/PR. One `hq:task` can have multiple `hq:plan` issues. |
 | `hq:feedback` | Unresolved problem | Issues found during code review or E2E that couldn't be fixed in the current branch. |
+| `hq:wip` | Work in progress | Issue is still being drafted or adjusted. Commands pause and confirm before proceeding. |
 
 **Issue hierarchy:**
 
@@ -262,20 +263,33 @@ Parent: #<hq:task issue number>
 - Separate `security-scan` skill (was part of `reviewer` in v1)
 - `code-reviewer` and `security-scanner` agents enable parallel verification
 
+#### Design Philosophy
+
+The plugin is designed to **leave no trace in the target repository**. All plugin-generated files use the `.local.*` naming convention and are gitignored, so the repository stays clean. Running `/bootstrap` restores the full environment at any time.
+
+**Committed to the repo** (exceptions — only if missing):
+- `CLAUDE.md` — project overview (created once, then owned by the user)
+- `AGENTS.md` — agent instructions (only when explicitly requested via argument)
+- `.gitignore` entries — `**/*.local.*` and `.hq/` (one-time append)
+
+**Never committed** (gitignored via `**/*.local.*` or `.hq/`):
+- `.claude/settings.local.json` — permissions and attribution config
+- `.claude/rules/workflow.local.md` — workflow rules (auto-loaded by Claude Code as a rule, but not tracked in git)
+- `.hq/` — working directory for tasks, feedbacks, and reports
+
 #### Bootstrap (`/bootstrap`)
 
-Run once when initializing a new project. Pass `agents.md` as argument to also install AGENTS.md.
+Run once when initializing a new project. Pass `agents.md` as argument to also install AGENTS.md. Safe to re-run — idempotent for committed files, always updates local files to latest.
 
 | Target | Action | Note |
 |--------|--------|------|
 | `CLAUDE.md` | Create if missing | Fill template with project info |
-| `.claude/rules/workflow.md` | **Always overwrite** | Existing file backed up as `.bak` |
-| `.claude/settings.json` | Create if missing | Base template + auto-detected platform permissions |
 | `AGENTS.md` | Create if missing | **Only when `agents.md` argument is given** |
-| `.gitignore` | Append if missing | Adds `.hq/` entry |
-| GitHub Labels | Create if missing | `hq:task`, `hq:plan`, `hq:feedback` |
+| `.claude/settings.local.json` | Deep-merge | Add missing keys from template + auto-detected platform permissions |
+| `.claude/rules/workflow.local.md` | Always overwrite | Template is source of truth — updates expected |
+| `.gitignore` | Append if missing | Adds `**/*.local.*` and `.hq/` entries |
 
-**Platform detection for settings.json:**
+**Platform detection for settings.local.json:**
 
 | Project type | Permissions added |
 |-------------|-------------------|

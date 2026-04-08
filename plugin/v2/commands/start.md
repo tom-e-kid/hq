@@ -32,7 +32,7 @@ Set each task to `in_progress` when starting and `completed` when done. If a pha
 
 - Branch: !`git branch --show-current 2>/dev/null || echo "(detached)"`
 - Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
-- Workflow rule exists: !`test -f .claude/rules/workflow.md && echo "yes" || echo "no"`
+- Workflow rule exists: !`test -f .claude/rules/workflow.local.md && echo "yes" || echo "no"`
 
 ## Phase 1: Check Current State
 
@@ -63,6 +63,7 @@ Determine the `hq:task` to work on.
    - Any text after the issue number is **supplementary context** (e.g., `#1234 タスク 7 のみ実装`)
    - Fetch the issue: `gh issue view <number> --json title,body,milestone,labels`
    - Verify it has the `hq:task` label. If not, warn the user but continue.
+   - If the issue has the `hq:wip` label, warn the user: "This issue has the `hq:wip` label — it seems to be still under discussion. Do you want to proceed anyway?" — if the user declines, stop and return to Phase 2.
 
 2. **No argument** — ask the user:
    - "実装する hq:task の Issue 番号を教えてください。補足があれば一緒にどうぞ。"
@@ -162,7 +163,7 @@ Also write `.hq/tasks/<branch>/context.md` (branch name: `/` → `-`) as persist
 
 ### Step 4d: Read workflow rules
 
-Read `.claude/rules/workflow.md` if it exists. Follow every applicable rule throughout the remaining phases.
+Read `.claude/rules/workflow.local.md` if it exists. Follow every applicable rule throughout the remaining phases.
 
 ## Phase 5: Execute
 
@@ -185,7 +186,7 @@ Run `format` and `build` after simplification to ensure nothing broke.
 
 ## Phase 7: Verification
 
-Run the **Verification Pipeline** defined in `.claude/rules/workflow.md`. If no workflow rule exists, use the default pipeline below:
+Run the **Verification Pipeline** defined in `.claude/rules/workflow.local.md`. If no workflow rule exists, use the default pipeline below:
 
 ### Default Verification Pipeline
 

@@ -22,6 +22,7 @@
 - **`hq:task`** — a GitHub Issue (label: `hq:task`) that describes **what** needs to be done. The requirement.
 - **`hq:plan`** — a GitHub Issue (label: `hq:plan`) that describes **how** to do it. The implementation plan. One `hq:task` can have multiple `hq:plan` issues.
 - **`hq:feedback`** — a GitHub Issue (label: `hq:feedback`) for unresolved problems found during code review or E2E verification. Escalated from local FB files when they cannot be fixed within the current branch.
+- **`hq:wip`** — a GitHub Issue modifier label indicating the issue is still being drafted or adjusted. When encountered, pause and confirm with the user before proceeding.
 
 These are plugin-specific terms. Always use the `hq:` prefix to distinguish from general "task", "plan", or "feedback".
 
@@ -39,7 +40,11 @@ Milestone (GitHub built-in, optional)
 - `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API)
 - PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
 - PR uses `Refs #<hq:task>` to maintain a link to the requirement
-- Labels are created lazily at first use: `gh label create "hq:plan" --description "HQ implementation plan" 2>/dev/null || true`
+- Labels are created lazily at first use:
+  - `gh label create "hq:task" --description "HQ requirement (what to do)" --color "39FF14" 2>/dev/null || true`
+  - `gh label create "hq:plan" --description "HQ implementation plan (how to do it)" --color "00D4FF" 2>/dev/null || true`
+  - `gh label create "hq:feedback" --description "HQ unresolved feedback" --color "FF073A" 2>/dev/null || true`
+  - `gh label create "hq:wip" --description "HQ work in progress — issue still being drafted" --color "FFA500" 2>/dev/null || true`
 
 ## `hq:plan`
 

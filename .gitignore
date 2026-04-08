@@ -13,7 +13,7 @@
 .env
 .env.*
 
-.claude/*.local*
+**/*.local.*
 .devflows
 .cache
 .hq
