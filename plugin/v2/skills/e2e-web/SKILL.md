@@ -112,7 +112,7 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active `hq:plan`** — read `focus.md` from Claude Code memory directory. Extract `plan` (GitHub issue number). Fetch plan: `gh issue view <plan> --json body --jq '.body'`. Parse the `## Verification` section and use the unchecked items as the checklist
+1. **Active `hq:plan`** — read `focus.md` from Claude Code memory directory. Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch>/gh/plan.md` (branch path: `/` → `-`). If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Verification` section and use the unchecked items as the checklist
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
 

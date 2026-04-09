@@ -46,7 +46,7 @@ From the skill file, extract and follow:
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
-4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers). Fetch plan: `gh issue view <plan> --json body --jq '.body'`
+4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers). Read the plan body from the local cache: `.hq/tasks/<branch>/gh/plan.md` — do NOT call `gh issue view`. If the cache file does not exist, proceed without plan context.
 5. **Requirements**: if `docs/requirements.md` exists, use as reference
 
 ## Execution Flow

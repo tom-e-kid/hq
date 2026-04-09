@@ -111,8 +111,9 @@ After Fix items are committed and pushed, process Feedback and Dismiss items **i
 
 1. Create a GitHub issue with sufficient context for someone unfamiliar with this PR:
    ```bash
-   gh issue create --title "<concise title>" --body "<body>" --label "hq:feedback"
+   gh issue create --title "<concise title>" --body "<body>" --label "hq:feedback" [--project "<project>"]
    ```
+   Inherit project(s) from `.hq/tasks/<branch>/gh/task.json` `projectItems` if available (branch path: `/` → `-`).
    Issue body should include: the reviewer's concern, why it's out of scope for this PR, and a suggested approach for addressing it.
 2. Reply to the review comment with the issue link:
    ```bash

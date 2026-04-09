@@ -25,7 +25,7 @@ If `focus.md` exists in your Claude Code memory directory:
 4. **Escalate unresolved FB** — check `feedbacks/` for pending FB files:
    - If unresolved FBs exist, show the list to the user
    - Ask whether to create `hq:feedback` issues on GitHub for each
-   - If yes — for each FB: `gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback"`, then move to `feedbacks/done/`
+   - If yes — for each FB: `gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback" [--project "<project>"]` (inherit project(s) from `gh/task.json` if available), then move to `feedbacks/done/`
 5. Ask the user:
    - **"Archive"** — move `.hq/tasks/<branch>/` to `.hq/tasks/done/<branch>/`
    - **"Delete"** — remove `.hq/tasks/<branch>/` entirely

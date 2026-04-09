@@ -34,7 +34,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 4. **Escalate unresolved FB** — check `.hq/tasks/<branch>/feedbacks/` for pending FB files (not in `done/`):
    - If unresolved FBs exist, show the list to the user
    - Ask whether to create `hq:feedback` issues on GitHub for each
-   - If yes — for each FB: `gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback"`
+   - If yes — for each FB: `gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback" [--project "<project>"]` (inherit project(s) from the source `hq:task` via `gh/task.json`)
    - Move escalated FB files to `feedbacks/done/`
 
 5. **Draft the PR** based on the context above AND session context (what you know about why these changes were made):
@@ -60,7 +60,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 
 6. **Show the draft** to the user and ask for confirmation before creating.
 
-7. **Resolve milestone** — check the source `hq:task` issue for a milestone: `gh issue view <source> --json milestone --jq '.milestone.title'`. If one exists, include `--milestone "<milestone>"` when creating the PR.
+7. **Resolve milestone and project** — read the cached task data from `.hq/tasks/<branch>/gh/task.json` (branch path: `/` → `-`). Extract the milestone title and project title(s) from `projectItems`. If the cache file does not exist, fall back to `gh issue view <source> --json milestone,projectItems`. If a milestone exists, include `--milestone "<milestone>"` when creating the PR. If project(s) exist, include `--project "<project>"` (repeat for each).
 
 8. **Create the PR**:
 
@@ -68,7 +68,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
    gh pr create --title "<title>" --body "$(cat <<'EOF'
    <body>
    EOF
-   )" --milestone "<milestone if exists>"
+   )" --milestone "<milestone if exists>" --project "<project if exists>"
    ```
 
 9. **Return the PR URL**.
@@ -80,6 +80,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 - **Write for newcomers** — assume the reader is joining the project for the first time. Provide enough context so the PR is self-explanatory.
 - The `Closes #` and `Refs #` lines are required. If no issue numbers can be determined, ask the user before proceeding.
 - If the source `hq:task` issue has a milestone, the PR must inherit it. `hq:feedback` issues do NOT inherit milestones.
+- If the source `hq:task` issue has project(s), ALL generated items (PR, `hq:feedback` issues) must inherit them via `--project`.
 - Match the language and tone of existing PRs in this repo.
 - Do NOT fabricate changes not present in the diff.
 - Keep the summary focused — details go in the Changes section.

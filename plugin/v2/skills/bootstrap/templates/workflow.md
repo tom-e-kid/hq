@@ -40,6 +40,7 @@ Milestone (GitHub built-in, optional)
 - `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API)
 - PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
 - PR uses `Refs #<hq:task>` to maintain a link to the requirement
+- **Traceability inheritance** — if the source `hq:task` has a milestone or project(s), all generated items (`hq:plan`, PR, `hq:feedback`) must inherit them via `--milestone` / `--project` flags. Exception: `hq:feedback` issues do NOT inherit milestones.
 - Labels are created lazily at first use:
   - `gh label create "hq:task" --description "HQ requirement (what to do)" --color "39FF14" 2>/dev/null || true`
   - `gh label create "hq:plan" --description "HQ implementation plan (how to do it)" --color "00D4FF" 2>/dev/null || true`
@@ -103,7 +104,7 @@ source: <hq:task issue number>
 **Lifecycle**:
 
 - **On start**: save `plan` and `source` to `focus.md` in your Claude Code memory directory. Also write the same values to `.hq/tasks/<branch>/context.md` as a persistent backup (branch name: replace `/` with `-`).
-- **On status query**: read `focus.md` from your Claude Code memory directory → run `gh issue view <plan> --json body --jq '.body'` to fetch the plan → report status.
+- **On status query**: read `focus.md` from your Claude Code memory directory → read the plan body from `.hq/tasks/<branch>/gh/plan.md` (branch path: `/` → `-`). If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
 - **On completion**: when a PR is created or all gates pass, remove `focus.md` from your Claude Code memory directory. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` backup is left in place — it travels with the task folder.
 
 ### Focus Resolution
@@ -111,7 +112,7 @@ source: <hq:task issue number>
 When the user gives a vague instruction (e.g., "the auth task", "issue 42"), resolve the focus by searching in order:
 
 1. **restore from backup** — check `.hq/tasks/<branch>/context.md` for the current branch. If it exists, pre-populate focus from it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" If the user says no, continue to the steps below.
-2. **direct issue number** — if the user provides a number, use it directly with `gh issue view <number>` to verify it exists and has the `hq:plan` label.
+2. **direct issue number** — if the user provides a number, check `.hq/tasks/<branch>/gh/` for cached data first. If not cached, use `gh issue view <number>` to verify it exists and has the `hq:plan` label.
 3. **search** — run `gh issue list --label hq:plan --state open --json number,title` and match against the user's keyword.
 
 If exactly one match: set focus automatically. If multiple matches: show candidates and ask the user to choose. If no match: ask the user to specify the issue number.
@@ -181,7 +182,7 @@ When creating a PR (`/pr`) or archiving (`/archive`), check for unresolved FB fi
 2. Ask whether to escalate them as `hq:feedback` issues on GitHub
 3. If yes — for each FB, create a GitHub Issue:
    ```
-   gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback"
+   gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback" [--project "<project>"]
    ```
 4. Move the escalated FB files to `feedbacks/done/` (tracking moves to GitHub)
 5. If no — FB files remain as-is (archived with the task folder if archiving, or left in place if creating a PR)
