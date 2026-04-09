@@ -23,7 +23,7 @@ description: >
   </example>
 model: sonnet
 color: red
-tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write"]
+tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write", "TaskCreate", "TaskUpdate"]
 ---
 
 You are a security scanner agent. Scan code changes on the current branch for security-sensitive patterns. **Detection only — no judgment, no fixes.**
@@ -46,6 +46,15 @@ From the skill file, extract and follow:
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
 4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers) for traceability. If plan context is needed, read from the local cache: `.hq/tasks/<branch>/gh/plan.md` — do NOT call `gh issue view`.
+
+## Progress Reporting
+
+Use TaskCreate and TaskUpdate to report progress so the parent session can track your work:
+
+1. At the start, create a task: `"Security Scan: <branch>"` (status: in_progress)
+2. Create sub-tasks for each major step: Validate, Gather diff, Scan, Save report
+3. Update each sub-task to `completed` as you finish it
+4. Update the parent task to `completed` when done
 
 ## Execution Flow
 
