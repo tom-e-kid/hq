@@ -30,7 +30,7 @@ Phase 3: Planning (mandatory — no code before approval)
 Phase 4: Execution Prep
 │  Create hq:plan issue (sub-issue of hq:task)
 │  Create work branch
-│  Set focus (focus.md + .hq/tasks/<branch>/context.md)
+│  Set focus (context.md + memory)
 │  Read workflow rules
 │
 Phase 5: Execute

@@ -112,7 +112,7 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active `hq:plan`** — read `focus.md` from Claude Code memory directory. Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch>/gh/plan.md` (branch path: `/` → `-`). If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Verification` section and use the unchecked items as the checklist
+1. **Active `hq:plan`** — read `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch>/gh/plan.md`. If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Verification` section and use the unchecked items as the checklist
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
 
@@ -137,7 +137,7 @@ If all items pass, no FB files are generated.
 
 ## Feedback Output
 
-For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `focus.md` in Claude Code memory directory. Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`).
+For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`).
 
 Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
 

@@ -47,12 +47,12 @@ If **active work detected**:
 3. If **interrupt** (start new task):
    - Commit or stash any uncommitted changes
    - Ask whether to archive the current task (`/archive`) or leave it as-is
-   - Clear focus (remove `focus.md` from Claude Code memory directory)
+   - Update your memory to indicate no active task (clear the focus entry)
    - Switch to base branch: `git checkout <base-branch>`
    - Proceed to Phase 2
 4. If **continue** (resume current task):
    - Read the existing plan from cache → `.hq/tasks/<branch>/gh/plan.md` (branch path: `/` → `-`). If cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'` and write the result to the cache file.
-   - Check `.hq/tasks/<branch>/gh/task.json` exists. If not, read `source` from focus → `gh issue view <source> --json title,body,milestone,labels,projectItems` and write the result to the cache file.
+   - Check `.hq/tasks/<branch>/gh/task.json` exists. If not, read `source` from context.md → `gh issue view <source> --json title,body,milestone,labels,projectItems` and write the result to the cache file.
    - Skip directly to **Phase 5** using the existing plan
 
 ## Phase 2: Input Source
@@ -153,15 +153,19 @@ gh issue create --title "<concise plan title>" --body "<plan body>" --label "hq:
 
 ### Step 4c: Set focus
 
-Write `focus.md` to Claude Code memory directory:
-```yaml
----
-plan: <hq:plan issue number>
-source: <hq:task issue number>
----
-```
+1. Write `.hq/tasks/<branch>/context.md` (branch name: `/` → `-`):
+   ```yaml
+   ---
+   plan: <hq:plan issue number>
+   source: <hq:task issue number>
+   gh:
+     task: .hq/tasks/<branch>/gh/task.json
+     plan: .hq/tasks/<branch>/gh/plan.md
+   ---
+   ```
+   This is the **deterministic focus reference** — agents and skills resolve it from the branch name.
 
-Also write `.hq/tasks/<branch>/context.md` (branch name: `/` → `-`) as persistent backup with the same content.
+2. Save the current focus to your memory (project type) so it survives session clears. Include the branch name, plan number, and source number. Do NOT prescribe a specific file name — let the memory system handle storage.
 
 ### Step 4d: Write issue cache
 

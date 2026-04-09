@@ -29,7 +29,7 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 2. **Push the branch** if it hasn't been pushed yet:
    - `git push -u origin HEAD`
 
-3. **Resolve traceability** — read `focus.md` from Claude Code memory directory. Extract `plan` and `source` (GitHub issue numbers). Fallback: `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). If neither exists, ask the user for the `hq:plan` and `hq:task` issue numbers.
+3. **Resolve traceability** — read `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Extract `plan` and `source` (GitHub issue numbers). If not found, check your memory for focus info. If neither exists, ask the user for the `hq:plan` and `hq:task` issue numbers.
 
 4. **Escalate unresolved FB** — check `.hq/tasks/<branch>/feedbacks/` for pending FB files (not in `done/`):
    - If unresolved FBs exist, show the list to the user

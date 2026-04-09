@@ -87,33 +87,41 @@ Every `hq:plan` must:
 
 ### Focus
 
-**Focus** is a local pointer to the `hq:plan` issue currently driving work. It is stored in `focus.md` within your Claude Code memory directory.
+**Focus** is a pointer to the `hq:plan` issue currently driving work. It is stored in two places:
 
-**Format** (frontmatter YAML — no free-text body):
+1. **`.hq/tasks/<branch>/context.md`** — deterministic file (branch name: `/` → `-`). Agents and skills resolve focus from this file.
+2. **Memory** — a project-type memory entry for cross-session awareness. Lets new sessions know what was in progress.
 
-```
+**context.md format** (frontmatter YAML — no free-text body):
+
+```yaml
 ---
 plan: <hq:plan issue number>
 source: <hq:task issue number>
+gh:
+  task: .hq/tasks/<branch>/gh/task.json
+  plan: .hq/tasks/<branch>/gh/plan.md
 ---
 ```
 
 - `plan` — **MUST**. The `hq:plan` issue number driving current work.
 - `source` — **MUST**. The `hq:task` issue number this plan implements. Focus cannot be set without a source.
+- `gh` — paths to the local GitHub issue cache (see Issue Cache section below).
 
 **Lifecycle**:
 
-- **On start**: save `plan` and `source` to `focus.md` in your Claude Code memory directory. Also write the same values to `.hq/tasks/<branch>/context.md` as a persistent backup (branch name: replace `/` with `-`).
-- **On status query**: read `focus.md` from your Claude Code memory directory → read the plan body from `.hq/tasks/<branch>/gh/plan.md` (branch path: `/` → `-`). If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
-- **On completion**: when a PR is created or all gates pass, remove `focus.md` from your Claude Code memory directory. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` backup is left in place — it travels with the task folder.
+- **On start**: write `.hq/tasks/<branch>/context.md`. Save focus info to your memory (project type) — include the branch name, plan number, and source number. Do NOT prescribe a specific file name — let the memory system handle storage.
+- **On status query**: read `.hq/tasks/<branch>/context.md` → read the plan body from `.hq/tasks/<branch>/gh/plan.md`. If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
+- **On completion**: when a PR is created or all gates pass, update your memory to indicate no active task. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` file is left in place — it travels with the task folder.
 
 ### Focus Resolution
 
 When the user gives a vague instruction (e.g., "the auth task", "issue 42"), resolve the focus by searching in order:
 
-1. **restore from backup** — check `.hq/tasks/<branch>/context.md` for the current branch. If it exists, pre-populate focus from it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" If the user says no, continue to the steps below.
-2. **direct issue number** — if the user provides a number, check `.hq/tasks/<branch>/gh/` for cached data first. If not cached, use `gh issue view <number>` to verify it exists and has the `hq:plan` label.
-3. **search** — run `gh issue list --label hq:plan --state open --json number,title` and match against the user's keyword.
+1. **context.md** — check `.hq/tasks/<branch>/context.md` for the current branch. If it exists, use it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" If the user says no, continue to the steps below.
+2. **memory** — check your memory for active focus info.
+3. **direct issue number** — if the user provides a number, check `.hq/tasks/<branch>/gh/` for cached data first. If not cached, use `gh issue view <number>` to verify it exists and has the `hq:plan` label.
+4. **search** — run `gh issue list --label hq:plan --state open --json number,title` and match against the user's keyword.
 
 If exactly one match: set focus automatically. If multiple matches: show candidates and ask the user to choose. If no match: ask the user to specify the issue number.
 
@@ -163,7 +171,7 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 
 **Numbering** — check existing files in `feedbacks/` and `feedbacks/done/` to determine the next number. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits).
 
-**Format** — FB files must follow [feedback.md](feedback.md). Read `plan` and `source` values from `focus.md` in your Claude Code memory directory (fallback: `.hq/tasks/<branch>/context.md`) for the frontmatter fields.
+**Format** — FB files must follow [feedback.md](feedback.md). Read `plan` and `source` values from `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`) for the frontmatter fields.
 
 ### FB Handling Rules (for the root agent after a skill run)
 

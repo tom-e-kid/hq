@@ -17,9 +17,9 @@ allowed-tools: Read, Glob, Bash(ls *), Bash(mv .hq/tasks/*), Bash(rm -rf .hq/tas
 
 ### Case 1: Focus exists
 
-If `focus.md` exists in your Claude Code memory directory:
+If `.hq/tasks/<branch>/context.md` exists for the current branch (branch path: `/` → `-`), or your memory has active focus info:
 
-1. Read `focus.md` from Claude Code memory directory. Extract `plan` and `source` (GitHub issue numbers).
+1. Read `.hq/tasks/<branch>/context.md`. Extract `plan` and `source` (GitHub issue numbers). If context.md is not found, check your memory for focus info.
 2. Show the `hq:plan` issue info: `gh issue view <plan> --json title,state --jq '"#" + (.number|tostring) + " " + .title + " (" + .state + ")"'`
 3. Determine the corresponding task folder in `.hq/tasks/` from the branch name (branch path: `/` → `-`)
 4. **Escalate unresolved FB** — check `feedbacks/` for pending FB files:
@@ -32,12 +32,12 @@ If `focus.md` exists in your Claude Code memory directory:
    - **"Cancel"** — do nothing
 6. Execute the chosen action
 7. Close the `hq:plan` issue: `gh issue close <plan>`
-8. Remove `focus.md` from your Claude Code memory directory
+8. Update your memory to indicate no active task (clear the focus entry)
 9. Report what was done
 
 ### Case 2: No focus, but task folders exist
 
-If `focus.md` does not exist in Claude Code memory but `.hq/tasks/` contains folders (excluding `done/`):
+If no focus is found (no context.md for the current branch and no focus in memory) but `.hq/tasks/` contains folders (excluding `done/`):
 
 1. List all task folders with their contents summary (number of FB files, reports, etc.)
 2. Ask the user to select one or more folders
@@ -56,4 +56,4 @@ If no focus and no task folders: report "Nothing to archive" and stop.
 - Always ask before moving or deleting — never auto-archive
 - When moving to `done/`, create `.hq/tasks/done/` if it doesn't exist
 - If a folder with the same name already exists in `done/`, append a timestamp suffix (e.g., `feat-auth-20260323-1430`)
-- Only remove `focus.md` from Claude Code memory if the user chose Archive or Delete (not Cancel)
+- Only clear focus from memory if the user chose Archive or Delete (not Cancel)
