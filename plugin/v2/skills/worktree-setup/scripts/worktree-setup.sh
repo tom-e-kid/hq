@@ -74,7 +74,11 @@ fi
 
 # === worktreeディレクトリ名の決定 ===
 
-worktree_dir="${parent_dir}/${repo_name}@${base_branch}"
+if [[ -n "$new_branch" ]]; then
+  worktree_dir="${parent_dir}/${repo_name}@${new_branch}"
+else
+  worktree_dir="${parent_dir}/${repo_name}@${base_branch}"
+fi
 
 echo "=== Worktree Setup ==="
 echo "メインリポ:     $main_repo"
@@ -138,19 +142,21 @@ if [[ -f "$source_dir/.claude/settings.json" ]]; then
   copied_files+=(".claude/settings.json")
 fi
 
-# .hq/pr.md
-if [[ -f "$source_dir/.hq/pr.md" ]]; then
-  mkdir -p "$worktree_dir/.hq"
-  cp "$source_dir/.hq/pr.md" "$worktree_dir/.hq/pr.md"
-  copied_files+=(".hq/pr.md")
+# .claude/rules/ (workflow.local.md など bootstrap で生成されるルール一式)
+if [[ -d "$source_dir/.claude/rules" ]]; then
+  mkdir -p "$worktree_dir/.claude"
+  cp -R "$source_dir/.claude/rules" "$worktree_dir/.claude/rules"
+  copied_files+=(".claude/rules/")
 fi
 
-# .hq/xcodebuild-config.md
-if [[ -f "$source_dir/.hq/xcodebuild-config.md" ]]; then
-  mkdir -p "$worktree_dir/.hq"
-  cp "$source_dir/.hq/xcodebuild-config.md" "$worktree_dir/.hq/xcodebuild-config.md"
-  copied_files+=(".hq/xcodebuild-config.md")
-fi
+# .hq/ プロジェクト上書きルール類
+for hq_override in pr.md code-review.md xcodebuild-config.md; do
+  if [[ -f "$source_dir/.hq/$hq_override" ]]; then
+    mkdir -p "$worktree_dir/.hq"
+    cp "$source_dir/.hq/$hq_override" "$worktree_dir/.hq/$hq_override"
+    copied_files+=(".hq/$hq_override")
+  fi
+done
 
 # .env* (monorepo対応: 全階層を検索してディレクトリ構造を保持)
 while IFS= read -r -d '' env_file; do
