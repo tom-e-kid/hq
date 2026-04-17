@@ -237,11 +237,13 @@ Delegate to the `pr` skill with the prepared body:
 gh pr create \
   --title "<type>: <description>" \
   --body "<prepared body>" \
+  --label "hq:pr" \
   [--milestone "<inherited>"] \
   [--project "<inherited>" ...]
 ```
 
 - Title: derive from the plan title (`<type>(plan): ...` → `<type>: ...`).
+- Always apply the `hq:pr` label (create it lazily per workflow rule if missing).
 - Inherit milestone and projects from the `hq:task`.
 
 ## Phase 8: Report

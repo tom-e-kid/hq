@@ -54,14 +54,16 @@ Agents read skill files at runtime for analysis criteria, then handle workflow i
 
 **Traceability**
 
-All work is tracked through GitHub Issues and PRs. The plugin uses four issue labels:
+All work is tracked through GitHub Issues and PRs. The plugin uses six labels:
 
 | Label | Role | Description |
 |-------|------|-------------|
 | `hq:task` | Requirement (trigger) | **What** needs to be done. Created by the user; consumed by `/hq:draft`. |
 | `hq:plan` | Implementation plan (workflow center) | **How** to do it. Created by `/hq:draft` as a sub-issue of `hq:task`. Drives `/hq:start` execution. |
 | `hq:feedback` | Unresolved problem | Carved out from a PR's Known Issues during `/hq:triage`, or from external review comments via `/hq:respond`. |
-| `hq:wip` | Work in progress | Issue is still being drafted. Commands pause and confirm before proceeding. |
+| `hq:doc` | Informational note | Research findings worth preserving that are not a direct task. Created manually. |
+| `hq:pr` | PR marker | Applied automatically by `/hq:start` on PR creation. Marks PRs that belong to this workflow. |
+| `hq:wip` | Automation gate / drafting marker | Issue is being drafted; automated `/hq:draft` or `/hq:start` triggers must skip it. In manual use, commands pause and confirm. |
 
 **Issue hierarchy:**
 

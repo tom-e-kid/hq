@@ -74,8 +74,10 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
    gh pr create --title "<title>" --body "$(cat <<'EOF'
    <body>
    EOF
-   )" --milestone "<milestone if exists>" --project "<project if exists>"
+   )" --label "hq:pr" --milestone "<milestone if exists>" --project "<project if exists>"
    ```
+
+   Always apply the `hq:pr` label. Create it lazily if missing (see workflow.local.md Issue Hierarchy).
 
 8. **Move escalated FB files to `done/`** — for each FB file referenced in the `## 制限事項 / Known Issues` section of the PR body, move the corresponding file from `feedbacks/` to `feedbacks/done/`. This is atomic with PR creation: if the PR is created successfully with those entries in the body, the files MUST move.
 

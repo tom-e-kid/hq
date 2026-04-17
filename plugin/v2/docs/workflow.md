@@ -121,7 +121,7 @@ Phase 7: PR Creation
 │    ## 制限事項 / Known Issues (unresolved FBs + move to done/)
 │    Closes #<plan> / Refs #<task>
 │  Final plan-cache-push.sh <plan>               [Sync: Push]
-│  gh pr create (inherit milestone + projects)
+│  gh pr create --label hq:pr (inherit milestone + projects)
 │
 Phase 8: Report
    Task, plan, branch, PR URL, [manual] count, Known Issues count
