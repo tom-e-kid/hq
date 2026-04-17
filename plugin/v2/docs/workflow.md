@@ -4,37 +4,47 @@ This document describes the full hq workflow and how its commands fit together. 
 
 ## Overview
 
-hq separates a feature from idea to merge into five command-scoped operations, with user interventions pinned at two points: **`hq:plan` Issue review** and **PR review**. Everything else is autonomous.
+hq separates a feature from idea to merge into five command-scoped operations. **Two user interventions** anchor the flow — everything else is autonomous:
+
+1. **Review `hq:plan` Issue** (after `/hq:draft`) — the user edits / approves the plan before execution.
+2. **Review `hq:pr`** (after `/hq:start`) — the user inspects the produced PR and decides the next move (merge, `/hq:triage`, `/hq:respond`, `/hq:archive`).
+
+These two review points are the workflow's center of gravity. Everything downstream of intervention #2 is **user-directed** — the response tools compose freely, not in a fixed sequence.
 
 - **`hq:task`** = trigger (what to build — requirement)
-- **`hq:plan`** = center of the workflow (how to build it — drives execution, verification, PR)
-- **PR** = artifact of `hq:plan`
+- **`hq:plan`** = center of execution (how to build it — drives execution, verification, PR)
+- **`hq:pr`** = the PR that realizes an `hq:plan`. Labeled `hq:pr` by `/hq:start` at creation; body carries `Closes #<plan>` + `Refs #<task>`.
 
 ## Command Map
 
 ```
-                   (user intervention #1)                   (user intervention #2)
-                     review hq:plan Issue                        review PR
-                           ↓                                         ↓
- hq:task ─/hq:draft─→ hq:plan ─/hq:start─→ PR ─/hq:triage─→ merge ─/hq:archive─→
-                                             │
-                                             │ external comments (Copilot / reviewers)
-                                             ↓
-                                         /hq:respond
+                 (intervention #1)   (intervention #2)
+                  review hq:plan       review hq:pr
+                         ↓                   ↓
+ hq:task ─/hq:draft─→ hq:plan ─/hq:start─→ hq:pr ──┬─ merge ─/hq:archive─→
+                                                   │
+                                                   ├─ /hq:triage   (Known Issues from PR body)
+                                                   └─ /hq:respond  (external review comments)
 ```
 
-**Main axis** (internal state driven): `/hq:draft` → `/hq:start` → `/hq:triage` → `/hq:archive`
-
-**Orthogonal axis** (external input driven): `/hq:respond` — invoked whenever reviewers (Copilot, humans) leave PR comments that need a response.
+- **Creation path** (produces artifacts): `/hq:draft` → `/hq:start` → (merge) → `/hq:archive`.
+- **Response tools** (invoked at the user's discretion after intervention #2, zero or more times, in any order): `/hq:triage` for in-PR Known Issues, `/hq:respond` for external review comments.
 
 ## Lifecycle Overview
 
-1. **`/hq:draft <hq:task>`** — interactive brainstorm → Plan agent → creates `hq:plan` Issue as a sub-issue of the `hq:task`. User then reviews / edits the Issue on GitHub UI.
-2. **`/hq:start <hq:plan>`** — autonomous: branch → execute → simplify → verify → PR. User then reviews the PR.
-3. **`/hq:respond`** (optional, on-demand) — autonomously processes external PR review comments: fix / escalate as `hq:feedback` / dismiss.
-4. **`/hq:triage <PR>`** — interactive per-item: for each entry in the PR body's `## 制限事項 / Known Issues` section, choose (1) add to `hq:plan` for follow-up, (2) leave as-is, or (3) carve out as `hq:feedback`. This is the **only** place `hq:feedback` Issues are created from the main workflow.
-5. **Merge the PR** — GitHub auto-closes `hq:plan` via `Closes #<plan>`.
-6. **`/hq:archive`** — safety-checked close-out: requires PR merged + no pending FBs, then archives `.hq/tasks/<branch-dir>/` and deletes the local feature branch.
+Creation path:
+
+1. **`/hq:draft <hq:task>`** — interactive brainstorm → Plan agent → creates `hq:plan` Issue as a sub-issue of the `hq:task`.
+   → **User intervention #1**: review / edit the `hq:plan` Issue on GitHub UI.
+2. **`/hq:start <hq:plan>`** — autonomous: branch → execute → simplify → verify → PR (labeled `hq:pr`).
+   → **User intervention #2**: review the `hq:pr`, then choose how to proceed.
+3. **Merge the `hq:pr`** — GitHub auto-closes `hq:plan` via `Closes #<plan>`.
+4. **`/hq:archive`** — safety-checked close-out: requires PR merged + no pending FBs, then archives `.hq/tasks/<branch-dir>/` and deletes the local feature branch.
+
+Response tools (invoked between intervention #2 and merge, at the user's discretion):
+
+- **`/hq:triage <PR>`** — interactive per-item: for each entry in the PR body's `## 制限事項 / Known Issues` section, choose (1) add to `hq:plan` for follow-up, (2) leave as-is, or (3) carve out as `hq:feedback`. The **only** place `hq:feedback` Issues are created from the main workflow.
+- **`/hq:respond`** — autonomously processes external PR review comments (Copilot, reviewers): fix / escalate as `hq:feedback` / dismiss.
 
 ## Commands
 
