@@ -3,7 +3,7 @@ name: review-comment-analyzer
 description: >
   Analyze a single PR review comment against the codebase and classify it as Fix, Feedback, or Dismiss.
   Read-only agent — does not modify code. Returns a structured classification with evidence.
-  Designed to be launched in parallel (one instance per comment) by the /review-triage command.
+  Designed to be launched in parallel (one instance per comment) by the /hq:respond command.
 model: sonnet
 color: yellow
 tools: ["Read", "Grep", "Glob", "TaskCreate", "TaskUpdate"]

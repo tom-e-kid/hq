@@ -112,9 +112,17 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active `hq:plan`** — read `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`). Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch>/gh/plan.md`. If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Verification` section and use the unchecked items as the checklist
+1. **Active `hq:plan`** — read `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md`. If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Acceptance` section and use **unchecked `[auto]` items that are browser/UI-oriented** as the checklist. Ignore `[manual]` items — those are verified by the user during PR review.
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
+
+On successful verification of an `[auto]` item, toggle its checkbox in the cache via:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring>"
+```
+
+Do NOT call `gh issue edit` directly — the plan cache is pushed to GitHub at the Phase 6 sync checkpoint by the caller (`/hq:start`).
 
 Useful patterns:
 
@@ -137,9 +145,9 @@ If all items pass, no FB files are generated.
 
 ## Feedback Output
 
-For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`).
+For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`).
 
-Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
+Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch-dir>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
 
 ## Rules
 
