@@ -19,12 +19,28 @@
 
 ## Terminology
 
-- **`hq:task`** — a GitHub Issue (label: `hq:task`) that describes **what** needs to be done. The requirement.
-- **`hq:plan`** — a GitHub Issue (label: `hq:plan`) that describes **how** to do it. The implementation plan. One `hq:task` can have multiple `hq:plan` issues.
-- **`hq:feedback`** — a GitHub Issue (label: `hq:feedback`) for unresolved problems found during code review or E2E verification. Escalated from local FB files when they cannot be fixed within the current branch.
-- **`hq:wip`** — a GitHub Issue modifier label indicating the issue is still being drafted or adjusted. When encountered, pause and confirm with the user before proceeding.
+- **`hq:task`** — a GitHub Issue (label: `hq:task`) that describes **what** needs to be done. The requirement. **Trigger** of the workflow.
+- **`hq:plan`** — a GitHub Issue (label: `hq:plan`) that describes **how** to do it. The implementation plan. **Center** of the workflow — drives execution, verification, and PR. One `hq:task` can have multiple `hq:plan` issues.
+- **`hq:feedback`** — a GitHub Issue (label: `hq:feedback`) for unresolved problems carved out from a PR's Known Issues during PR review. Created via `/hq:triage` only.
+- **`hq:doc`** — a GitHub Issue (label: `hq:doc`) for informational notes / research findings worth preserving (not a direct task). Created manually by the user when investigation turns up something useful to retain. Not consumed by any workflow command.
+- **`hq:pr`** — a PR label applied automatically by `/hq:start` when the PR is created. Marks a PR as a product of the `hq:plan` → PR workflow. Useful for filtering PRs that belong to this workflow vs ad-hoc PRs.
+- **`hq:wip`** — a GitHub Issue modifier label. Purpose is twofold: (1) **drafting marker** — the issue is still being shaped and not ready for automation, (2) **automation gate** — when `/hq:start` or `/hq:draft` is triggered automatically (e.g., from GitHub Actions), the command must skip (or, in manual invocation, pause and confirm) any Issue carrying this label.
 
 These are plugin-specific terms. Always use the `hq:` prefix to distinguish from general "task", "plan", or "feedback".
+
+## Naming Conventions
+
+Titles follow **Conventional Commits** style. Recognized `<type>` values: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`.
+
+- **`hq:task` title**: `<type>: <requirement>`
+  - Example: `feat: ユーザ認証を追加`
+- **`hq:plan` title**: `<type>(plan): <implementation approach>`
+  - Example: `feat(plan): OAuth 2.0 でユーザ認証を実装`
+  - The `(plan)` scope distinguishes the implementation plan from the parent requirement.
+- **PR title**: `<type>: <implementation>` — same as `hq:plan` title with `(plan)` removed
+  - Example: `feat: OAuth 2.0 でユーザ認証を実装`
+- **Branch name**: `<type>/<short-description>` (kebab-case)
+  - Example: `feat/oauth-login`
 
 ## Issue Hierarchy
 
@@ -33,7 +49,8 @@ Milestone (GitHub built-in, optional)
   └── hq:task Issue  — requirement ("what")
         └── hq:plan Issue  — implementation plan ("how")
               ├── ← Closes → PR
-              └── hq:feedback Issue(s)  — unresolved problems (Refs #plan)
+              │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
+              └── (or escalated during PR review via /hq:triage)
 ```
 
 - `hq:task` and `hq:plan` are separate issues (separation of concerns)
@@ -45,32 +62,34 @@ Milestone (GitHub built-in, optional)
   - `gh label create "hq:task" --description "HQ requirement (what to do)" --color "39FF14" 2>/dev/null || true`
   - `gh label create "hq:plan" --description "HQ implementation plan (how to do it)" --color "00D4FF" 2>/dev/null || true`
   - `gh label create "hq:feedback" --description "HQ unresolved feedback" --color "FF073A" 2>/dev/null || true`
-  - `gh label create "hq:wip" --description "HQ work in progress — issue still being drafted" --color "FFA500" 2>/dev/null || true`
+  - `gh label create "hq:doc" --description "HQ informational note / research findings (not a direct task)" --color "5319E7" 2>/dev/null || true`
+  - `gh label create "hq:pr" --description "HQ PR associated with an hq:plan" --color "8A2BE2" 2>/dev/null || true`
+  - `gh label create "hq:wip" --description "HQ work in progress — automation gate / drafting marker" --color "FFA500" 2>/dev/null || true`
 
 ## `hq:plan`
 
-An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body replaces what was formerly a local "taskfile".
+An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body IS the source of truth for what needs to be done and how completion is verified.
 
-The `hq:plan` issue body should follow this recommended structure:
+The `hq:plan` issue body **must** follow this structure:
 
 ```markdown
 Parent: #<hq:task issue number>
 
 ## Plan
-<implementation steps>
+- [ ] implementation step 1
+- [ ] implementation step 2
+- [ ] implementation step 3
 
-## Gates
-- [ ] Gate 1
-- [ ] Gate 2
-
-## Verification
-- [ ] Verification item 1
-- [ ] Verification item 2
+## Acceptance
+- [ ] [auto] <self-verifiable check, e.g., `pnpm test` passes>
+- [ ] [auto] <e.g., `/api/auth/login` returns 200>
+- [ ] [manual] <requires user confirmation, e.g., browser UI check>
 ```
 
-- `## Gates` — completion criteria. Checkboxes show progress in the GitHub UI
-- `## Verification` — items for E2E testing. The `e2e-web` skill parses this section
-- This structure is **recommended, not enforced**. How you create the plan is up to you — what matters is that it lives in a GitHub Issue labeled `hq:plan`
+- **`## Plan`** — implementation steps (ToDo list). All items must be checked before PR creation. Progress is visible in the GitHub UI.
+- **`## Acceptance`** — verifiable completion criteria. Each item is tagged with an execution marker:
+  - **`[auto]`** — Claude can verify autonomously (unit/integration tests, API calls, file existence, type checks). Executed during `/hq:start` verification phase.
+  - **`[manual]`** — requires user confirmation (browser UI, manual smoke test, visual check). Carried into the PR body and verified by the user during PR review.
 
 After creating an `hq:plan` issue, register it as a sub-issue of the parent `hq:task`:
 
@@ -82,14 +101,14 @@ gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_
 Every `hq:plan` must:
 
 - Be **self-contained** — it survives session clears (it's on GitHub, not local)
-- Define **gates** (clear completion criteria) — an `hq:plan` is complete only when all gates pass
-- Before checking gates, run `/simplify` to eliminate redundant or unnecessary code
+- Define **Plan** (implementation steps) and **Acceptance** (completion criteria)
+- Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
 
 ### Focus
 
 **Focus** is a pointer to the `hq:plan` issue currently driving work. It is stored in two places:
 
-1. **`.hq/tasks/<branch>/context.md`** — deterministic file (branch name: `/` → `-`). Agents and skills resolve focus from this file.
+1. **`.hq/tasks/<branch-dir>/context.md`** — deterministic file (branch name: `/` → `-`). Agents and skills resolve focus from this file.
 2. **Memory** — a project-type memory entry for cross-session awareness. Lets new sessions know what was in progress.
 
 **context.md format** (frontmatter YAML — no free-text body):
@@ -98,32 +117,96 @@ Every `hq:plan` must:
 ---
 plan: <hq:plan issue number>
 source: <hq:task issue number>
+branch: <original branch name with slashes intact, e.g., feat/oauth-login>
 gh:
-  task: .hq/tasks/<branch>/gh/task.json
-  plan: .hq/tasks/<branch>/gh/plan.md
+  task: .hq/tasks/<branch-dir>/gh/task.json
+  plan: .hq/tasks/<branch-dir>/gh/plan.md
 ---
 ```
 
 - `plan` — **MUST**. The `hq:plan` issue number driving current work.
 - `source` — **MUST**. The `hq:task` issue number this plan implements. Focus cannot be set without a source.
-- `gh` — paths to the local GitHub issue cache (see Issue Cache section below).
+- `branch` — **MUST**. The original git branch name (with slashes). Lets tooling check out the correct branch given a plan number (the directory name has `/` → `-` transformation which is not reliably invertible).
+- `gh` — paths to the local GitHub issue cache (see Cache-First Principle below).
 
 **Lifecycle**:
 
-- **On start**: write `.hq/tasks/<branch>/context.md`. Save focus info to your memory (project type) — include the branch name, plan number, and source number. Do NOT prescribe a specific file name — let the memory system handle storage.
-- **On status query**: read `.hq/tasks/<branch>/context.md` → read the plan body from `.hq/tasks/<branch>/gh/plan.md`. If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
-- **On completion**: when a PR is created or all gates pass, update your memory to indicate no active task. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` file is left in place — it travels with the task folder.
+- **On start** (`/hq:start`): write `.hq/tasks/<branch-dir>/context.md`. Save focus info to your memory (project type) — include the branch name, plan number, and source number.
+- **On status query**: read `.hq/tasks/<branch-dir>/context.md` → read the plan body from `.hq/tasks/<branch-dir>/gh/plan.md`. If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
+- **On completion**: when a PR is created and all Plan items + Acceptance `[auto]` items are checked, update your memory to indicate no active task. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` file is left in place — it travels with the task folder until `/hq:archive` moves it.
 
 ### Focus Resolution
 
-When the user gives a vague instruction (e.g., "the auth task", "issue 42"), resolve the focus by searching in order:
+When the user gives a **vague instruction** (e.g., "the auth task", "issue 42"), resolve the focus by searching in order:
 
-1. **context.md** — check `.hq/tasks/<branch>/context.md` for the current branch. If it exists, use it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" If the user says no, continue to the steps below.
+1. **context.md** — check `.hq/tasks/<current-branch-dir>/context.md` for the current branch. If it exists, use it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" If the user says no, continue to the steps below.
 2. **memory** — check your memory for active focus info.
-3. **direct issue number** — if the user provides a number, check `.hq/tasks/<branch>/gh/` for cached data first. If not cached, use `gh issue view <number>` to verify it exists and has the `hq:plan` label.
+3. **direct issue number** — if the user provides a number, check `.hq/tasks/` cache dirs first. If not cached, use `gh issue view <number>` to verify it exists and has the `hq:plan` label.
 4. **search** — run `gh issue list --label hq:plan --state open --json number,title` and match against the user's keyword.
 
 If exactly one match: set focus automatically. If multiple matches: show candidates and ask the user to choose. If no match: ask the user to specify the issue number.
+
+**NOTE**: `/hq:start <plan>` does **NOT** use this resolution order. It takes a plan number directly and resolves the work branch via `.hq/tasks/*/context.md` (see `find-plan-branch.sh`), ignoring the current branch and memory.
+
+## Cache-First Principle
+
+During `/hq:start` execution, **all reads and writes to the plan body go to the local cache**. The GitHub API is touched only at explicit **sync checkpoints**. This keeps execution fast, avoids rate limits, and lets individual checkbox toggles be cheap.
+
+### Cache files
+
+```
+.hq/tasks/<branch-dir>/gh/task.json    # read-only snapshot of hq:task
+.hq/tasks/<branch-dir>/gh/plan.md      # read/write working copy of hq:plan body
+```
+
+### Sync checkpoints
+
+| Direction | When | Action |
+|---|---|---|
+| Pull (GitHub → cache) | `/hq:draft` end (after Issue create) | Initialize cache |
+| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
+| Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
+| Push (cache → GitHub) | After Phase 6 (Verification) complete | Push Acceptance `[auto]` checkbox updates |
+| Push (cache → GitHub) | Before PR creation | Final consistency sync |
+
+### Helper scripts
+
+All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/`:
+
+- **`plan-cache-pull.sh <plan-number>`** — fetch plan body from GitHub, atomically write to `.hq/tasks/<branch-dir>/gh/plan.md`. Prints the written path.
+- **`plan-cache-push.sh <plan-number>`** — push the cached plan body to the GitHub Issue via `gh issue edit --body-file`.
+- **`plan-check-item.sh <pattern>`** — toggle a single `[ ]` checkbox to `[x]` in the cache, matching by fixed substring. Exit 3 = no match, exit 4 = ambiguous, already-checked = idempotent no-op.
+- **`find-plan-branch.sh <plan-number>`** — scan `.hq/tasks/*/context.md` for a `plan: <N>` match, print the corresponding `branch:` field. Exit 1 = not found.
+
+**Rule**: individual checkbox toggles during execution call `plan-check-item.sh` (cache only). Never call `gh issue edit <plan>` directly — always go through `plan-cache-push.sh` at the defined sync checkpoints.
+
+## PR Body Structure
+
+The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
+
+```markdown
+<brief summary of changes>
+
+## Changes
+- <bullet list>
+
+## 動作確認をお願いします
+- [ ] [manual] <unchecked [manual] item copied verbatim from plan.md>
+- [ ] [manual] <another [manual] item>
+
+## 制限事項 / Known Issues
+- <unresolved FB title and brief description>
+- <another known issue>
+
+Closes #<hq:plan>
+Refs #<hq:task>
+```
+
+- **`## 動作確認をお願いします`** — all unchecked `[manual]` items from the Acceptance section, for user verification during PR review.
+- **`## 制限事項 / Known Issues`** — unresolved issues that `/hq:start` could not auto-fix. **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
+- If either section is empty, omit it.
+
+During PR review, use `/hq:triage <PR>` to process the `制限事項` entries — each can be: (1) added to the `hq:plan` for follow-up work, (2) left as-is, or (3) carved out as an `hq:feedback` Issue.
 
 ## Verification Pipeline
 
@@ -142,9 +225,13 @@ Wait for both agents to complete before proceeding.
 
 Read pending FB files from both agents. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules below.
 
-### Step 3: E2E Verification (interactive)
+### Step 3: Acceptance `[auto]` Execution
 
-If the project has a web app, run `/e2e-web` as a skill (interactive — requires user input for setup, login, and verification targets).
+For each unchecked `[auto]` item in the `## Acceptance` section of the plan, execute the check autonomously (shell command, test run, API call). On pass, toggle the checkbox via `plan-check-item.sh` (cache only). `[manual]` items are left unchecked — they flow to the PR body.
+
+### Step 4: E2E Verification (if applicable)
+
+If the project has a web app and the plan contains browser-oriented `[auto]` items, run `/e2e-web` as a skill. Skip if not applicable.
 
 ### Fallback: Interactive Mode
 
@@ -157,40 +244,30 @@ If any step produces unresolved issues, do not skip ahead. Fix or get user confi
 
 ## Feedback Loop
 
-Skills that perform verification or review may output feedback files (FB) to `.hq/tasks/<branch>/feedbacks/`.
+Skills that perform verification or review may output feedback files (FB) to `.hq/tasks/<branch-dir>/feedbacks/`.
 
 ### FB Output Rules (for skills that generate FB files)
 
 **Directory** — branch name: replace `/` with `-` (e.g., `feat/m9-wiki` → `feat-m9-wiki`).
 
 ```
-.hq/tasks/<branch>/feedbacks/              # pending — files here need action
-.hq/tasks/<branch>/feedbacks/done/         # resolved
-.hq/tasks/<branch>/feedbacks/screenshots/  # evidence (optional)
+.hq/tasks/<branch-dir>/feedbacks/              # pending — files here need action
+.hq/tasks/<branch-dir>/feedbacks/done/         # resolved or escalated to PR body
+.hq/tasks/<branch-dir>/feedbacks/screenshots/  # evidence (optional)
 ```
 
 **Numbering** — check existing files in `feedbacks/` and `feedbacks/done/` to determine the next number. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits).
 
-**Format** — FB files must follow [feedback.md](feedback.md). Read `plan` and `source` values from `.hq/tasks/<branch>/context.md` (branch path: `/` → `-`) for the frontmatter fields.
+**Format** — FB files must follow [feedback.md](feedback.md). Read `plan` and `source` values from `.hq/tasks/<branch-dir>/context.md` for the frontmatter fields.
 
-### FB Handling Rules (for the root agent after a skill run)
+### FB Lifecycle (for the root agent after a skill run)
 
 - Read pending FB files and assess each: fix only those that are clearly actionable (bugs, typos, logic errors). Leave design-level or scope-ambiguous FBs as-is for user judgment.
 - Run `format` and `build` commands after fixes
 - Re-run the originating skill (full review) to verify fixes and catch regressions
-- When an FB item is resolved, move its file to `feedbacks/done/`
-- Maximum **2 rounds** of the fix → re-verify cycle. After 2 rounds, report all remaining FBs to the user.
-- Do not modify or delete FB files — only move resolved ones to `done/`
+- When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
+- When an FB item is **escalated to the PR body's `## 制限事項 / Known Issues`** during `/hq:start` Phase 7, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
+- Maximum **2 rounds** of the fix → re-verify cycle. After 2 rounds, escalate the remainder to the PR body and move those FB files to `done/`.
+- Do not modify or delete FB files — only move resolved/escalated ones to `done/`
 
-### FB Escalation to `hq:feedback`
-
-When creating a PR (`/pr`) or archiving (`/archive`), check for unresolved FB files in `feedbacks/`. If any exist:
-
-1. Show the list of unresolved FBs to the user
-2. Ask whether to escalate them as `hq:feedback` issues on GitHub
-3. If yes — for each FB, create a GitHub Issue:
-   ```
-   gh issue create --title "<FB title>" --body "<FB content>\n\nRefs #<plan>" --label "hq:feedback" [--project "<project>"]
-   ```
-4. Move the escalated FB files to `feedbacks/done/` (tracking moves to GitHub)
-5. If no — FB files remain as-is (archived with the task folder if archiving, or left in place if creating a PR)
+**Note**: FB escalation to `hq:feedback` Issues happens during PR review via `/hq:triage` — not from `/hq:start`, `/pr`, or `/hq:archive`. Local FB files are a **branch-internal** concept; the PR body's `## 制限事項 / Known Issues` is the hand-off point.

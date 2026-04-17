@@ -14,7 +14,9 @@ A Claude Code plugin that provides skills and commands for AI-assisted developme
 
 #### v2 (active)
 
-Skills, agents, and commands architecture. Skills define pure analysis criteria, agents handle autonomous workflow execution, commands provide user-invoked workflow shortcuts. Core design principle: **GitHub Issue-based traceability** — all work is tracked through GitHub Issues and PRs, with `focus.md` in Claude Code memory as a local pointer to the active plan.
+Skills, agents, and commands architecture. Skills define pure analysis criteria, agents handle autonomous workflow execution, commands provide user-invoked workflow shortcuts. Core design principle: **GitHub Issue-based traceability** — all work is tracked through GitHub Issues and PRs, with `.hq/tasks/<branch-dir>/context.md` as the branch-local pointer to the active plan.
+
+**Workflow commands** form a five-step pipeline from requirement to closure. See [plugin/v2/docs/workflow.md](plugin/v2/docs/workflow.md) for the full flow and shared concepts.
 
 **Skills** (analysis criteria — invoked via `/skill-name`):
 
@@ -24,7 +26,6 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 | `pr`               | Create a pull request linked to `hq:plan` and `hq:task` issues                |
 | `code-review`      | Code review criteria — readability, correctness, performance, security         |
 | `security-scan`    | Security scan criteria — credentials, external comms, dynamic code, etc.       |
-| `archive`          | Archive task artifacts, close `hq:plan`, escalate unresolved FB to `hq:feedback` |
 | `xcodebuild-config`| Interactive xcodebuild configuration (project, scheme, device, OS)             |
 | `e2e-web`          | End-to-end web verification via Playwright CLI                                 |
 | `worktree-setup`   | Create a new git worktree with local file setup (.env, .claude, .hq configs)   |
@@ -36,7 +37,7 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 | -------------------------- | ------------------------------------------------------------------------------ |
 | `code-reviewer`            | Autonomous code review — reads `code-review` skill criteria, outputs report + FB files to `.hq/tasks/` |
 | `security-scanner`         | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` |
-| `review-comment-analyzer`  | Read-only analysis of a single PR review comment — classifies as Fix/Feedback/Dismiss with evidence. Launched in parallel by `/review-triage` |
+| `review-comment-analyzer`  | Read-only analysis of a single PR review comment — classifies as Fix/Feedback/Dismiss with evidence. Launched in parallel by `/hq:respond` |
 
 Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. Both agents can run **in parallel** and in the **background**.
 
@@ -44,20 +45,25 @@ Agents read skill files at runtime for analysis criteria, then handle workflow i
 
 | Command            | Description                                                                    |
 | ------------------ | ------------------------------------------------------------------------------ |
-| `start`            | Full workflow — plan, execute, verify, and PR from an `hq:task` ([flow](plugin/v2/docs/start-flow.md)) |
-| `review-triage`    | Triage and respond to PR review comments autonomously ([flow](plugin/v2/docs/review-triage-flow.md)) |
+| `draft`            | Interactive brainstorm → create an `hq:plan` Issue from an `hq:task`                             |
+| `start`            | Autonomous: branch → execute → verify → PR from an `hq:plan`                                     |
+| `triage`           | Triage PR body `## 制限事項 / Known Issues` — add to plan / leave / escalate to `hq:feedback`    |
+| `archive`          | Safely close a merged PR's branch — verify + archive task folder + delete local branch           |
+| `respond`          | Respond to external PR review comments (Copilot, reviewers) — fix / escalate / dismiss           |
 | `swift-protocol-shadow` | Detect protocol default implementation shadowing in Swift ([flow](plugin/v2/docs/swift-protocol-shadow-flow.md)) |
 
 **Traceability**
 
-All work is tracked through GitHub Issues and PRs. The plugin uses three issue types as semi-proper nouns:
+All work is tracked through GitHub Issues and PRs. The plugin uses six labels:
 
 | Label | Role | Description |
 |-------|------|-------------|
-| `hq:task` | Requirement | **What** needs to be done. Contains the task checklist, notes, and references. |
-| `hq:plan` | Implementation plan | **How** to do it. Created per branch/PR. One `hq:task` can have multiple `hq:plan` issues. |
-| `hq:feedback` | Unresolved problem | Issues found during code review or E2E that couldn't be fixed in the current branch. |
-| `hq:wip` | Work in progress | Issue is still being drafted or adjusted. Commands pause and confirm before proceeding. |
+| `hq:task` | Requirement (trigger) | **What** needs to be done. Created by the user; consumed by `/hq:draft`. |
+| `hq:plan` | Implementation plan (workflow center) | **How** to do it. Created by `/hq:draft` as a sub-issue of `hq:task`. Drives `/hq:start` execution. |
+| `hq:feedback` | Unresolved problem | Carved out from a PR's Known Issues during `/hq:triage`, or from external review comments via `/hq:respond`. |
+| `hq:doc` | Informational note | Research findings worth preserving that are not a direct task. Created manually. |
+| `hq:pr` | PR marker | Applied automatically by `/hq:start` on PR creation. Marks PRs that belong to this workflow. |
+| `hq:wip` | Automation gate / drafting marker | Issue is being drafted; automated `/hq:draft` or `/hq:start` triggers must skip it. In manual use, commands pause and confirm. |
 
 **Issue hierarchy:**
 
@@ -66,31 +72,41 @@ Milestone (optional grouping)
   └── hq:task  — requirement
         └── hq:plan  — implementation plan (sub-issue of hq:task)
               ├── ← Closes → PR
-              └── hq:feedback(s)  — unresolved problems (standalone, Refs #plan)
+              └── hq:feedback(s)  — residual problems (via /hq:triage or /hq:respond, Refs #plan)
 ```
 
 **How it works:**
 
-1. Create an `hq:task` issue describing the requirement
-2. Create an `hq:plan` issue with the implementation plan, then register it as a **sub-issue** of the parent `hq:task` (GitHub sub-issues API)
-3. Work on a feature branch. `focus.md` in Claude Code memory points to the active `hq:plan` issue number
-4. PR uses `Closes #<hq:plan>` (auto-closes on merge) and `Refs #<hq:task>` (cross-reference)
-5. Unresolved review findings can be escalated to `hq:feedback` issues (standalone issues with `Refs #<plan>` for traceability)
+1. Create an `hq:task` Issue describing the requirement (e.g., `feat: ユーザ認証を追加`)
+2. Run `/hq:draft <hq:task>` — interactive brainstorm → the `hq:plan` Issue is created (sub-issue of `hq:task`) with `## Plan` + `## Acceptance` structure
+3. Review / edit the `hq:plan` Issue on GitHub UI (intervention point #1)
+4. Run `/hq:start <hq:plan>` — autonomous: branch → execute → simplify → verify → PR
+5. Review the PR (intervention point #2). Use `/hq:respond` to handle external review comments, `/hq:triage <PR>` to process the PR body's `## 制限事項 / Known Issues` section
+6. After merge, run `/hq:archive` to clean up the local branch and task folder
 
-**Recommended `hq:plan` issue body structure:**
+**`hq:plan` Issue body structure (required):**
 
 ```markdown
 Parent: #<hq:task issue number>
 
 ## Plan
-<implementation steps>
+- [ ] <implementation step 1>
+- [ ] <implementation step 2>
 
-## Gates
-- [ ] Completion criteria (shown as progress bar in GitHub UI)
-
-## Verification
-- [ ] E2E test items (parsed by the e2e-web skill)
+## Acceptance
+- [ ] [auto] <self-verifiable check — e.g., `pnpm test` passes>
+- [ ] [auto] <e.g., `/api/auth/login` returns 200>
+- [ ] [manual] <requires user verification — e.g., browser UI check>
 ```
+
+- `## Plan` — implementation steps. All must be checked before PR creation.
+- `## Acceptance` — completion criteria. `[auto]` items are executed by `/hq:start`; `[manual]` items flow to the PR body for user verification.
+
+**Naming conventions (Conventional Commits):**
+
+- `hq:task` title: `<type>: <requirement>`
+- `hq:plan` title: `<type>(plan): <implementation approach>`
+- PR title: `<type>: <implementation>` (plan title minus `(plan)`)
 
 **Prerequisites:** `gh` CLI must be authenticated (`gh auth status`).
 
