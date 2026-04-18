@@ -47,7 +47,7 @@ Agents read skill files at runtime for analysis criteria, then handle workflow i
 | ------------------ | ------------------------------------------------------------------------------ |
 | `draft`            | Interactive brainstorm → create an `hq:plan` Issue from an `hq:task`                             |
 | `start`            | Autonomous: branch → execute → verify → PR from an `hq:plan`                                     |
-| `triage`           | Triage PR body `## 制限事項 / Known Issues` — add to plan / leave / escalate to `hq:feedback`    |
+| `triage`           | Triage PR body `## Known Issues` — add to plan / leave / escalate to `hq:feedback`    |
 | `archive`          | Safely close a merged PR's branch — verify + archive task folder + delete local branch           |
 | `respond`          | Respond to external PR review comments (Copilot, reviewers) — fix / escalate / dismiss           |
 | `swift-protocol-shadow` | Detect protocol default implementation shadowing in Swift ([flow](plugin/v2/docs/swift-protocol-shadow-flow.md)) |
@@ -77,11 +77,11 @@ Milestone (optional grouping)
 
 **How it works:**
 
-1. Create an `hq:task` Issue describing the requirement (e.g., `feat: ユーザ認証を追加`)
+1. Create an `hq:task` Issue describing the requirement (e.g., `feat: add user authentication`)
 2. Run `/hq:draft <hq:task>` — interactive brainstorm → the `hq:plan` Issue is created (sub-issue of `hq:task`) with `## Plan` + `## Acceptance` structure
 3. Review / edit the `hq:plan` Issue on GitHub UI (intervention point #1)
 4. Run `/hq:start <hq:plan>` — autonomous: branch → execute → simplify → verify → PR
-5. Review the PR (intervention point #2). Use `/hq:respond` to handle external review comments, `/hq:triage <PR>` to process the PR body's `## 制限事項 / Known Issues` section
+5. Review the PR (intervention point #2). Use `/hq:respond` to handle external review comments, `/hq:triage <PR>` to process the PR body's `## Known Issues` section
 6. After merge, run `/hq:archive` to clean up the local branch and task folder
 
 **`hq:plan` Issue body structure (required):**

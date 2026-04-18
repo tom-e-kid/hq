@@ -41,7 +41,7 @@ Set each to `in_progress` when starting and `completed` when done. If a phase is
 
 ## Phase 1: Pre-flight Check (non-interactive)
 
-Parse `$ARGUMENTS` → `<hq:plan number>` (accept `#1234` or `1234`). The plan number is **required**. If missing, ask the user ONCE: "実装する `hq:plan` の Issue 番号を教えてください。" Then continue.
+Parse `$ARGUMENTS` → `<hq:plan number>` (accept `#1234` or `1234`). The plan number is **required**. If missing, ask the user ONCE for the `hq:plan` Issue number to implement, then continue.
 
 Search for an existing work directory for this plan:
 
@@ -97,8 +97,8 @@ Keep both payloads in conversation state; they are written to cache in Phase 3.
 
 **Branch name** — derive from the plan title:
 - Pattern: `<type>(plan): <description>` → branch `<type>/<slugified-description>`
-- Example: `feat(plan): OAuth 2.0 でユーザ認証を実装` → `feat/oauth-login`
-- Keep the description short (≤ 40 chars, kebab-case, alphanumeric + hyphens). Japanese characters are preserved if slugification would strip too much; in that case use a concise English slug.
+- Example: `feat(plan): implement user authentication with OAuth 2.0` → `feat/oauth-login`
+- Keep the description short (≤ 40 chars, kebab-case, alphanumeric + hyphens).
 
 ## Phase 3: Execution Prep (fresh start only)
 
@@ -202,23 +202,23 @@ Build the body per `.claude/rules/workflow.local.md` § PR Body Structure:
 ## Changes
 - <bullet list>
 
-## 動作確認をお願いします
+## Manual Verification
 <all unchecked [manual] items from Acceptance, copied verbatim>
 
-## 制限事項 / Known Issues
+## Known Issues
 <each unresolved FB file under .hq/tasks/<branch-dir>/feedbacks/: title + brief description>
 
 Closes #<plan>
 Refs #<task>
 ```
 
-Omit `## 動作確認をお願いします` or `## 制限事項 / Known Issues` if the corresponding list is empty.
+Omit `## Manual Verification` or `## Known Issues` if the corresponding list is empty.
 
 ### FB Escalation to PR Body
 
 For each FB file in `.hq/tasks/<branch-dir>/feedbacks/` (pending, not `done/`):
 
-1. Include its title + brief description in the `## 制限事項 / Known Issues` section of the PR body.
+1. Include its title + brief description in the `## Known Issues` section of the PR body.
 2. Move the FB file to `feedbacks/done/` (its role has shifted to the PR body).
 
 This is **atomic**: if the FB is listed in the body, it MUST be moved to `done/`. The local `feedbacks/` directory should be empty of pending files after this step.
