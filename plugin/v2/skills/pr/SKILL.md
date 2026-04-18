@@ -7,7 +7,37 @@ description: Create a pull request for the current branch
 
 - Overrides: !`cat .hq/pr.md 2>/dev/null || echo "none"`
 
-If `.hq/pr.md` exists, its instructions take precedence over the defaults below (e.g., PR body format, language, title conventions). Apply overrides on top of this skill's base flow.
+If `.hq/pr.md` exists, its instructions are applied **only within the allowed override scope** defined below. The Invariants list below is fixed by the HQ workflow and cannot be overridden by `.hq/pr.md` or any project-level configuration — it applies to every PR this skill creates.
+
+### Override scope (allowed)
+
+Projects MAY use `.hq/pr.md` to customize:
+
+- PR body prose style inside `## Summary`, `## Changes`, `## Notes` (tone, level of detail, bullet vs paragraph)
+- Natural language used in those prose sections
+- Title-line conventions (prefix style, length cap, wording)
+- Ordering of **optional** sections (`## Notes` placement relative to other optional sections)
+- Additional **project-specific optional sections** that do not conflict with the Invariants
+
+### Invariants (NOT overridable)
+
+The following are invariants of the HQ workflow. `.hq/pr.md` MUST NOT suppress, rename, reformat, or otherwise alter these — they must appear in every PR this skill creates whenever their triggering condition is met:
+
+- **`## Manual Verification` section** — when unchecked `[manual]` items exist in the plan's `## Acceptance` section at PR creation time, they MUST be listed verbatim under a section literally named `## Manual Verification`.
+- **`## Known Issues` section** — when pending FB files exist at PR creation time, their titles + brief descriptions MUST be listed under a section literally named `## Known Issues`.
+- **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
+- **`Closes #<plan>` / `Refs #<task>` trailer** — every PR body MUST end with these two lines, pointing at the driving `hq:plan` and source `hq:task`.
+- **`hq:pr` label** — every PR created by this skill MUST carry the `hq:pr` label.
+- **Milestone / project inheritance** — if the source `hq:task` has a milestone or project(s), the PR MUST inherit them via `--milestone` / `--project` flags.
+
+If `.hq/pr.md` content appears to contradict any Invariant, the Invariant wins. Flag the conflict to the user after PR creation so the override file can be corrected.
+
+### Invocation mode
+
+This skill has two modes. `.hq/pr.md` overrides apply differently in each:
+
+- **Standalone** (user invokes `/pr` directly): the skill composes the full PR body from git + session context. `.hq/pr.md` overrides apply to the allowed scope above during composition. Invariants are still enforced.
+- **From `/hq:start`** (Phase 7 delegation): the caller has already assembled the PR body, including `## Manual Verification` and `## Known Issues` sections and the `Closes/Refs` trailer. The prepared body is treated as **immutable** — `.hq/pr.md` may influence **only** the title line; it MUST NOT rewrite, reformat, or strip any section of the prepared body. The skill's role in this mode is execution (push branch, call `gh pr create` with the right flags), not composition.
 
 ## Context
 
@@ -21,6 +51,13 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 
 ## Instructions
 
+### Mode detection (do this first)
+
+Before running any step below, determine invocation mode:
+
+- **From `/hq:start`** — the caller passes a fully prepared PR body, title, and milestone/project flags. In this mode, **skip Steps 4 and 5 entirely** (body composition is already done). Execute Steps 1, 2, 3, 6, 7, 8, 9 using the caller-provided body verbatim. `.hq/pr.md` overrides MAY influence only the title line; the prepared body is immutable. See `## Project Overrides` § Invocation mode.
+- **Standalone** — invoked directly (user typed `/pr`, no prepared body available). Execute all steps. Compose the body in Step 5 per the template below, applying `.hq/pr.md` overrides within the allowed scope and enforcing the Invariants.
+
 1. **Check preconditions**:
    - If there are uncommitted changes, warn the user and ask whether to proceed or commit first
    - If there are no commits ahead of the base branch, abort — nothing to PR
@@ -31,15 +68,15 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 
 3. **Resolve traceability** — read `.hq/tasks/<branch-dir>/context.md` (branch name: `/` → `-`). Extract `plan`, `source`, and `branch` fields. If not found, check your memory for focus info. If neither exists, ask the user for the `hq:plan` and `hq:task` issue numbers.
 
-4. **Compose PR body sections from upstream context**:
+4. **(Standalone mode only)** **Compose PR body sections from local state**:
 
-   - **`## Manual Verification`** — when invoked as part of `/hq:start`, the caller provides the list of unchecked `[manual]` items from the plan's `## Acceptance` section. Include them verbatim. When invoked standalone, skip this section if no `[manual]` items are available.
+   - **`## Manual Verification`** — read the plan body from `.hq/tasks/<branch-dir>/gh/plan.md` and extract unchecked `[manual]` items from its `## Acceptance` section. If any exist, include them verbatim. If none, omit this section.
 
-   - **`## Known Issues`** — when invoked as part of `/hq:start`, the caller provides the list of unresolved FB files to escalate into the PR body. Each entry should include the FB title and a brief description. When invoked standalone, check `.hq/tasks/<branch-dir>/feedbacks/` (pending only, not `done/`): if any exist, include them here.
+   - **`## Known Issues`** — check `.hq/tasks/<branch-dir>/feedbacks/` (pending only, not `done/`). For each FB file, include its title and a brief description. If none, omit this section.
 
    **FB files that are surfaced in `## Known Issues` MUST be moved to `feedbacks/done/`** as part of PR creation — the PR body becomes the source of truth for residual issues. Do NOT create `hq:feedback` Issues from this skill. Escalation to `hq:feedback` happens later via `/hq:triage` during PR review.
 
-5. **Draft the PR** based on the context above AND session context (what you know about why these changes were made):
+5. **(Standalone mode only)** **Draft the PR** based on the context above AND session context (what you know about why these changes were made):
    - **Title**: derive from the `hq:plan` title. Format: `<type>: <description>` (remove the `(plan)` scope from the `hq:plan` title). Keep under 70 characters.
    - **Body** in this format:
 
@@ -96,3 +133,4 @@ If `.hq/pr.md` exists, its instructions take precedence over the defaults below 
 - Keep the summary focused — details go in the Changes section.
 - **No `hq:feedback` creation** — this skill does NOT create `hq:feedback` Issues. Residual problems flow to the PR body's `## Known Issues` section, to be triaged later via `/hq:triage`.
 - **FB escalation is atomic** — if an FB file's content appears in the PR body, the file MUST be moved to `feedbacks/done/`.
+- **Invariants are not overridable** — see `## Project Overrides` § Invariants. `.hq/pr.md` cannot override the `## Manual Verification` or `## Known Issues` sections, the FB atomic move, the `Closes #<plan>` / `Refs #<task>` trailer, the `hq:pr` label, or milestone / project inheritance. In `/hq:start` invocation mode, the prepared body is immutable and overrides apply only to the title line.
