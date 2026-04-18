@@ -231,20 +231,17 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 ### Create the PR
 
-Delegate to the `pr` skill with the prepared body:
+Delegate to the `pr` skill, passing:
 
-```bash
-gh pr create \
-  --title "<type>: <description>" \
-  --body "<prepared body>" \
-  --label "hq:pr" \
-  [--milestone "<inherited>"] \
-  [--project "<inherited>" ...]
-```
+- The **prepared body** assembled above (Summary + `## Changes` + optional `## Manual Verification` + optional `## Known Issues` + `Closes #<plan>` / `Refs #<task>` trailer).
+- The derived **title**: `<type>: <description>` (plan title with the `(plan)` scope removed).
+- The **list of unchecked `[manual]` items** (already embedded in `## Manual Verification`).
+- The **list of escalated FB entries** (already embedded in `## Known Issues`).
+- **Milestone and project(s)** inherited from the `hq:task` (read from `.hq/tasks/<branch-dir>/gh/task.json`).
 
-- Title: derive from the plan title (`<type>(plan): ...` → `<type>: ...`).
-- Always apply the `hq:pr` label (create it lazily per workflow rule if missing).
-- Inherit milestone and projects from the `hq:task`.
+The `pr` skill is the single path to `gh pr create`. Do not call `gh pr create` directly from this command — delegation keeps the skill's invariant enforcement (Known Issues, FB atomic move, `Closes` / `Refs` trailer, `hq:pr` label, milestone / project inheritance) on one path.
+
+**Override interaction**: if the project has a `.hq/pr.md`, the `pr` skill applies it only within its allowed override scope (see `plugin/v2/skills/pr/SKILL.md` § Project Overrides). In the `/hq:start` invocation mode the prepared body above is treated as immutable by the skill — `.hq/pr.md` cannot alter, reorder, or strip the prepared body assembled in this phase. Overrides may influence only the title line.
 
 ## Phase 8: Report
 
