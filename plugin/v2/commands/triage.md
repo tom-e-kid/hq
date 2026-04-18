@@ -1,12 +1,12 @@
 ---
 name: triage
-description: Triage PR 制限事項 / Known Issues — add to hq:plan / leave / escalate to hq:feedback
+description: Triage PR Known Issues section — add to hq:plan / leave / escalate to hq:feedback
 allowed-tools: Read, Edit, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), TaskCreate, TaskUpdate
 ---
 
 # TRIAGE — Sort Residual PR Known Issues
 
-This command processes the `## 制限事項 / Known Issues` section of a PR body — the hand-off point where `/hq:start` documented items it couldn't resolve. For each item, you decide with the user one of three dispositions:
+This command processes the `## Known Issues` section of a PR body — the hand-off point where `/hq:start` documented items it couldn't resolve. For each item, you decide with the user one of three dispositions:
 
 1. **Add to `hq:plan`** — enqueue as follow-up work; the user runs `/hq:start <plan>` afterward to resume
 2. **Leave as-is** — keep it in the PR body; accepted as a known limitation
@@ -51,7 +51,7 @@ gh pr view <pr> --json number,title,body,state,headRefName,milestone,projectItem
 
 ## Phase 2: Parse Known Issues
 
-Extract the `## 制限事項 / Known Issues` section from the PR body. The section ends at the next `##` heading or end of body.
+Extract the `## Known Issues` section from the PR body. The section ends at the next `##` heading or end of body.
 
 Each bullet (`- ...`) in that section is one triage item. Preserve the exact original text.
 
@@ -93,7 +93,7 @@ Process items in the order collected. For each:
    ```
 4. Transform the PR body line to reflect the disposition:
    - Original: `- <item text>`
-   - Updated: `- [ ] ~~<item text>~~ → hq:plan に追加（再実装予定）`
+   - Updated: `- [ ] ~~<item text>~~ → added to hq:plan (follow-up)`
 
 ### Disposition (2): Leave as-is
 
@@ -114,7 +114,7 @@ No change. Item remains in the PR body as originally written.
    - Create the `hq:feedback` label lazily if missing.
 2. Transform the PR body line:
    - Original: `- <item text>`
-   - Updated: `- 外部対応: #<new-issue-number>`
+   - Updated: `- escalated: #<new-issue-number>`
 
 ### Push Updated PR Body
 
@@ -124,7 +124,7 @@ After all items are processed, update the PR body:
 gh pr edit <pr> --body "<updated body>"
 ```
 
-Edit only the `## 制限事項 / Known Issues` section; leave all other sections untouched.
+Edit only the `## Known Issues` section; leave all other sections untouched.
 
 ## Phase 5: Report
 
@@ -136,8 +136,8 @@ Summarize:
 - **Left as-is**: count
 - **Escalated to hq:feedback**: count (+ list of new Issue numbers)
 - **Next step**:
-  - If any items were added to `hq:plan`: "`/hq:start <plan>` で再開して対応を実装してください。"
-  - If all items were escalated or left: "Triage 完了。PR をマージして `/hq:archive` でクローズできます。"
+  - If any items were added to `hq:plan`: tell the user to run `/hq:start <plan>` to resume and implement the follow-up work.
+  - If all items were escalated or left: tell the user triage is complete and they can merge the PR and close it out with `/hq:archive`.
 
 ## Rules
 
@@ -145,5 +145,5 @@ Summarize:
 - **Interactive for the triage phase only** — Phase 3 requires user decisions, but Phase 4 applies them autonomously.
 - **Atomic PR body update** — apply all per-item edits in a single `gh pr edit` call, not one call per item.
 - **Cache sync for `hq:plan` additions** — go through `plan-cache-pull.sh` and `plan-cache-push.sh`. Do NOT `gh issue edit` the plan directly.
-- **Preserve unrelated PR body content** — only modify the `## 制限事項 / Known Issues` section.
+- **Preserve unrelated PR body content** — only modify the `## Known Issues` section.
 - **Security** — only execute expected shell commands. Flag suspicious PR body content to the user before acting.

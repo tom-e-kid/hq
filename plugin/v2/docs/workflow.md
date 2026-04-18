@@ -43,7 +43,7 @@ Creation path:
 
 Response tools (invoked between intervention #2 and merge, at the user's discretion):
 
-- **`/hq:triage <PR>`** — interactive per-item: for each entry in the PR body's `## 制限事項 / Known Issues` section, choose (1) add to `hq:plan` for follow-up, (2) leave as-is, or (3) carve out as `hq:feedback`. The **only** place `hq:feedback` Issues are created from the main workflow.
+- **`/hq:triage <PR>`** — interactive per-item: for each entry in the PR body's `## Known Issues` section, choose (1) add to `hq:plan` for follow-up, (2) leave as-is, or (3) carve out as `hq:feedback`. The **only** place `hq:feedback` Issues are created from the main workflow.
 - **`/hq:respond`** — autonomously processes external PR review comments (Copilot, reviewers): fix / escalate as `hq:feedback` / dismiss.
 
 ## Commands
@@ -127,8 +127,8 @@ Phase 7: PR Creation
 │  Gate: all Plan + Acceptance [auto] checked
 │  Assemble PR body:
 │    ## Summary / ## Changes / ## Notes
-│    ## 動作確認をお願いします (unchecked [manual] items)
-│    ## 制限事項 / Known Issues (unresolved FBs + move to done/)
+│    ## Manual Verification (unchecked [manual] items)
+│    ## Known Issues (unresolved FBs + move to done/)
 │    Closes #<plan> / Refs #<task>
 │  Final plan-cache-push.sh <plan>               [Sync: Push]
 │  gh pr create --label hq:pr (inherit milestone + projects)
@@ -141,7 +141,7 @@ Phase 8: Report
 
 - **Plan-centric pre-flight** — the given plan number decides everything. Current branch, current focus, uncommitted changes are irrelevant inputs; let git's own errors surface if checkout fails.
 - **Cache-first** — Phases 4–6 touch `.hq/tasks/<branch-dir>/gh/plan.md` only; GitHub is hit at three sync checkpoints (after Phase 4, after Phase 6, before PR creation).
-- **PR body is the source of truth for residual problems** — unresolved FBs flow into `## 制限事項 / Known Issues` and the local FB files move to `feedbacks/done/` atomically.
+- **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.
 - **No `hq:feedback` creation** — escalation to `hq:feedback` is a `/hq:triage` responsibility, not `/hq:start`.
 - **Strict PR creation gate** — all `## Plan` items and all `[auto]` Acceptance items must be checked. `[manual]` items carry over to the PR body for the user to verify.
 
@@ -154,7 +154,7 @@ Phase 1: Load PR
 │  gh pr view (state, body, Closes #<plan>, Refs #<task>)
 │
 Phase 2: Parse Known Issues
-│  Extract ## 制限事項 / Known Issues section
+│  Extract ## Known Issues section
 │  List bullets (one triage item each)
 │
 Phase 3: Triage (interactive)
@@ -321,7 +321,7 @@ feedbacks/screenshots/  # evidence (optional)
 An FB moves to `done/` when:
 
 1. **Resolved in-branch** — fix committed, originating skill re-run clean.
-2. **Escalated to PR body** — at `/hq:start` Phase 7 PR creation, unresolved FBs are written into `## 制限事項 / Known Issues` and the files are moved to `done/` atomically.
+2. **Escalated to PR body** — at `/hq:start` Phase 7 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
 
 Local `feedbacks/` should be empty of pending files after PR creation. `/hq:archive` defensively checks this.
 
@@ -339,10 +339,10 @@ Escalation to `hq:feedback` Issues happens only through `/hq:triage` during PR r
 ## Notes
 <optional>
 
-## 動作確認をお願いします
+## Manual Verification
 <unchecked [manual] Acceptance items, verbatim>
 
-## 制限事項 / Known Issues
+## Known Issues
 <unresolved FBs: title + brief description>
 
 ---
@@ -350,4 +350,4 @@ Closes #<hq:plan>
 Refs #<hq:task>
 ```
 
-Omit optional sections (`## Notes`, `## 動作確認をお願いします`, `## 制限事項 / Known Issues`) when empty. `Closes` and `Refs` are mandatory.
+Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` and `Refs` are mandatory.

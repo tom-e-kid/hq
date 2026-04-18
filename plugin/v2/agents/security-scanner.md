@@ -6,8 +6,8 @@ description: >
 
   <example>
   Context: User requests a security scan
-  user: "セキュリティスキャンして"
-  assistant: "security-scanner エージェントを起動します。"
+  user: "Run a security scan."
+  assistant: "Launching the security-scanner agent."
   <commentary>
   Direct request for security scanning. Launch autonomously.
   </commentary>
@@ -15,8 +15,8 @@ description: >
 
   <example>
   Context: User wants code review and security scan in parallel
-  user: "コードレビューとセキュリティスキャン、並列でお願い"
-  assistant: "code-reviewer と security-scanner を並列で起動します。"
+  user: "Run code review and security scan in parallel."
+  assistant: "Launching code-reviewer and security-scanner in parallel."
   <commentary>
   Parallel quality checks. Launch both agents simultaneously.
   </commentary>

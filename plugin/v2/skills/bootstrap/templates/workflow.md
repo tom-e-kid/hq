@@ -33,12 +33,12 @@ These are plugin-specific terms. Always use the `hq:` prefix to distinguish from
 Titles follow **Conventional Commits** style. Recognized `<type>` values: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`.
 
 - **`hq:task` title**: `<type>: <requirement>`
-  - Example: `feat: ユーザ認証を追加`
+  - Example: `feat: add user authentication`
 - **`hq:plan` title**: `<type>(plan): <implementation approach>`
-  - Example: `feat(plan): OAuth 2.0 でユーザ認証を実装`
+  - Example: `feat(plan): implement user authentication with OAuth 2.0`
   - The `(plan)` scope distinguishes the implementation plan from the parent requirement.
 - **PR title**: `<type>: <implementation>` — same as `hq:plan` title with `(plan)` removed
-  - Example: `feat: OAuth 2.0 でユーザ認証を実装`
+  - Example: `feat: implement user authentication with OAuth 2.0`
 - **Branch name**: `<type>/<short-description>` (kebab-case)
   - Example: `feat/oauth-login`
 
@@ -190,11 +190,11 @@ The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 ## Changes
 - <bullet list>
 
-## 動作確認をお願いします
+## Manual Verification
 - [ ] [manual] <unchecked [manual] item copied verbatim from plan.md>
 - [ ] [manual] <another [manual] item>
 
-## 制限事項 / Known Issues
+## Known Issues
 - <unresolved FB title and brief description>
 - <another known issue>
 
@@ -202,11 +202,11 @@ Closes #<hq:plan>
 Refs #<hq:task>
 ```
 
-- **`## 動作確認をお願いします`** — all unchecked `[manual]` items from the Acceptance section, for user verification during PR review.
-- **`## 制限事項 / Known Issues`** — unresolved issues that `/hq:start` could not auto-fix. **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
+- **`## Manual Verification`** — all unchecked `[manual]` items from the Acceptance section, for user verification during PR review.
+- **`## Known Issues`** — unresolved issues that `/hq:start` could not auto-fix. **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
 - If either section is empty, omit it.
 
-During PR review, use `/hq:triage <PR>` to process the `制限事項` entries — each can be: (1) added to the `hq:plan` for follow-up work, (2) left as-is, or (3) carved out as an `hq:feedback` Issue.
+During PR review, use `/hq:triage <PR>` to process the `Known Issues` entries — each can be: (1) added to the `hq:plan` for follow-up work, (2) left as-is, or (3) carved out as an `hq:feedback` Issue.
 
 ## Verification Pipeline
 
@@ -266,8 +266,8 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 - Run `format` and `build` commands after fixes
 - Re-run the originating skill (full review) to verify fixes and catch regressions
 - When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
-- When an FB item is **escalated to the PR body's `## 制限事項 / Known Issues`** during `/hq:start` Phase 7, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
+- When an FB item is **escalated to the PR body's `## Known Issues`** during `/hq:start` Phase 7, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
 - Maximum **2 rounds** of the fix → re-verify cycle. After 2 rounds, escalate the remainder to the PR body and move those FB files to `done/`.
 - Do not modify or delete FB files — only move resolved/escalated ones to `done/`
 
-**Note**: FB escalation to `hq:feedback` Issues happens during PR review via `/hq:triage` — not from `/hq:start`, `/pr`, or `/hq:archive`. Local FB files are a **branch-internal** concept; the PR body's `## 制限事項 / Known Issues` is the hand-off point.
+**Note**: FB escalation to `hq:feedback` Issues happens during PR review via `/hq:triage` — not from `/hq:start`, `/pr`, or `/hq:archive`. Local FB files are a **branch-internal** concept; the PR body's `## Known Issues` is the hand-off point.

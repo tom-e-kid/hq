@@ -7,8 +7,8 @@ description: >
 
   <example>
   Context: User requests a code review
-  user: "コードレビューして"
-  assistant: "code-reviewer エージェントを起動します。"
+  user: "Run code review."
+  assistant: "Launching the code-reviewer agent."
   <commentary>
   Direct request for code review. Launch autonomously.
   </commentary>
@@ -16,8 +16,8 @@ description: >
 
   <example>
   Context: User wants parallel quality checks before PR
-  user: "PRの前にレビューとスキャンを走らせて"
-  assistant: "code-reviewer と security-scanner を並列で起動します。"
+  user: "Run review and scan before the PR."
+  assistant: "Launching code-reviewer and security-scanner in parallel."
   <commentary>
   Pre-PR quality checks. Launch both agents in parallel.
   </commentary>

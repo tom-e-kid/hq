@@ -43,14 +43,14 @@ Determine the `hq:task` Issue to work on.
 
 1. **From argument** — if `$ARGUMENTS` is provided:
    - Parse the issue number (accept `#1234` or `1234`)
-   - Any text after the issue number is **supplementary context** (e.g., `#1234 タスク 7 のみ実装`)
+   - Any text after the issue number is **supplementary context** (e.g., `#1234 implement only task 7`)
    - Fetch the issue: `gh issue view <number> --json title,body,milestone,labels,projectItems`
    - Verify it has the `hq:task` label. If not, warn the user but continue.
    - If the issue has the `hq:wip` label, warn the user: "This issue has the `hq:wip` label — it seems to be still under discussion. Do you want to proceed anyway?" — if the user declines, stop.
 
 2. **No argument** — ask the user:
-   - "実装する `hq:task` の Issue 番号を教えてください。補足があれば一緒にどうぞ。"
-   - Example: `#1234 タスク 7 のみ実装`
+   - Ask for the `hq:task` Issue number to implement, plus any supplementary context they want to add.
+   - Example: `#1234 implement only task 7`
 
 Keep the fetched task data (title, body, milestone, labels, projects) and the supplementary context in conversation state. **Do not** write the cache yet — the cache is created after the feature branch exists (which happens in `/hq:start`, not here).
 
@@ -66,7 +66,7 @@ Work interactively with the user to shape the plan. This phase is **read-only in
 
 **Do NOT write production code.** This phase is purely investigation and alignment.
 
-Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "進めて", "いいよ", "LGTM", or equivalent).
+Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent).
 
 ## Phase 3: Generate Plan
 
@@ -147,7 +147,7 @@ Return the following to the user:
 
 - **hq:task**: number, title, URL
 - **hq:plan**: number, title, URL (the newly created Issue)
-- **Next step**: "この `hq:plan` を GitHub UI で確認・編集してから `/hq:start <plan>` で実装を開始してください。"
+- **Next step**: tell the user to review and edit this `hq:plan` on the GitHub UI, then start implementation with `/hq:start <plan>`.
 
 End of command. Do NOT:
 - create a feature branch

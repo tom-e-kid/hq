@@ -47,7 +47,7 @@ Read `.hq/tasks/<branch-dir>/context.md` for the **current branch** (branch-dir 
 - `source` — `hq:task` Issue number
 - `branch` — original branch name (should match current branch)
 
-If `context.md` is not found, ABORT: "現在のブランチに対応する `.hq/tasks/` エントリが見つかりません。`/hq:archive` は現在のブランチのタスクフォルダをクローズするコマンドです。" — the user can switch to the correct branch and retry.
+If `context.md` is not found, ABORT with a message explaining that no `.hq/tasks/` entry matches the current branch and that `/hq:archive` closes out the current branch's task folder — the user can switch to the correct branch and retry.
 
 ## Phase 2: Pre-check — PR Merged?
 
@@ -57,9 +57,9 @@ Find the PR associated with this branch:
 gh pr list --head "<current-branch>" --state all --json number,state,url --limit 5
 ```
 
-- If **no PR exists**, ABORT: "PR がまだ作成されていません。`/hq:start` を完走して PR を作成してください。"
-- If **PR state is OPEN**, ABORT: "PR #<n> がまだオープンです。レビュー・マージ完了後に再実行してください。 (<url>)"
-- If **PR state is CLOSED** (not merged), ABORT: "PR #<n> は merge されずにクローズされています。対応を決めてください (reopen / manual cleanup)。 (<url>)"
+- If **no PR exists**, ABORT with a message saying the PR has not been created yet and the user should complete `/hq:start` to create it.
+- If **PR state is OPEN**, ABORT with a message saying PR #<n> is still open and the command should be retried after review/merge completes (include the URL).
+- If **PR state is CLOSED** (not merged), ABORT with a message saying PR #<n> was closed without merging and the user must decide how to proceed (reopen / manual cleanup), including the URL.
 - If **PR state is MERGED**, proceed.
 
 ## Phase 3: Pre-check — Pending FBs?
