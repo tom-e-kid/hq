@@ -92,10 +92,32 @@ The `hq:plan` issue body **must** follow this structure:
 Parent: #<hq:task issue number>
 
 ## Context
-<optional — motivation, scope boundary, constraints, assumptions>
+<optional — when present, use the labeled blocks below>
+
+**Problem** — <pain / why now>
+
+**In scope**
+- <what's touched>
+
+**Out of scope**
+- <explicit exclusions; write `_None._` if nothing to exclude>
+
+**Constraints** *(optional)*
+- <hard dependencies / prerequisites / assumptions>
 
 ## Approach
-<optional — high-level implementation direction, key design decisions>
+<optional — when present, use the labeled blocks below>
+
+**Core decision** — <key architectural choice>
+
+**<Aspect label>** — <short detail inline>
+or
+**<Aspect label>**
+- <bullet>
+- <bullet>
+
+**Alternatives considered** *(optional)*
+- <rejected option> — <reason>
 
 ## Plan
 - [ ] implementation step 1
@@ -108,8 +130,15 @@ Parent: #<hq:task issue number>
 - [ ] [manual] <requires user confirmation, e.g., browser UI check>
 ```
 
-- **`## Context`** *(optional)* — why this plan exists: motivation, scope boundary, constraints, explicit out-of-scope items. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation.
-- **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method.
+- **`## Context`** *(optional)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
+  - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
+  - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
+  - `**Out of scope**` *(required)* — bullets of explicit exclusions; write `_None._` if nothing to exclude
+  - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
+- **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method. When present, use these bold-labeled blocks:
+  - `**Core decision**` *(required)* — 1-2 sentences on the key architectural choice
+  - `**<Aspect label>**` *(free-form, as many as needed)* — one block per distinct component or concern (new helper, API change, mapping, etc.). Short content inline after an en-dash; long content uses a bullet sublist
+  - `**Alternatives considered**` *(optional)* — rejected options with a one-line reason each
 - **`## Plan`** — implementation steps (ToDo list). All items must be checked before PR creation. Progress is visible in the GitHub UI.
 - **`## Acceptance`** — verifiable completion criteria. Each item is tagged with an execution marker:
   - **`[auto]`** — Claude can verify autonomously (unit/integration tests, API calls, file existence, type checks). Executed during `/hq:start` verification phase.

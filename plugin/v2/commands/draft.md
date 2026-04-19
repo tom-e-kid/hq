@@ -72,31 +72,30 @@ Before transitioning to Phase 3, produce a structured recap of the brainstorm an
 ```markdown
 ### Brainstorm Recap
 
-**Motivation & Scope** (→ `## Context` in the plan)
-- <bullet: background, why this plan is needed now>
-- <bullet: scope boundary, explicit out-of-scope items>
-- <bullet: constraints, assumptions>
+**Motivation & Scope** (→ `## Context`)
+- **Problem**: <pain / why now>
+- **In scope**: <bullets of what's touched>
+- **Out of scope**: <bullets of explicit exclusions, or `None`>
+- **Constraints** *(optional)*: <hard dependencies / prerequisites / assumptions>
 
-**Approach** (→ `## Approach` in the plan)
-- <bullet: high-level implementation direction>
-- <bullet: key design decision or tradeoff>
+**Approach** (→ `## Approach`)
+- **Core decision**: <key architectural choice, 1-2 sentences>
+- **<Aspect label>**: <per-component detail — new helper, API change, mapping, etc.>
+- **Alternatives considered** *(optional)*: <rejected options with a one-line reason each>
 
 **Findings** (Plan agent working material — not surfaced in the Issue body)
 - <bullet: relevant files read, current behavior, code pointers>
-
-**Out of scope** (optional — omit if nothing to exclude)
-- <bullet: explicit exclusions>
 ```
 
 Mapping rules:
-- `Motivation & Scope` → written (verbatim or lightly edited) into `## Context`
-- `Approach` → written (verbatim or lightly edited) into `## Approach`
+- `Motivation & Scope` subfields (`Problem`, `In scope`, `Out of scope`, `Constraints`) → written as bold-labeled blocks under `## Context`, in the same order
+- `Approach` subfields (`Core decision`, `<Aspect label>`, `Alternatives considered`) → written as bold-labeled blocks under `## Approach`, in the same order
 - `Findings` → passed to the Plan agent as **working material only**; do NOT include in the Issue body (concrete Plan items already reference files)
-- `Out of scope` → merge into `## Context` as a final bullet; do not create a separate section
 
 Omission policy:
 - If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
 - Same for `Approach` → `## Approach`.
+- Individual subfields: `Out of scope` uses `_None._` when empty; `Constraints` and `Alternatives considered` are optional and omitted entirely when not applicable.
 
 Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
 
@@ -121,10 +120,31 @@ Pass to the agent:
 Parent: #<hq:task issue number>
 
 ## Context
-<conversation-language prose: motivation, scope boundary, constraints. Derived from Brainstorm Recap § Motivation & Scope. Optional — if nothing substantive to say, keep the heading and write `_Intentionally omitted: <one-line reason>._`>
+<optional — if omitted, keep heading with `_Intentionally omitted: <reason>._`; otherwise use the labeled blocks below, in conversation language>
+
+**Problem** — <pain / why now>
+
+**In scope**
+- <what's touched>
+
+**Out of scope**
+- <exclusions, or `_None._`>
+
+**Constraints** *(optional)*
+- <hard dependencies / prerequisites / assumptions>
 
 ## Approach
-<conversation-language prose: high-level implementation direction, key design decisions. Derived from Brainstorm Recap § Approach. Optional — same omission form as Context.>
+<optional — same omission rule as Context>
+
+**Core decision** — <key architectural choice>
+
+**<Aspect label>** — <short detail>
+or
+**<Aspect label>**
+- <bullet>
+
+**Alternatives considered** *(optional)*
+- <rejected option> — <reason>
 
 ## Plan
 - [ ] <implementation step 1 — concrete and actionable, in conversation language>
