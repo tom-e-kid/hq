@@ -75,7 +75,7 @@ Before transitioning to Phase 3, produce a structured recap of the brainstorm an
 **Motivation & Scope** (→ `## Context`)
 - **Problem**: <pain / why now>
 - **In scope**: <bullets of what's touched>
-- **Out of scope**: <bullets of explicit exclusions, or `None`>
+- **Out of scope** *(optional)*: <bullets of explicit exclusions — include only when scope is ambiguous or at risk of creep; omit this line otherwise>
 - **Constraints** *(optional)*: <hard dependencies / prerequisites / assumptions>
 
 **Approach** (→ `## Approach`)
@@ -95,7 +95,7 @@ Mapping rules:
 Omission policy:
 - If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
 - Same for `Approach` → `## Approach`.
-- Individual subfields: `Out of scope` uses `_None._` when empty; `Constraints` and `Alternatives considered` are optional and omitted entirely when not applicable.
+- Optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) — if genuinely empty, omit the subfield entirely. Do not write `_None._`, "Not applicable", or padded prose. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
 
 Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
 
@@ -112,6 +112,7 @@ Pass to the agent:
 - Supplementary context from the user
 - The **Brainstorm Recap** produced at the end of Phase 2 — the agent carries `Motivation & Scope` into `## Context`, `Approach` into `## Approach`, and uses `Findings` as working material (not surfaced in the Issue body)
 - **Language directive**: plan body content (`## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition) MUST be written in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `[auto]`, `[manual]`) MUST stay in English regardless. See `.claude/rules/workflow.local.md` § Language.
+- **Anti-filler directive**: optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) MUST be omitted entirely when genuinely empty — no label, no `_None._` placeholder, no padded prose. If a required subfield (`Problem`, `In scope`, `Core decision`) would be empty, the parent section should be collapsed with `_Intentionally omitted: <reason>._` instead. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
 - The required output format (below)
 
 **Required plan format** (the Plan agent must produce EXACTLY this structure):
@@ -127,8 +128,8 @@ Parent: #<hq:task issue number>
 **In scope**
 - <what's touched>
 
-**Out of scope**
-- <exclusions, or `_None._`>
+**Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
+- <explicit exclusions>
 
 **Constraints** *(optional)*
 - <hard dependencies / prerequisites / assumptions>

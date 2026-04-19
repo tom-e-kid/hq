@@ -99,8 +99,8 @@ Parent: #<hq:task issue number>
 **In scope**
 - <what's touched>
 
-**Out of scope**
-- <explicit exclusions; write `_None._` if nothing to exclude>
+**Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
+- <explicit exclusions>
 
 **Constraints** *(optional)*
 - <hard dependencies / prerequisites / assumptions>
@@ -133,10 +133,10 @@ or
 - **`## Context`** *(optional)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
   - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
   - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
-  - `**Out of scope**` *(required)* — bullets of explicit exclusions; write `_None._` if nothing to exclude
+  - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
   - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
 - **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method. When present, use these bold-labeled blocks:
-  - `**Core decision**` *(required)* — 1-2 sentences on the key architectural choice
+  - `**Core decision**` — 1-2 sentences on the key architectural choice. Required when `## Approach` is present; if there is no real design decision to highlight, prefer to omit `## Approach` entirely (with `_Intentionally omitted: <reason>._`)
   - `**<Aspect label>**` *(free-form, as many as needed)* — one block per distinct component or concern (new helper, API change, mapping, etc.). Short content inline after an en-dash; long content uses a bullet sublist
   - `**Alternatives considered**` *(optional)* — rejected options with a one-line reason each
 - **`## Plan`** — implementation steps (ToDo list). All items must be checked before PR creation. Progress is visible in the GitHub UI.
@@ -144,7 +144,14 @@ or
   - **`[auto]`** — Claude can verify autonomously (unit/integration tests, API calls, file existence, type checks). Executed during `/hq:start` verification phase.
   - **`[manual]`** — requires user confirmation (browser UI, manual smoke test, visual check). Carried into the PR body and verified by the user during PR review.
 
-**Optional section omission** — when there is nothing substantive to say under `## Context` or `## Approach`, do NOT silently drop the heading. Keep the heading and write a single italic line stating the reason, e.g.:
+**Principle — clarity first, not form-filling.** The labeled blocks above are scaffolding to structure thinking and make the plan scannable. They are **not** a form to fill. If a field would contain fabricated or padded content, omit it:
+
+- **Optional fields** (`Out of scope`, `Constraints`, `Alternatives considered`) — leave them out entirely. No label, no placeholder.
+- **Required fields** (`Problem`, `In scope`, `Core decision`) that feel genuinely empty — rethink whether the parent section (`## Context` / `## Approach`) applies at all. If not, omit the whole section with `_Intentionally omitted: <reason>._`. If the section genuinely applies but a required field is still empty, the plan likely needs more thought rather than a placeholder.
+
+Never write filler like `_None._` or "Not applicable" as a substitute for thinking.
+
+**Optional section omission** — when `## Context` or `## Approach` is omitted, do NOT silently drop the heading. Keep the heading and write a single italic line stating the reason, e.g.:
 
 ```markdown
 ## Approach
