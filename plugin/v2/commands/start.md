@@ -27,7 +27,8 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as ta
 | Execution prep | Preparing execution environment |
 | Execute plan | Executing plan |
 | Simplify changeset | Simplifying changeset |
-| Verify changes | Verifying changes |
+| Run acceptance | Running acceptance checks |
+| Quality review | Reviewing code quality |
 | Create PR | Creating pull request |
 | Report results | Reporting results |
 
@@ -74,9 +75,9 @@ existing_branch=$(bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/find-plan-branch
 Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state:
 
 - Any `- [ ]` in `## Plan` → resume at **Phase 4** (Execute) at the first unchecked item
-- All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 6** (Verify)
-- All `## Plan` checked and all `- [ ] [auto]` in `## Acceptance` checked → resume at **Phase 7** (PR Creation)
-- Fully checked → proceed to Phase 7 regardless; the PR creation gate will confirm.
+- All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 5** (Simplify)
+- All `## Plan` and all `- [ ] [auto]` Acceptance checked → resume at **Phase 7** (Quality Review)
+- Fully checked → proceed to Phase 8 (PR Creation); the gate will confirm.
 
 ## Phase 2: Load Plan (fresh start only)
 
@@ -122,38 +123,51 @@ Keep both payloads in conversation state; they are written to cache in Phase 3.
 
 ## Phase 4: Execute
 
-Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-dir>/gh/plan.md`:
+Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-dir>/gh/plan.md`. For **each** item:
 
 1. Implement the step.
-2. After each meaningful unit of work, run `format` and `build` commands (per CLAUDE.md Commands table).
-3. Toggle the checkbox **in the cache only**:
+2. Run `format` and `build` (`hq:workflow` § Before Commit).
+3. Toggle the checkbox in the cache:
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring of the item>"
    ```
-4. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, and move on. The FB escalates to `## Known Issues` in Phase 7.
-5. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
+4. **Commit** the item's changes per `hq:workflow` § Commit Policy (one commit per Plan item, Conventional Commits subject).
+5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 8.
+6. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, commit the partial work, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
 
-**At the end of Phase 4** (all `## Plan` items checked):
+**At the end of Phase 4** (all `## Plan` items checked and committed):
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # checkpoint: Push
 ```
 
 ## Phase 5: Simplify
 
-Run `/simplify` on the full changeset to eliminate redundant code and cross-cutting improvements. Run `format` and `build` afterward. No cache edits in this phase.
+Run the `/simplify` skill on the full changeset. When it returns:
 
-## Phase 6: Verify
+1. Run `format` and `build`.
+2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
+3. **Immediately proceed to Phase 6.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
 
-Run the **Verification Pipeline** defined in `hq:workflow` § Verification Pipeline (Steps 1–4: parallel static analysis → FB fix → Acceptance `[auto]` execution → optional `/hq:e2e-web`). Follow the FB handling rules in `hq:workflow` § Feedback Loop — 2-round cap, `feedbacks/done/` on resolve, unresolved items flow to Phase 7.
+No cache edits in this phase.
 
-`[auto]` check pass/fail is reflected in the cache via `plan-check-item.sh`. `[manual]` items stay unchecked and are carried to the PR body in Phase 7.
+## Phase 6: Acceptance
 
-**At the end of Phase 6**, push the cache (checkpoint: Push):
+Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`. Failures follow the 2-round FB cycle (`hq:workflow` § Feedback Loop) — fixes land as `fix: ...` commits per `hq:workflow` § Commit Policy. Unresolved failures become FBs that escalate to `## Known Issues` in Phase 8.
+
+`[manual]` items stay unchecked and are carried to the PR body in Phase 8.
+
+**At the end of Phase 6**, push the cache:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
+bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # checkpoint: Push
 ```
 
-## Phase 7: PR Creation
+## Phase 7: Quality Review
+
+Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel, then process their FBs per `hq:workflow` § Feedback Loop (2-round cap). Each resolved FB lands as its own commit (`hq:workflow` § Commit Policy). Unresolved FBs escalate to `## Known Issues` in Phase 8.
+
+Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends.
+
+## Phase 8: PR Creation
 
 ### Gate
 
@@ -180,7 +194,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 Delegate to the `pr` skill with the prepared body, title, and milestone/project inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`). The `pr` skill is the single path to `gh pr create` and applies any `.hq/pr.md` overrides within its own documented scope. Do not call `gh pr create` directly.
 
-## Phase 8: Report
+## Phase 9: Report
 
 Summarize:
 
@@ -197,7 +211,8 @@ Summarize:
 
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
 - **Cache-first** — during Phases 4–6, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
-- **Do not skip Phase 5 or Phase 6** — simplify and verify are mandatory.
+- **Do not skip Phase 5, 6, or 7** — simplify, acceptance, and quality review are mandatory.
+- **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 8.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
 - **No `hq:feedback` creation** — this command does NOT create `hq:feedback` Issues. That happens via `/hq:triage` during PR review.
 
@@ -207,12 +222,12 @@ Three categories only. **Default is `continue-report`**. Anything a user would o
 
 - **ABORT** — stop the command entirely. Only two triggers:
   - `find-plan-branch.sh` exit 5 (ambiguous branch mapping)
-  - Phase 7 gate failure — a `## Plan` or `[auto]` Acceptance item is unchecked at PR time (continue-report failures toggle their checkbox and record an FB; a genuinely unchecked item means Phase 4/6 was skipped outright, which is a real gap)
+  - Phase 8 gate failure — a `## Plan` or `[auto]` Acceptance item is unchecked at PR time (continue-report failures toggle their checkbox and record an FB; a genuinely unchecked item means Phase 4 or 6 was skipped outright, which is a real gap)
 - **continue-report** — proceed with a reasonable assumption, log what was assumed, and write an FB so the residual reaches `## Known Issues`. Triggers:
   - `hq:wip` label detected on the plan Issue
   - Phase 4 step blocked or ambiguous
   - Phase 4 step fails twice on the same attempt
-  - Phase 6 FB that is not a clearly-actionable bug/typo/logic error
+  - Phase 7 (Quality Review) FB that is not a clearly-actionable bug/typo/logic error
 - **pause-ask** — stop and wait for the user. Reserved for security-sensitive surprises only:
   - Unexpected shell command pattern appears in Issue content (see **Security** below)
 
