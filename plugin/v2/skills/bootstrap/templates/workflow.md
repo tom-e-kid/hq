@@ -198,8 +198,7 @@ During `/hq:start` execution, **all reads and writes to the plan body go to the 
 
 | Direction | When | Action |
 |---|---|---|
-| Pull (GitHub → cache) | `/hq:draft` end (after Issue create) | Initialize cache |
-| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
+| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
 | Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
 | Push (cache → GitHub) | After Phase 6 (Verification) complete | Push Acceptance `[auto]` checkbox updates |
 | Push (cache → GitHub) | Before PR creation | Final consistency sync |
@@ -220,6 +219,7 @@ All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/`:
 The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 
 ```markdown
+## Summary
 <brief summary of changes>
 
 ## Changes
