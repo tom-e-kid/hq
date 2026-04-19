@@ -42,6 +42,22 @@ Titles follow **Conventional Commits** style. Recognized `<type>` values: `feat`
 - **Branch name**: `<type>/<short-description>` (kebab-case)
   - Example: `feat/oauth-login`
 
+## Language
+
+Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored in the **conversation language** (the language the user is speaking in this session). Workflow markers and prescribed structural headings stay in **English** regardless, so downstream tooling can parse them.
+
+- **English (fixed)**:
+  - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `Closes #<plan>`, `Refs #<task>`
+  - Prescribed headings: `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - File paths, identifiers, code fences, shell commands
+- **Conversation language (content)**:
+  - `hq:task` body (background / requirements / scope / success criteria)
+  - `hq:plan` body content — `## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition
+  - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
+  - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
+
+This rule applies to every skill and command that generates Issue or PR content — `/hq:draft` (Plan agent output), `/hq:start` (fallback drafting), and the `pr` skill.
+
 ## Issue Hierarchy
 
 ```
@@ -75,6 +91,12 @@ The `hq:plan` issue body **must** follow this structure:
 ```markdown
 Parent: #<hq:task issue number>
 
+## Context
+<optional — motivation, scope boundary, constraints, assumptions>
+
+## Approach
+<optional — high-level implementation direction, key design decisions>
+
 ## Plan
 - [ ] implementation step 1
 - [ ] implementation step 2
@@ -86,10 +108,21 @@ Parent: #<hq:task issue number>
 - [ ] [manual] <requires user confirmation, e.g., browser UI check>
 ```
 
+- **`## Context`** *(optional)* — why this plan exists: motivation, scope boundary, constraints, explicit out-of-scope items. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation.
+- **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method.
 - **`## Plan`** — implementation steps (ToDo list). All items must be checked before PR creation. Progress is visible in the GitHub UI.
 - **`## Acceptance`** — verifiable completion criteria. Each item is tagged with an execution marker:
   - **`[auto]`** — Claude can verify autonomously (unit/integration tests, API calls, file existence, type checks). Executed during `/hq:start` verification phase.
   - **`[manual]`** — requires user confirmation (browser UI, manual smoke test, visual check). Carried into the PR body and verified by the user during PR review.
+
+**Optional section omission** — when there is nothing substantive to say under `## Context` or `## Approach`, do NOT silently drop the heading. Keep the heading and write a single italic line stating the reason, e.g.:
+
+```markdown
+## Approach
+_Intentionally omitted: <one-line reason>._
+```
+
+This signals the author considered the section and chose to leave it empty (vs. forgot it). The preferred form is always "heading present + explicit omission"; silently dropping the heading is discouraged.
 
 After creating an `hq:plan` issue, register it as a sub-issue of the parent `hq:task`:
 
@@ -102,6 +135,8 @@ Every `hq:plan` must:
 
 - Be **self-contained** — it survives session clears (it's on GitHub, not local)
 - Define **Plan** (implementation steps) and **Acceptance** (completion criteria)
+- Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English
+- Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty
 - Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
 
 ### Focus

@@ -26,7 +26,6 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as ta
 | Brainstorm with user | Brainstorming with user |
 | Generate plan | Generating plan |
 | Create hq:plan Issue | Creating hq:plan Issue |
-| Initialize cache | Initializing cache |
 | Report results | Reporting results |
 
 Set each to `in_progress` when starting and `completed` when done.
@@ -66,7 +65,40 @@ Work interactively with the user to shape the plan. This phase is **read-only in
 
 **Do NOT write production code.** This phase is purely investigation and alignment.
 
-Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent).
+### Brainstorm Recap
+
+Before transitioning to Phase 3, produce a structured recap of the brainstorm and present it to the user for confirmation. The recap is the bridge from conversation to the `hq:plan` body — its named sections map directly to the Phase 3 output schema.
+
+```markdown
+### Brainstorm Recap
+
+**Motivation & Scope** (→ `## Context` in the plan)
+- <bullet: background, why this plan is needed now>
+- <bullet: scope boundary, explicit out-of-scope items>
+- <bullet: constraints, assumptions>
+
+**Approach** (→ `## Approach` in the plan)
+- <bullet: high-level implementation direction>
+- <bullet: key design decision or tradeoff>
+
+**Findings** (Plan agent working material — not surfaced in the Issue body)
+- <bullet: relevant files read, current behavior, code pointers>
+
+**Out of scope** (optional — omit if nothing to exclude)
+- <bullet: explicit exclusions>
+```
+
+Mapping rules:
+- `Motivation & Scope` → written (verbatim or lightly edited) into `## Context`
+- `Approach` → written (verbatim or lightly edited) into `## Approach`
+- `Findings` → passed to the Plan agent as **working material only**; do NOT include in the Issue body (concrete Plan items already reference files)
+- `Out of scope` → merge into `## Context` as a final bullet; do not create a separate section
+
+Omission policy:
+- If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
+- Same for `Approach` → `## Approach`.
+
+Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
 
 ## Phase 3: Generate Plan
 
@@ -79,7 +111,8 @@ Agent(subagent_type=Plan)
 Pass to the agent:
 - `hq:task` issue content (title + body)
 - Supplementary context from the user
-- Key findings from Phase 2 (files, current behavior, constraints)
+- The **Brainstorm Recap** produced at the end of Phase 2 — the agent carries `Motivation & Scope` into `## Context`, `Approach` into `## Approach`, and uses `Findings` as working material (not surfaced in the Issue body)
+- **Language directive**: plan body content (`## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition) MUST be written in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `[auto]`, `[manual]`) MUST stay in English regardless. See `.claude/rules/workflow.local.md` § Language.
 - The required output format (below)
 
 **Required plan format** (the Plan agent must produce EXACTLY this structure):
@@ -87,8 +120,14 @@ Pass to the agent:
 ```markdown
 Parent: #<hq:task issue number>
 
+## Context
+<conversation-language prose: motivation, scope boundary, constraints. Derived from Brainstorm Recap § Motivation & Scope. Optional — if nothing substantive to say, keep the heading and write `_Intentionally omitted: <one-line reason>._`>
+
+## Approach
+<conversation-language prose: high-level implementation direction, key design decisions. Derived from Brainstorm Recap § Approach. Optional — same omission form as Context.>
+
 ## Plan
-- [ ] <implementation step 1 — concrete and actionable>
+- [ ] <implementation step 1 — concrete and actionable, in conversation language>
 - [ ] <implementation step 2>
 - [ ] ...
 
@@ -133,15 +172,7 @@ Fully autonomous from here. Do not pause for user input unless an error occurs.
 
 4. **Label creation** — create any missing labels lazily (see workflow.local.md Issue Hierarchy section).
 
-## Phase 5: Initialize Cache
-
-The cache directory is keyed by the **work branch**, which does not exist yet (branches are created by `/hq:start`). At this point, we only know the `hq:task` and `hq:plan` numbers — we cannot pre-create `.hq/tasks/<branch-dir>/` without a branch name.
-
-**Decision**: cache initialization is deferred to `/hq:start` Phase 3 (Execution Prep). That phase creates the branch, then pulls the plan body via `plan-cache-pull.sh` and writes the task JSON. This keeps `/hq:draft` branch-agnostic — the user can run it from any branch, and the `hq:plan` Issue is the only artifact.
-
-Skip this phase. Proceed to Phase 6.
-
-## Phase 6: Report
+## Phase 5: Report
 
 Return the following to the user:
 
