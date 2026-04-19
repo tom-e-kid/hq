@@ -103,24 +103,28 @@ Phase 3: Execution Prep (fresh start only)
 │  Save focus to memory
 │
 Phase 4: Execute
-│  Iterate unchecked Plan items
-│  After each unit: format + build + plan-check-item.sh (cache only)
+│  For each unchecked Plan item:
+│    implement → format + build → plan-check-item.sh (cache) → commit
 │  End: plan-cache-push.sh <plan>                [Sync: Push]
 │
 Phase 5: Simplify
-│  /simplify → format + build
+│  /simplify → format + build → single commit (if changed)
 │
-Phase 6: Verify
-│  ┌────────────────────────────────────────────┐
-│  │  code-reviewer    ║    security-scanner     │
-│  └──────────┬────────╨────────┬───────────────┘
-│             ▼                 ▼
-│  Fix FB (max 2 rounds, move resolved to done/)
-│  Execute [auto] Acceptance items, toggle in cache
-│  E2E (if applicable)
+Phase 6: Acceptance
+│  Execute [auto] Acceptance items (incl. /hq:e2e-web)
+│  Fix failures (max 2 rounds) → fix commits
+│  Toggle checkboxes in cache on pass
 │  End: plan-cache-push.sh <plan>                [Sync: Push]
 │
-Phase 7: PR Creation
+Phase 7: Quality Review
+│  ┌────────────────────────────────────────────┐
+│  │  code-reviewer    ║    security-scanner    │
+│  └──────────┬────────╨────────┬───────────────┘
+│             ▼                 ▼
+│  Fix FB (max 2 rounds) → per-FB fix commits
+│  (working tree must be clean at end)
+│
+Phase 8: PR Creation
 │  Gate: all Plan + Acceptance [auto] checked
 │  Assemble PR body:
 │    ## Summary / ## Changes / ## Notes
@@ -130,7 +134,7 @@ Phase 7: PR Creation
 │  Final plan-cache-push.sh <plan>               [Sync: Push]
 │  gh pr create --label hq:pr (inherit milestone + projects)
 │
-Phase 8: Report
+Phase 9: Report
    Task, plan, branch, PR URL, [manual] count, Known Issues count
 ```
 
@@ -138,6 +142,8 @@ Phase 8: Report
 
 - **Plan-centric pre-flight** — the given plan number decides everything. Current branch, current focus, uncommitted changes are irrelevant inputs; let git's own errors surface if checkout fails.
 - **Cache-first** — Phases 4–6 touch `.hq/tasks/<branch-dir>/gh/plan.md` only; GitHub is hit at three sync checkpoints (after Phase 4, after Phase 6, before PR creation).
+- **Commit as you go** — each Plan item, simplify, and fix lands as its own commit. Working tree is clean by Phase 8.
+- **Acceptance before Quality** — Phase 6 verifies the plan is functionally complete; Phase 7 then reviews code quality on a known-working diff.
 - **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.
 - **No `hq:feedback` creation** — escalation to `hq:feedback` is a `/hq:triage` responsibility, not `/hq:start`.
 - **Strict PR creation gate** — all `## Plan` items and all `[auto]` Acceptance items must be checked. `[manual]` items carry over to the PR body for the user to verify.
@@ -318,7 +324,7 @@ feedbacks/screenshots/  # evidence (optional)
 An FB moves to `done/` when:
 
 1. **Resolved in-branch** — fix committed, originating skill re-run clean.
-2. **Escalated to PR body** — at `/hq:start` Phase 7 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
+2. **Escalated to PR body** — at `/hq:start` Phase 8 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
 
 Local `feedbacks/` should be empty of pending files after PR creation. `/hq:archive` defensively checks this.
 
