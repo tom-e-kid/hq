@@ -17,6 +17,22 @@
 1. Run `format` command (see Commands table in CLAUDE.md)
 2. Verify `build` command passes
 
+## Commit Policy
+
+`/hq:start` commits as work progresses, not at the end. Commits are the unit of work — they make `/hq:start` resume-safe, keep the PR reviewable, and ensure the working tree is clean by the time the PR is created.
+
+Commit granularity by phase:
+
+- **Phase 4 (Execute)** — **one commit per `## Plan` item**. After implementing a step and checking its cache checkbox, create a commit whose subject matches the Plan item. Use Conventional Commits types (`feat`/`fix`/`refactor`/`docs`/`chore`/`test`).
+- **Phase 5 (Simplify)** — if `/simplify` produces changes, create a **single commit** `refactor: simplify <short summary>`. If no changes, no commit.
+- **Phase 6 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
+- **Phase 7 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
+- **Phase 8 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
+
+All commits must pass `## Before Commit` (format + build). Do not skip hooks.
+
+If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix:` commit over `--amend` to keep history linear and resume-safe.
+
 ## Terminology
 
 - **`hq:workflow`** — shorthand for `.claude/rules/workflow.local.md` (the project-local copy of the workflow rule file, produced by `/hq:bootstrap`). Skills and commands cite sections as `hq:workflow § <section>` instead of repeating the full path.
@@ -307,9 +323,26 @@ The following structural elements of the PR body are invariants of the HQ workfl
 
 A newly bootstrapped repository should understand these rules from this section alone — `.hq/pr.md` overrides are applied on top, never in place of, the invariants above.
 
-## Verification Pipeline
+## Acceptance Execution
 
-Run the following checks when validating work on a branch — whether completing an `hq:plan`, preparing a PR, or reviewing ad-hoc changes. Focus is not required; all checks operate on the git diff.
+Verifies the `hq:plan` is complete — that the implementation satisfies every `[auto]` item in the `## Acceptance` section. This is the primary completion gate of an `hq:plan`.
+
+For each unchecked `[auto]` item:
+
+1. Execute the check autonomously. Kind depends on the item:
+   - Shell command, test run, type check, build
+   - API / file / directory check
+   - Browser automation via `/hq:e2e-web` for navigation, URL assertion, element/text presence, form submit, DOM state
+2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only).
+3. **On fail**: try to fix the underlying problem (counts against the 2-round FB limit in `## Feedback Loop`). Persistent failures are recorded as FBs and escalate to `## Known Issues` per `## Feedback Loop`.
+
+`[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
+
+Acceptance must be satisfied (all `[auto]` items `[x]` or recorded as FB) before the Quality Review step runs — reviewing quality on a plan that isn't functionally complete is wasted effort.
+
+## Quality Review
+
+Runs after Acceptance is satisfied. Verifies the diff meets the project's quality and security bar, independent of whether the plan was met.
 
 ### Step 1: Static Analysis (parallel)
 
@@ -322,15 +355,7 @@ Wait for both agents to complete before proceeding.
 
 ### Step 2: Fix FB Issues
 
-Read pending FB files from both agents. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules below.
-
-### Step 3: Acceptance `[auto]` Execution
-
-For each unchecked `[auto]` item in the `## Acceptance` section of the plan, execute the check autonomously (shell command, test run, API call). On pass, toggle the checkbox via `plan-check-item.sh` (cache only). `[manual]` items are left unchecked — they flow to the PR body.
-
-### Step 4: E2E Verification (if applicable)
-
-If the project has a web app and the plan contains browser-oriented `[auto]` items, run `/e2e-web` as a skill. Skip if not applicable.
+Read pending FB files from both agents. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop` (2-round cap).
 
 ### Fallback: Interactive Mode
 
@@ -365,7 +390,7 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 - Run `format` and `build` commands after fixes
 - Re-run the originating skill (full review) to verify fixes and catch regressions
 - When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
-- When an FB item is **escalated to the PR body's `## Known Issues`** during `/hq:start` Phase 7, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
+- When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
 - Maximum **2 rounds** of the fix → re-verify cycle. After 2 rounds, escalate the remainder to the PR body and move those FB files to `done/`.
 - Do not modify or delete FB files — only move resolved/escalated ones to `done/`
 
