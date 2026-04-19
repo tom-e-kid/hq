@@ -42,6 +42,22 @@ Titles follow **Conventional Commits** style. Recognized `<type>` values: `feat`
 - **Branch name**: `<type>/<short-description>` (kebab-case)
   - Example: `feat/oauth-login`
 
+## Language
+
+Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored in the **conversation language** (the language the user is speaking in this session). Workflow markers and prescribed structural headings stay in **English** regardless, so downstream tooling can parse them.
+
+- **English (fixed)**:
+  - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `Closes #<plan>`, `Refs #<task>`
+  - Prescribed headings: `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - File paths, identifiers, code fences, shell commands
+- **Conversation language (content)**:
+  - `hq:task` body (background / requirements / scope / success criteria)
+  - `hq:plan` body content — `## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition
+  - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
+  - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
+
+This rule applies to every skill and command that generates Issue or PR content — `/hq:draft` (Plan agent output), `/hq:start` (fallback drafting), and the `pr` skill.
+
 ## Issue Hierarchy
 
 ```
@@ -75,6 +91,34 @@ The `hq:plan` issue body **must** follow this structure:
 ```markdown
 Parent: #<hq:task issue number>
 
+## Context
+<optional — when present, use the labeled blocks below>
+
+**Problem** — <pain / why now>
+
+**In scope**
+- <what's touched>
+
+**Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
+- <explicit exclusions>
+
+**Constraints** *(optional)*
+- <hard dependencies / prerequisites / assumptions>
+
+## Approach
+<optional — when present, use the labeled blocks below>
+
+**Core decision** — <key architectural choice>
+
+**<Aspect label>** — <short detail inline>
+or
+**<Aspect label>**
+- <bullet>
+- <bullet>
+
+**Alternatives considered** *(optional)*
+- <rejected option> — <reason>
+
 ## Plan
 - [ ] implementation step 1
 - [ ] implementation step 2
@@ -86,10 +130,49 @@ Parent: #<hq:task issue number>
 - [ ] [manual] <requires user confirmation, e.g., browser UI check>
 ```
 
+- **`## Context`** *(optional)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
+  - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
+  - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
+  - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
+  - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
+- **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method. When present, use these bold-labeled blocks:
+  - `**Core decision**` — 1-2 sentences on the key architectural choice. Required when `## Approach` is present; if there is no real design decision to highlight, prefer to omit `## Approach` entirely (with `_Intentionally omitted: <reason>._`)
+  - `**<Aspect label>**` *(free-form, as many as needed)* — one block per distinct component or concern (new helper, API change, mapping, etc.). Short content inline after an en-dash; long content uses a bullet sublist
+  - `**Alternatives considered**` *(optional)* — rejected options with a one-line reason each
 - **`## Plan`** — implementation steps (ToDo list). All items must be checked before PR creation. Progress is visible in the GitHub UI.
 - **`## Acceptance`** — verifiable completion criteria. Each item is tagged with an execution marker:
-  - **`[auto]`** — Claude can verify autonomously (unit/integration tests, API calls, file existence, type checks). Executed during `/hq:start` verification phase.
-  - **`[manual]`** — requires user confirmation (browser UI, manual smoke test, visual check). Carried into the PR body and verified by the user during PR review.
+  - **`[auto]`** — Claude can verify autonomously using available tools. This includes unit / integration test runs, type checks, builds, shell / CLI commands, API calls, file and directory checks, **and browser automation via `/hq:e2e-web` (Playwright)** — navigation, URL assertions, element / text presence, form submit flows, DOM state checks. Executed during `/hq:start` verification phase.
+  - **`[manual]`** — requires human judgment that tools cannot provide. Four conditions qualify: (1) **subjective** — aesthetics, UX feel, "does this look right"; (2) **physical device or assistive tech** — touch gestures on real devices, screen reader flow, real-world accessibility audits; (3) **live production or sensitive credentials** — checks that require prod auth or customer data Claude should not handle; (4) **multi-session / cross-tab scenarios** Playwright cannot reliably orchestrate. Carried into the PR body and verified by the user during PR review.
+
+**Choosing `[auto]` vs `[manual]`** — default to `[auto]`. A check is `[manual]` only when one of the four conditions above genuinely applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically via Playwright. When unsure, mark as `[auto]` and let `/hq:start` Phase 6 execution surface the gap if the check is not actually automatable.
+
+Examples:
+
+| Check | Marker | Why |
+|---|---|---|
+| Click "Save" → page URL becomes `/issues/{id}` | `[auto]` | Playwright URL assertion |
+| Form submit → DB row exists | `[auto]` | API / DB check |
+| Back button on direct-loaded `/issues/{id}/edit` navigates to `/issues/{id}` | `[auto]` | Playwright navigation |
+| `pnpm test` passes | `[auto]` | Shell command |
+| Back button's icon matches app's visual style | `[manual]` | Subjective / visual |
+| Swipe-back gesture feels responsive on iOS Safari | `[manual]` | Physical device |
+| Two browser tabs each show the correct tenant after login | `[manual]` | Multi-session orchestration |
+
+**Principle — clarity first, not form-filling.** The labeled blocks above are scaffolding to structure thinking and make the plan scannable. They are **not** a form to fill. If a field would contain fabricated or padded content, omit it:
+
+- **Optional fields** (`Out of scope`, `Constraints`, `Alternatives considered`) — leave them out entirely. No label, no placeholder.
+- **Required fields** (`Problem`, `In scope`, `Core decision`) that feel genuinely empty — rethink whether the parent section (`## Context` / `## Approach`) applies at all. If not, omit the whole section with `_Intentionally omitted: <reason>._`. If the section genuinely applies but a required field is still empty, the plan likely needs more thought rather than a placeholder.
+
+Never write filler like `_None._` or "Not applicable" as a substitute for thinking.
+
+**Optional section omission** — when `## Context` or `## Approach` is omitted, do NOT silently drop the heading. Keep the heading and write a single italic line stating the reason, e.g.:
+
+```markdown
+## Approach
+_Intentionally omitted: <one-line reason>._
+```
+
+This signals the author considered the section and chose to leave it empty (vs. forgot it). The preferred form is always "heading present + explicit omission"; silently dropping the heading is discouraged.
 
 After creating an `hq:plan` issue, register it as a sub-issue of the parent `hq:task`:
 
@@ -102,6 +185,8 @@ Every `hq:plan` must:
 
 - Be **self-contained** — it survives session clears (it's on GitHub, not local)
 - Define **Plan** (implementation steps) and **Acceptance** (completion criteria)
+- Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English
+- Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty
 - Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
 
 ### Focus
@@ -163,8 +248,7 @@ During `/hq:start` execution, **all reads and writes to the plan body go to the 
 
 | Direction | When | Action |
 |---|---|---|
-| Pull (GitHub → cache) | `/hq:draft` end (after Issue create) | Initialize cache |
-| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
+| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
 | Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
 | Push (cache → GitHub) | After Phase 6 (Verification) complete | Push Acceptance `[auto]` checkbox updates |
 | Push (cache → GitHub) | Before PR creation | Final consistency sync |
@@ -185,6 +269,7 @@ All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/`:
 The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 
 ```markdown
+## Summary
 <brief summary of changes>
 
 ## Changes

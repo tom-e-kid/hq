@@ -69,10 +69,7 @@ Phase 4: Create hq:plan Issue
 │  Register as sub-issue of hq:task
 │  Inherit milestone + projects from hq:task
 │
-Phase 5: Cache initialization → deferred to /hq:start
-│  (cache lives under .hq/tasks/<branch-dir>/ and needs the branch, which /hq:start creates)
-│
-Phase 6: Report
+Phase 5: Report
    Issue URL → "edit on GitHub, then /hq:start <plan>"
 ```
 
@@ -294,7 +291,7 @@ Cache files under `.hq/tasks/<branch-dir>/gh/` (branch-dir = branch name with `/
 
 | Direction | When | Purpose |
 |---|---|---|
-| Pull | `/hq:draft` end, `/hq:start` begin | Initialize / refresh cache |
+| Pull | `/hq:start` begin | Initialize / refresh cache |
 | Push | End of `/hq:start` Phase 4 | Plan checkbox updates |
 | Push | End of `/hq:start` Phase 6 | Acceptance `[auto]` updates |
 | Push | Before PR creation | Final consistency |

@@ -103,6 +103,8 @@ Before running any step below, determine invocation mode:
 
    The `Closes #` and `Refs #` lines are mandatory. They link this PR to the `hq:plan` (auto-closed on merge) and the `hq:task` (cross-referenced). Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty.
 
+   **Language**: prose inside `## Summary`, `## Changes`, `## Notes`, and free-form narrative under `## Known Issues` MUST be written in the current conversation language. Markers (`Closes #<plan>`, `Refs #<task>`) and prescribed headings (`## Summary`, `## Changes`, `## Notes`, `## Manual Verification`, `## Known Issues`) MUST stay in English. File paths, identifiers, and code fences stay as-is. See `.claude/rules/workflow.local.md` § Language.
+
 6. **Resolve milestone and project** — read the cached task data from `.hq/tasks/<branch-dir>/gh/task.json`. Extract the milestone title and project title(s) from `projectItems`. If the cache file does not exist, fall back to `gh issue view <source> --json milestone,projectItems`. If a milestone exists, include `--milestone "<milestone>"` when creating the PR. If project(s) exist, include `--project "<project>"` (repeat for each).
 
 7. **Create the PR**:
