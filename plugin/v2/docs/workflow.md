@@ -124,6 +124,13 @@ Phase 7: Quality Review
 │  Fix FB (max 2 rounds) → per-FB fix commits
 │  (working tree must be clean at end)
 │
+Phase 7.5: Round 2 Drafting (Round 1 only, conditional)
+│  pending FBs > 0 ?
+│    ├─ yes → draft ## Round 2 on cache
+│    │        (Follow-ups + Plan (Round 2) + Acceptance (Round 2))
+│    │        → plan-cache-push → re-enter Phase 4 as Round 2
+│    └─ no  → skip to Phase 8
+│
 Phase 8: PR Creation
 │  Gate: all Plan + Acceptance [auto] checked
 │  Assemble PR body:
@@ -144,6 +151,7 @@ Phase 9: Report
 - **Cache-first** — Phases 4–6 touch `.hq/tasks/<branch-dir>/gh/plan.md` only; GitHub is hit at three sync checkpoints (after Phase 4, after Phase 6, before PR creation).
 - **Commit as you go** — each Plan item, simplify, and fix lands as its own commit. Working tree is clean by Phase 8.
 - **Acceptance before Quality** — Phase 6 verifies the plan is functionally complete; Phase 7 then reviews code quality on a known-working diff.
+- **Round 2 retry, capped** — if Phase 7 leaves pending FBs, Phase 7.5 appends `## Round 2` (Follow-ups + Plan + Acceptance) to the plan and re-enters Phases 4–7 once. No Round 3; residuals escalate to the PR's `## Known Issues`.
 - **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.
 - **No `hq:feedback` creation** — escalation to `hq:feedback` is a `/hq:triage` responsibility, not `/hq:start`.
 - **Strict PR creation gate** — all `## Plan` items and all `[auto]` Acceptance items must be checked. `[manual]` items carry over to the PR body for the user to verify.
