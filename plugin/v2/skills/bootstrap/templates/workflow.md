@@ -141,8 +141,22 @@ or
   - `**Alternatives considered**` *(optional)* — rejected options with a one-line reason each
 - **`## Plan`** — implementation steps (ToDo list). All items must be checked before PR creation. Progress is visible in the GitHub UI.
 - **`## Acceptance`** — verifiable completion criteria. Each item is tagged with an execution marker:
-  - **`[auto]`** — Claude can verify autonomously (unit/integration tests, API calls, file existence, type checks). Executed during `/hq:start` verification phase.
-  - **`[manual]`** — requires user confirmation (browser UI, manual smoke test, visual check). Carried into the PR body and verified by the user during PR review.
+  - **`[auto]`** — Claude can verify autonomously using available tools. This includes unit / integration test runs, type checks, builds, shell / CLI commands, API calls, file and directory checks, **and browser automation via `/hq:e2e-web` (Playwright)** — navigation, URL assertions, element / text presence, form submit flows, DOM state checks. Executed during `/hq:start` verification phase.
+  - **`[manual]`** — requires human judgment that tools cannot provide. Four conditions qualify: (1) **subjective** — aesthetics, UX feel, "does this look right"; (2) **physical device or assistive tech** — touch gestures on real devices, screen reader flow, real-world accessibility audits; (3) **live production or sensitive credentials** — checks that require prod auth or customer data Claude should not handle; (4) **multi-session / cross-tab scenarios** Playwright cannot reliably orchestrate. Carried into the PR body and verified by the user during PR review.
+
+**Choosing `[auto]` vs `[manual]`** — default to `[auto]`. A check is `[manual]` only when one of the four conditions above genuinely applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically via Playwright. When unsure, mark as `[auto]` and let `/hq:start` Phase 6 execution surface the gap if the check is not actually automatable.
+
+Examples:
+
+| Check | Marker | Why |
+|---|---|---|
+| Click "Save" → page URL becomes `/issues/{id}` | `[auto]` | Playwright URL assertion |
+| Form submit → DB row exists | `[auto]` | API / DB check |
+| Back button on direct-loaded `/issues/{id}/edit` navigates to `/issues/{id}` | `[auto]` | Playwright navigation |
+| `pnpm test` passes | `[auto]` | Shell command |
+| Back button's icon matches app's visual style | `[manual]` | Subjective / visual |
+| Swipe-back gesture feels responsive on iOS Safari | `[manual]` | Physical device |
+| Two browser tabs each show the correct tenant after login | `[manual]` | Multi-session orchestration |
 
 **Principle — clarity first, not form-filling.** The labeled blocks above are scaffolding to structure thinking and make the plan scannable. They are **not** a form to fill. If a field would contain fabricated or padded content, omit it:
 
