@@ -206,6 +206,43 @@ Every `hq:plan` must:
 - Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty
 - Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
 
+### Round 2 Retry
+
+When Round 1 of `/hq:start` (Phases 4 → 7) completes with pending FBs still on disk, `/hq:start` appends a `## Round 2` section to the `hq:plan` body and re-enters Phases 4 → 7 with that section as the new plan. Round 2 is a **one-shot extension** — there is no Round 3. Anything still unresolved after Round 2 flows to the PR's `## Known Issues`.
+
+The `## Round 2` section structure:
+
+```markdown
+## Round 2
+
+### Follow-ups from Round 1
+
+**<FB id>: <FB title>**
+- Root cause: <what went wrong in Round 1>
+- Approach: <what Round 2 will do differently>
+- Addressed by: `### Plan (Round 2)` item N, `### Acceptance (Round 2)` item M
+
+(one block per pending FB)
+
+### Plan (Round 2)
+- [ ] follow-up implementation step 1
+- [ ] follow-up implementation step 2
+
+### Acceptance (Round 2)
+- [ ] [auto] follow-up check 1
+- [ ] [auto] follow-up check 2
+```
+
+Rules:
+
+- `### Follow-ups from Round 1` is the narrative bridge: **one block per pending FB**, each stating what failed, the root cause inferred from Round 1, the Round 2 approach, and which Round 2 items address it.
+- `### Plan (Round 2)` and `### Acceptance (Round 2)` follow the same conventions as the Round 1 counterparts (checkbox, `[auto]`/`[manual]` markers, Commit Policy applies per item).
+- Phase 8 Gate treats Round 2 items identically to Round 1 — all `- [ ]` under both sections must be `[x]` before PR creation.
+- Round 2 drafting is authored by the `/hq:start` root agent (not the Plan agent) from FB contents and Phase 7 review outputs — `/hq:draft` is not re-invoked.
+- **Round 1 FB ownership ends at drafting** — as soon as Round 1 FB content is absorbed into `### Follow-ups from Round 1`, the corresponding FB files MUST be moved to `feedbacks/done/` atomically. Only FBs produced during Round 2 remain pending for the Phase 8 Known Issues section.
+
+If Round 1 produces zero pending FBs, skip Round 2 entirely and proceed to Phase 8 PR Creation.
+
 ### Focus
 
 **Focus** is a pointer to the `hq:plan` issue currently driving work. It is stored in two places:
@@ -334,11 +371,12 @@ For each unchecked `[auto]` item:
    - API / file / directory check
    - Browser automation via `/hq:e2e-web` for navigation, URL assertion, element/text presence, form submit, DOM state
 2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only).
-3. **On fail**: try to fix the underlying problem (counts against the 2-round FB limit in `## Feedback Loop`). Persistent failures are recorded as FBs and escalate to `## Known Issues` per `## Feedback Loop`.
+3. **On fail**: try to fix the underlying problem (counts against the 2-round FB limit in `## Feedback Loop`).
+4. **On persistent failure (survives the 2-round cap)**: create **one FB per failed item** describing the failure, **toggle the checkbox to `[x]` anyway**, and move on. The failure is now tracked by the FB — carrying an unchecked `[auto]` forward would deadlock the Phase 8 PR gate.
 
 `[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
 
-Acceptance must be satisfied (all `[auto]` items `[x]` or recorded as FB) before the Quality Review step runs — reviewing quality on a plan that isn't functionally complete is wasted effort.
+Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before the Quality Review step runs — reviewing quality on a plan that isn't functionally complete is wasted effort.
 
 ## Quality Review
 
