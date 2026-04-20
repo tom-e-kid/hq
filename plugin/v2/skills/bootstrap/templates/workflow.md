@@ -106,10 +106,11 @@ An `hq:plan` issue is the implementation plan that drives work on a branch. The 
 The `hq:plan` issue body **must** follow this structure:
 
 ```markdown
-Parent: #<hq:task issue number>
+Parent: #<hq:task issue number>   <-- optional; omit this line entirely when there is no parent hq:task
 
 ## Context
-<optional — when present, use the labeled blocks below>
+<parented mode (Parent line present): optional — when present, use the labeled blocks below>
+<standalone mode (Parent line omitted): REQUIRED — must use the labeled blocks below; `_Intentionally omitted_` is forbidden>
 
 **Problem** — <pain / why now>
 
@@ -123,7 +124,7 @@ Parent: #<hq:task issue number>
 - <hard dependencies / prerequisites / assumptions>
 
 ## Approach
-<optional — when present, use the labeled blocks below>
+<optional — when present, use the labeled blocks below. Standalone mode does not add extra requirements here — only `## Context` is tightened>
 
 **Core decision** — <key architectural choice>
 
@@ -147,7 +148,9 @@ or
 - [ ] [manual] <requires user confirmation, e.g., browser UI check>
 ```
 
-- **`## Context`** *(optional)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
+- **`Parent: #<hq:task issue number>`** *(optional)* — include when the plan is derived from a parent `hq:task` Issue. Omit the line entirely in **standalone mode** (no parent `hq:task`). Standalone-mode plans are created directly from session brainstorming, with no external requirement Issue to point at.
+- **Standalone-mode `## Context` reinforcement** — when `Parent:` is omitted, `## Context` is **required** (not optional) and `**Problem**` must carry a substantive statement. `_Intentionally omitted: <reason>._` is forbidden for `## Context` in standalone mode, because the Problem statement is now the sole source of truth for the requirement (there is no external Issue to fall back on). `## Approach` retains its normal optionality — only `## Context` is tightened.
+- **`## Context`** *(optional in parented mode; required in standalone mode)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
   - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
   - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
   - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
@@ -191,19 +194,21 @@ _Intentionally omitted: <one-line reason>._
 
 This signals the author considered the section and chose to leave it empty (vs. forgot it). The preferred form is always "heading present + explicit omission"; silently dropping the heading is discouraged.
 
-After creating an `hq:plan` issue, register it as a sub-issue of the parent `hq:task`:
+After creating an `hq:plan` issue **in parented mode**, register it as a sub-issue of the parent `hq:task`:
 
 ```bash
 PLAN_ID=$(gh api /repos/{owner}/{repo}/issues/<plan> --jq '.id')
 gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_issue_id="$PLAN_ID"
 ```
 
+In **standalone mode** (no parent `hq:task`), skip sub-issue registration entirely — there is no parent Issue to register under.
+
 Every `hq:plan` must:
 
 - Be **self-contained** — it survives session clears (it's on GitHub, not local)
 - Define **Plan** (implementation steps) and **Acceptance** (completion criteria)
 - Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English
-- Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty
+- Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty (parented mode only — in standalone mode, `## Context` must not be omitted)
 - Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
 
 ### Round 2 Retry
