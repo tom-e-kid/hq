@@ -133,7 +133,7 @@ Pass to the agent:
 - **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` populated with **both** required subfields: a substantive `**Problem**` block and an `**In scope**` list (no `_Intentionally omitted_` for `## Context`).
 - The required output format (below)
 
-**Required plan format** (the Plan agent must produce EXACTLY this structure — angle-bracket `<placeholder>` tokens are substituted with real content, nothing else from this fence is emitted literally):
+**Required plan format** — use the fence below as the base template. Angle-bracket `<placeholder>` tokens are substituted with real content; otherwise the template is emitted literally. Conditional emission rules are documented in the bullet list below the fence — they specify which lines are omitted per mode (most notably, `Parent: #...` is omitted in standalone mode).
 
 ```markdown
 Parent: #<hq:task issue number>
