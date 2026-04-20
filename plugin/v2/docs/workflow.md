@@ -103,15 +103,19 @@ Phase 3: Execution Prep (fresh start only)
 │  Save focus to memory
 │
 Phase 4: Execute
-│  For each unchecked Plan item:
-│    implement → format + build → plan-check-item.sh (cache) → commit
-│  End: plan-cache-push.sh <plan>                [Sync: Push]
+│  Fresh entry: implement each Plan item (format + build + check + commit)
+│  Loopback entry (from Phase 5 fails): diagnose + fix across all failures,
+│    `fix: ...` commits, no Plan checkbox changes
+│  End (fresh): plan-cache-push.sh <plan>        [Sync: Push]
 │
-Phase 5: Acceptance
-│  Execute [auto] Acceptance items (incl. /hq:e2e-web)
-│  Fix failures (max 2 rounds) → fix commits
-│  Toggle checkboxes in cache on pass
-│  End: plan-cache-push.sh <plan>                [Sync: Push]
+Phase 5: Acceptance (sweep only — no fixing)
+│  Run all unchecked [auto] items → pass/fail per item
+│  └─ all pass         → push cache, proceed to Phase 6
+│  └─ some fail, any item under retry cap
+│                      → loopback to Phase 4 with full failure set
+│                         (Phase 4 fixes; re-enter Phase 5)
+│  └─ cap exhausted    → FB per remaining item + toggle [x] + push, Phase 6
+│  Retry cap = FB retry cap (§ Settings, default 2)
 │
 Phase 6: Simplify
 │  /simplify → format + build → single commit (if changed)
@@ -150,7 +154,8 @@ Phase 10: Report
 - **Plan-centric pre-flight** — the given plan number decides everything. Current branch, current focus, uncommitted changes are irrelevant inputs; let git's own errors surface if checkout fails.
 - **Cache-first** — Phases 4–8 touch `.hq/tasks/<branch-dir>/gh/plan.md` only; GitHub is hit at sync checkpoints (after Phase 4 Execute, after Phase 5 Acceptance, after Phase 8 Round 2 Drafting if drafted, and before PR creation).
 - **Commit as you go** — each Plan item, simplify, and fix lands as its own commit. Working tree is clean by Phase 9.
-- **Acceptance → Simplify → Quality Review** — Phase 5 confirms the implementation works first, Phase 6 then refactors a known-working baseline, Phase 7 reviews code quality on the simplified diff. Simplifying before Acceptance would tangle refactor with functional fixes; reviewing quality before Acceptance would waste effort on code that may not work.
+- **Acceptance → Simplify → Quality Review** — Phase 5 confirms the implementation works first (sweep only, looping back to Phase 4 to fix), Phase 6 then refactors a known-working baseline, Phase 7 reviews code quality on the simplified diff. Simplifying before Acceptance would tangle refactor with functional fixes; reviewing quality before Acceptance would waste effort on code that may not work.
+- **Phase 4 ↔ Phase 5 mini-loop** — Phase 5 is a pure sweep; fixes live in Phase 4 (loopback entry). Capped by § Settings FB retry cap per item. This batch-fix model surfaces shared root causes across multiple failing items.
 - **Round 2 retry, capped** — if Phase 7 leaves pending FBs, Phase 8 appends `## Round 2` (Follow-ups + Plan + Acceptance) to the plan and re-enters Phases 4–7 once. No Round 3; residuals escalate to the PR's `## Known Issues`.
 - **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.
 - **No `hq:feedback` creation** — escalation to `hq:feedback` is a `/hq:triage` responsibility, not `/hq:start`.

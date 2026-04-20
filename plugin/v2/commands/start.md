@@ -47,7 +47,10 @@ Set each to `in_progress` when starting and `completed` when done. If a phase is
 
 Tunables for `/hq:start`. Change the value here and every referencing phase follows automatically.
 
-- **FB retry cap** = **`2`** — maximum fix→re-verify rounds attempted per failing Acceptance item in Phase 5, and per clearly-actionable FB in Phase 7. The cap is applied **per item / per FB independently** (one item's failed retries don't consume another's budget). Values: `0` skips fix attempts and goes straight to FB; `1` permits a single try; `2` is the current default; higher values allow more retries before giving up.
+- **FB retry cap** = **`2`** — applied in two places, with the same value:
+  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB. Per item independently.
+  - **Phase 7 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the originating agent) before being left pending. Per FB independently.
+  - Values: `0` skips retries entirely (NG goes straight to FB); `1` permits one retry; `2` is the current default.
 
 ## Phase 1: Pre-flight Check (non-interactive)
 
@@ -82,15 +85,15 @@ existing_branch=$(bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/find-plan-branch
 
 Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state + `## Round 2` presence:
 
-- Any `- [ ]` in `## Plan` → resume at **Phase 4** (Execute) at the first unchecked item
-- All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 5** (Acceptance)
+- Any `- [ ]` in `## Plan` → resume at **Phase 4** (Execute, fresh entry) at the first unchecked item
+- All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 5** (Acceptance sweep). If that sweep shows failures, Phase 5 decides whether to loop back to Phase 4 or record FBs per the retry cap.
 - All Round 1 `## Plan` and all `- [ ] [auto]` Acceptance checked, `## Round 2` **absent** → resume at **Phase 6** (Simplify); Phases 6 → 7 → 8 follow
-- `## Round 2` **present** with any `- [ ]` in `### Plan (Round 2)` → resume at **Phase 4** (Round 2 Execute)
-- `## Round 2` present, all `### Plan (Round 2)` checked, any `- [ ] [auto]` in `### Acceptance (Round 2)` → resume at **Phase 5** (Round 2 Acceptance)
+- `## Round 2` **present** with any `- [ ]` in `### Plan (Round 2)` → resume at **Phase 4** (Round 2, fresh entry)
+- `## Round 2` present, all `### Plan (Round 2)` checked, any `- [ ] [auto]` in `### Acceptance (Round 2)` → resume at **Phase 5** (Round 2 Acceptance sweep)
 - `## Round 2` present, all Round 2 Plan + all Round 2 `[auto]` Acceptance checked → resume at **Phase 6** (Round 2 Simplify); Phase 8 is skipped since Round 2 cannot draft Round 3
 - Fully checked (both rounds if present) → proceed to Phase 9 (PR Creation); the gate will confirm.
 
-The current round is implicit in whether `## Round 2` exists in the cache. Round 1 phases operate on `## Plan` / `## Acceptance`; Round 2 phases operate on `### Plan (Round 2)` / `### Acceptance (Round 2)`.
+The current round is implicit in whether `## Round 2` exists in the cache. Round 1 phases operate on `## Plan` / `## Acceptance`; Round 2 phases operate on `### Plan (Round 2)` / `### Acceptance (Round 2)`. The Phase 4 ↔ Phase 5 loopback has no cache-visible state of its own — the sweep counter lives in conversation context only. On auto-resume after interruption, the sweep counter resets to zero (Phase 5 re-runs from the beginning; already-passed items stay `[x]` and are skipped).
 
 ## Phase 2: Load Plan (fresh start only)
 
@@ -136,6 +139,13 @@ Keep both payloads in conversation state; they are written to cache in Phase 3.
 
 ## Phase 4: Execute
 
+Phase 4 runs in two modes depending on how it was entered:
+
+- **Fresh entry (from Phase 3)** — iterate unchecked `## Plan` items.
+- **Loopback entry (from Phase 5 with Acceptance failures)** — diagnose the failing `[auto]` items, treat them as implementation gaps, and apply targeted fixes. No new Plan items are created; commits are `fix: ...`-typed and reference what was wrong. Once the fixes are in, Phase 5 re-runs its sweep.
+
+### Fresh-entry steps
+
 Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-dir>/gh/plan.md`. For **each** item:
 
 1. Implement the step.
@@ -148,34 +158,59 @@ Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-d
 5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 9.
 6. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, commit the partial work, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
 
-**At the end of Phase 4** (all `## Plan` items checked and committed):
+**At the end of fresh entry** (all `## Plan` items checked and committed):
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # checkpoint: Push
 ```
 
+### Loopback-entry steps
+
+Phase 5 has just recorded one or more failing `[auto]` items and handed them back. For each failing item:
+
+1. Analyze across **all** failing items first — shared root causes (common helper bug, missing migration, etc.) are common. Group them where possible.
+2. Apply the fix(es). Run `format` and `build`.
+3. Commit per group or per fix with a `fix: ...` subject (Commit Policy).
+4. Do NOT toggle Plan checkboxes — they are already `[x]`. The Phase 5 `[auto]` checkboxes will be toggled by Phase 5 when it re-sweeps.
+
+Then return to Phase 5 for the next sweep. The retry cap (§ Settings) limits how many times a given `[auto]` item can cycle back here before being recorded as an FB.
+
 ## Phase 5: Acceptance
 
-Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`.
+Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in Phase 4 (loopback entry). Keeping "does the implementation meet the plan?" and "what needs to change to meet it?" in separate phases makes root-cause analysis easier — a batch of failures often points to a shared cause that's obvious only when all of them are visible at once.
 
-**Per-`[auto]`-item handling** — the FB retry cap (§ Settings) is applied **per Acceptance item independently**. Item A's failures do not consume Item B's budget. For each failing item:
+### Sweep
 
-1. **Retry loop** — up to the FB retry cap times: diagnose the failure, apply a fix, create a `fix: ...` commit per `hq:workflow` § Commit Policy, re-run **only this `[auto]` check**. Exit the loop as soon as the check passes.
-2. **After the cap is exhausted** — create **one FB for this item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and move on to the next Acceptance item. Phase 8 Round 2 Drafting will pick these FBs up for a structured retry.
+Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution:
 
-If the retry cap is `0`, skip step 1 entirely and go straight to step 2.
+1. For each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check. Browser-oriented checks run via `/hq:e2e-web`.
+2. **On pass**: toggle the cache checkbox via `plan-check-item.sh`.
+3. **On fail**: leave the checkbox as `[ ]` and record the failure summary in conversation context (no FB yet).
+4. Track a **sweep counter per item** — how many times this item has cycled through the Phase 4 → Phase 5 loop.
 
-Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan, which is by definition a problem to fix.
+`[manual]` items are not executed — they stay `[ ]` and flow to the PR body in Phase 9.
+
+### After the sweep
+
+- **All `[auto]` items passed** → push the cache and proceed to Phase 6.
+- **Some `[auto]` items failed**, at least one still under the retry cap (§ Settings) → loop back to **Phase 4 (loopback entry)** with the full failure set. Phase 4 will diagnose root causes (often shared across failures) and apply `fix: ...` commits. Then re-enter Phase 5 for the next sweep.
+- **All remaining failures have reached the retry cap** → convert each into **one FB per item** under `.hq/tasks/<branch-dir>/feedbacks/`, **toggle the checkbox to `[x]` anyway** (continue-report — failure is tracked by the FB, not by the checkbox), push the cache, and proceed to Phase 6. Phase 8 Round 2 Drafting will pick these FBs up.
+
+If the retry cap is `0`, the first sweep's failures go straight to FB + `[x]` with no loopback.
+
+Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
 
 Running Acceptance **before** Simplify is intentional: verify the implementation actually works, then let Simplify refactor a known-working baseline. Acceptance failures are easier to diagnose while the Round 1 diff is still unadorned by simplification.
 
 The `[x]`-anyway rule keeps the Phase 9 Gate ABORT limited to true skips.
 
-`[manual]` items stay unchecked and are carried to the PR body in Phase 9.
+### Cache push
 
-**At the end of Phase 5**, push the cache:
+When Phase 5 exits (whether by passing or by exhausting the retry cap):
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # checkpoint: Push
 ```
+
+The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing happens once Phase 5 finally exits.
 
 ## Phase 6: Simplify
 

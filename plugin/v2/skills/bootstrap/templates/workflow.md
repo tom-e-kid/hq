@@ -365,15 +365,18 @@ A newly bootstrapped repository should understand these rules from this section 
 
 Verifies the `hq:plan` is complete — that the implementation satisfies every `[auto]` item in the `## Acceptance` section. This is the primary completion gate of an `hq:plan`.
 
-For each unchecked `[auto]` item:
+Acceptance is a **sweep-only** step for the caller — it verifies; it does not fix in place. Fixing is the caller's implementation phase. For `/hq:start`, this is the Phase 4 ↔ Phase 5 loopback (see its § Phase 4 and § Phase 5). The separation makes root-cause analysis easier: a batch of failures often points to a shared cause that is obvious only when all failures are visible at once.
 
-1. Execute the check autonomously. Kind depends on the item:
+Sweep steps:
+
+1. For each unchecked `[auto]` item, execute the check autonomously. Kind depends on the item:
    - Shell command, test run, type check, build
    - API / file / directory check
    - Browser automation via `/hq:e2e-web` for navigation, URL assertion, element/text presence, form submit, DOM state
 2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only).
-3. **On fail**: try to fix the underlying problem (counts against the FB retry cap — see `## Feedback Loop` and the caller's retry-cap setting, e.g. `/hq:start` § Settings).
-4. **On persistent failure (cap exhausted)**: create **one FB per failed item** describing the failure, **toggle the checkbox to `[x]` anyway**, and move on. The failure is now tracked by the FB — carrying an unchecked `[auto]` forward would deadlock the Phase 9 PR gate.
+3. **On fail**: leave the checkbox as `[ ]` and record the failure summary for the caller. Do NOT fix in this step.
+
+After the sweep, the caller decides what to do with failures (loopback to implementation, record FB, escalate, etc.). The caller's retry cap — for `/hq:start`, see its § Settings — governs how many sweep rounds a single item may go through before being demoted to an FB. When that cap is exhausted, the item is converted to an FB and its checkbox is toggled to `[x]` anyway so the final PR gate is not deadlocked by a tracked failure.
 
 `[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
 
