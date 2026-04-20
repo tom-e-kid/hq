@@ -345,7 +345,7 @@ The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 - <another known issue>
 
 Closes #<hq:plan>
-Refs #<hq:task>
+Refs #<hq:task>    <-- include only when the hq:plan has a parent hq:task (parented mode); omit entirely in standalone mode
 ```
 
 - **`## Manual Verification`** — all unchecked `[manual]` items from the Acceptance section, for user verification during PR review.
