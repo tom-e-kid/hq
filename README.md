@@ -43,7 +43,7 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 
 Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. They can run **in parallel** and in the **background**.
 
-`/hq:start` Phase 7 (Quality Review) is **diff-kind aware**: `code-reviewer` and `integrity-checker` always run; `security-scanner` and `/simplify` skip on doc-only diffs (the cost of running runtime / security reviewers on markdown is not paid for by their signal). See [plugin/v2/docs/workflow.md](plugin/v2/docs/workflow.md#commands) for the agent launch matrix.
+`/hq:start` Phase 7 (Quality Review) is **diff-kind aware**: `code-reviewer` and `integrity-checker` always run; `security-scanner` and `/simplify` skip on doc-only diffs (the cost of running runtime / security reviewers on markdown is not paid for by their signal). See [plugin/v2/docs/workflow.md](plugin/v2/docs/workflow.md#hqstart) for the agent launch matrix.
 
 **Commands** (user-invoked workflow shortcuts — invoked via `/hq:command-name`):
 
@@ -121,7 +121,7 @@ Parent: #<hq:task issue number>
 - Code review produces FB files instead of direct code modifications
 - Per-project overrides via `.hq/<skill>.md` files
 - Separate `security-scan` skill (was part of `reviewer` in v1)
-- `code-reviewer` and `security-scanner` agents enable parallel verification
+- `code-reviewer`, `security-scanner`, and `integrity-checker` agents enable parallel, diff-kind-aware verification
 
 #### Design Philosophy
 
