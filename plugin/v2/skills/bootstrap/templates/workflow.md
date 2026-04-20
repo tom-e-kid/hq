@@ -24,8 +24,8 @@
 Commit granularity by phase:
 
 - **Phase 4 (Execute)** — **one commit per `## Plan` item**. After implementing a step and checking its cache checkbox, create a commit whose subject matches the Plan item. Use Conventional Commits types (`feat`/`fix`/`refactor`/`docs`/`chore`/`test`).
-- **Phase 5 (Simplify)** — if `/simplify` produces changes, create a **single commit** `refactor: simplify <short summary>`. If no changes, no commit.
-- **Phase 6 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
+- **Phase 5 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
+- **Phase 6 (Simplify)** — if `/simplify` produces changes, create a **single commit** `refactor: simplify <short summary>`. If no changes, no commit.
 - **Phase 7 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
 - **Phase 9 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
 
@@ -304,7 +304,8 @@ During `/hq:start` execution, **all reads and writes to the plan body go to the 
 |---|---|---|
 | Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
 | Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
-| Push (cache → GitHub) | After Phase 6 (Verification) complete | Push Acceptance `[auto]` checkbox updates |
+| Push (cache → GitHub) | After Phase 5 (Acceptance) complete | Push Acceptance `[auto]` checkbox updates |
+| Push (cache → GitHub) | After Phase 8 (Round 2 Drafting) complete | Push `## Round 2` section |
 | Push (cache → GitHub) | Before PR creation | Final consistency sync |
 
 ### Helper scripts
@@ -376,7 +377,7 @@ For each unchecked `[auto]` item:
 
 `[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
 
-Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before the Quality Review step runs — reviewing quality on a plan that isn't functionally complete is wasted effort.
+Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before Simplify and Quality Review run. The order is deliberate: confirm the implementation works first, then refactor a known-working baseline, then review quality. Simplifying before Acceptance risks tangling refactor diffs with functional fixes; reviewing quality before Acceptance wastes effort on code that may not work.
 
 ## Quality Review
 

@@ -26,8 +26,8 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as ta
 | Load plan | Loading plan |
 | Execution prep | Preparing execution environment |
 | Execute plan | Executing plan |
-| Simplify changeset | Simplifying changeset |
 | Run acceptance | Running acceptance checks |
+| Simplify changeset | Simplifying changeset |
 | Quality review | Reviewing code quality |
 | Draft Round 2 (if needed) | Drafting Round 2 follow-ups |
 | Create PR | Creating pull request |
@@ -77,11 +77,11 @@ existing_branch=$(bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/find-plan-branch
 Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state + `## Round 2` presence:
 
 - Any `- [ ]` in `## Plan` → resume at **Phase 4** (Execute) at the first unchecked item
-- All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 5** (Simplify)
-- All Round 1 `## Plan` and all `- [ ] [auto]` Acceptance checked, `## Round 2` **absent** → resume at **Phase 7** (Quality Review); Phase 8 will decide whether to draft Round 2
+- All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 5** (Acceptance)
+- All Round 1 `## Plan` and all `- [ ] [auto]` Acceptance checked, `## Round 2` **absent** → resume at **Phase 6** (Simplify); Phases 6 → 7 → 8 follow
 - `## Round 2` **present** with any `- [ ]` in `### Plan (Round 2)` → resume at **Phase 4** (Round 2 Execute)
-- `## Round 2` present, all `### Plan (Round 2)` checked, any `- [ ] [auto]` in `### Acceptance (Round 2)` → resume at **Phase 5** (Round 2 Simplify)
-- `## Round 2` present, all Round 2 Plan + all Round 2 `[auto]` Acceptance checked → resume at **Phase 7** (Round 2 Quality Review); Phase 8 is skipped since Round 2 cannot draft Round 3
+- `## Round 2` present, all `### Plan (Round 2)` checked, any `- [ ] [auto]` in `### Acceptance (Round 2)` → resume at **Phase 5** (Round 2 Acceptance)
+- `## Round 2` present, all Round 2 Plan + all Round 2 `[auto]` Acceptance checked → resume at **Phase 6** (Round 2 Simplify); Phase 8 is skipped since Round 2 cannot draft Round 3
 - Fully checked (both rounds if present) → proceed to Phase 9 (PR Creation); the gate will confirm.
 
 The current round is implicit in whether `## Round 2` exists in the cache. Round 1 phases operate on `## Plan` / `## Acceptance`; Round 2 phases operate on `### Plan (Round 2)` / `### Acceptance (Round 2)`.
@@ -147,28 +147,30 @@ Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-d
 bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # checkpoint: Push
 ```
 
-## Phase 5: Simplify
-
-Run the `/simplify` skill on the full changeset. When it returns:
-
-1. Run `format` and `build`.
-2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
-3. **Immediately proceed to Phase 6.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
-
-No cache edits in this phase.
-
-## Phase 6: Acceptance
+## Phase 5: Acceptance
 
 Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`. Failures follow the 2-round FB cycle (`hq:workflow` § Feedback Loop) — fixes land as `fix: ...` commits per `hq:workflow` § Commit Policy.
+
+Running Acceptance **before** Simplify is intentional: verify the implementation actually works, then let Simplify refactor a known-working baseline. Acceptance failures are easier to diagnose while the Round 1 diff is still unadorned by simplification.
 
 **On failure that survives the 2-round cap**: create **one FB per unresolved `[auto]` item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and continue. This keeps the Phase 9 Gate ABORT limited to true skips.
 
 `[manual]` items stay unchecked and are carried to the PR body in Phase 9.
 
-**At the end of Phase 6**, push the cache:
+**At the end of Phase 5**, push the cache:
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # checkpoint: Push
 ```
+
+## Phase 6: Simplify
+
+Run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
+
+1. Run `format` and `build`.
+2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
+3. **Immediately proceed to Phase 7.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
+
+Phase 7 Quality Review is the safety net for behavior-affecting simplifications: if `/simplify` introduces a functional regression, `code-reviewer` is expected to flag it as an FB. No cache edits in this phase.
 
 ## Phase 7: Quality Review
 
@@ -184,7 +186,7 @@ Quality Review is independent of cache state — no checkpoint push here. The wo
 
 Otherwise, draft a `## Round 2` section on the `hq:plan` cache per `hq:workflow` § Round 2 Retry:
 
-1. **Collect pending FBs** from `.hq/tasks/<branch-dir>/feedbacks/` (not `done/`). For each FB, capture its id, title, failure summary, and the Round 1 information that led to it (Phase 4/6/7 context).
+1. **Collect pending FBs** from `.hq/tasks/<branch-dir>/feedbacks/` (not `done/`). For each FB, capture its id, title, failure summary, and the Round 1 information that led to it (Phase 4/5/7 context).
 2. **Draft the section** directly in the cache (`.hq/tasks/<branch-dir>/gh/plan.md`), appended after the Round 1 `## Acceptance`:
    - `### Follow-ups from Round 1` — one block per FB: root cause, Round 2 approach, which `### Plan (Round 2)` / `### Acceptance (Round 2)` items address it.
    - `### Plan (Round 2)` — concrete implementation steps (checkboxes).
@@ -243,7 +245,7 @@ Summarize:
 
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
 - **Cache-first** — during Phases 4–8, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
-- **Do not skip Phase 5, 6, or 7** — simplify, acceptance, and quality review are mandatory. Phase 8 is skipped only per its own conditions (Round 2 already in progress, or zero pending FBs).
+- **Do not skip Phase 5, 6, or 7** — acceptance, simplify, and quality review are mandatory. Phase 8 is skipped only per its own conditions (Round 2 already in progress, or zero pending FBs).
 - **At most Round 2** — the Round 1 → Round 2 retry is capped at two rounds total. There is no Round 3; unresolved FBs at the end of Round 2 escalate to the PR's `## Known Issues` per `hq:workflow` § Round 2 Retry.
 - **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 9.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
@@ -261,7 +263,7 @@ Three categories only. **Default is `continue-report`**. Anything a user would o
   - `hq:wip` label detected on the plan Issue
   - Phase 4 step blocked or ambiguous
   - Phase 4 step fails twice on the same attempt
-  - Phase 6 `[auto]` check fails after the 2-round fix cycle
+  - Phase 5 `[auto]` check fails after the 2-round fix cycle
   - Phase 7 (Quality Review) FB that is not a clearly-actionable bug/typo/logic error
   - `format` or `build` fails within a step — retry once, then record as FB if still failing (same 2-round spirit as FB fix)
 - **pause-ask** — stop and wait for the user. Reserved for security-sensitive surprises only:
