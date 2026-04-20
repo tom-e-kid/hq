@@ -1,15 +1,20 @@
 ---
 name: draft
-description: Interactive brainstorm → create an hq:plan Issue from an hq:task
+description: Interactive brainstorm → create an hq:plan Issue (optionally from an hq:task)
 allowed-tools: Read, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), Bash(mkdir:*), Agent, TaskCreate, TaskUpdate
 ---
 
 # DRAFT — Brainstorm & Create `hq:plan`
 
-This command turns an `hq:task` (requirement) into an `hq:plan` Issue (implementation plan). It is the **first half** of the two-command workflow:
+This command creates an `hq:plan` Issue (implementation plan). It runs in two modes:
+
+- **Parented mode** — invoked with an `hq:task` Issue number: `/hq:draft <issue-number>`. The plan links back to the `hq:task` as its parent.
+- **Standalone mode** — invoked without arguments: `/hq:draft`. The plan is a top-level Issue with no parent `hq:task`; the requirement is captured in the plan's `## Context` / `**Problem**` block.
+
+It is the **first half** of the two-command workflow:
 
 ```
-hq:task --/hq:draft--> hq:plan --/hq:start--> PR
+[hq:task (optional)] --/hq:draft--> hq:plan --/hq:start--> PR
 ```
 
 User intervention points for this command: (1) the interactive brainstorm in Phase 2, (2) the user's explicit "go" signal to transition from brainstorm to autonomous Issue creation. After "go", everything runs to completion without further prompts.
