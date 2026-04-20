@@ -18,11 +18,20 @@ description: >
   </example>
 
   <example>
-  Context: User wants full quality review before PR
+  Context: User wants full quality review on a code / mixed diff before PR
   user: "Run the full quality review before the PR."
   assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel."
   <commentary>
-  Pre-PR quality checks. Launch the full trio in parallel.
+  Pre-PR quality check on code / mixed diff: launch per the /hq:start Phase 7 Agent launch matrix.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User wants quality review on a doc-only diff
+  user: "Run the pre-PR review — it's a doc-only change."
+  assistant: "Launching code-reviewer and integrity-checker in parallel (security-scanner skipped per the doc-diff matrix)."
+  <commentary>
+  Pre-PR quality check on doc-only diff: security-scanner skips; code-reviewer and integrity-checker always run.
   </commentary>
   </example>
 model: sonnet

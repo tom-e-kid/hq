@@ -16,10 +16,10 @@ description: >
 
   <example>
   Context: User wants parallel quality checks before PR
-  user: "Run review and scan before the PR."
-  assistant: "Launching code-reviewer and security-scanner in parallel."
+  user: "Run the pre-PR quality review."
+  assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel (or the doc-diff subset per the matrix)."
   <commentary>
-  Pre-PR quality checks. Launch both agents in parallel.
+  Pre-PR quality checks follow the /hq:start Phase 7 Agent launch matrix: code-reviewer and integrity-checker always run; security-scanner skips on doc-only diffs.
   </commentary>
   </example>
 model: sonnet
