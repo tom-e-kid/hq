@@ -58,6 +58,8 @@ Phase 1: Load hq:task
 │
 Phase 2: Brainstorm (interactive — user intervention)
 │  Review task, investigate code, align scope
+│  Enumerate Impact on existing features (3 sub-dimensions:
+│    Signature changes / Functional contradictions / Downstream dependencies)
 │  Identify [auto] vs [manual] Acceptance opportunities
 │  (wait for user "go")
 │
@@ -77,6 +79,7 @@ Phase 5: Report
 
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
 - Plan agent must produce the exact `## Plan` + `## Acceptance` structure, with `[auto]` / `[manual]` markers on every Acceptance item.
+- Phase 2 enforces `Impact on existing features` enumeration in the Recap — each Impact entry is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 7 quality review.
 - The handoff is intentional — user reviews / edits the `hq:plan` Issue before `/hq:start` is invoked.
 
 ### `/hq:start`
