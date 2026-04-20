@@ -92,6 +92,13 @@ Only after the investigation + dialogue above has converged on shared understand
 **Motivation & Scope** (→ `## Context`)
 - **Problem**: <pain / why now>
 - **In scope**: <bullets of what's touched>
+- **Impact on existing features** *(required — see sub-dimensions below; omit any sub-dimension that is genuinely empty)*:
+  - **Signature changes**: existing public surfaces that gain / change / lose their contract
+    - Additions: <new surfaces introduced — functions, frontmatter fields, command names, config keys, rule headings, labels>
+    - Updates: <surfaces whose contract changes — arguments, return shape, emission rules, accepted values>
+    - Deletions: <surfaces being removed>
+  - **Functional contradictions**: <signature-stable but semantically-shifted cases where existing callers / consumers may break silently>
+  - **Downstream dependencies**: <consumers that need coordinated update alongside the in-scope change — other commands, skills, agents, docs, scripts>
 - **Out of scope** *(optional)*: <bullets of explicit exclusions — include only when scope is ambiguous or at risk of creep; omit this line otherwise>
 - **Constraints** *(optional)*: <hard dependencies / prerequisites / assumptions>
 
@@ -105,7 +112,7 @@ Only after the investigation + dialogue above has converged on shared understand
 ```
 
 Mapping rules:
-- `Motivation & Scope` subfields (`Problem`, `In scope`, `Out of scope`, `Constraints`) → written as bold-labeled blocks under `## Context`, in the same order
+- `Motivation & Scope` subfields (`Problem`, `In scope`, `Impact on existing features`, `Out of scope`, `Constraints`) → written as bold-labeled blocks under `## Context`, in the same order. `Impact on existing features` becomes `**Impact**` in the emitted `## Context` and preserves its 3 sub-dimensions (`Signature changes` / `Functional contradictions` / `Downstream dependencies`) verbatim.
 - `Approach` subfields (`Core decision`, `<Aspect label>`, `Alternatives considered`) → written as bold-labeled blocks under `## Approach`, in the same order
 - `Findings` → passed to the Plan agent as **working material only**; do NOT include in the Issue body (concrete Plan items already reference files)
 
@@ -113,6 +120,7 @@ Omission policy:
 - If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
 - Same for `Approach` → `## Approach`.
 - Optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) — if genuinely empty, omit the subfield entirely. Do not write `_None._`, "Not applicable", or padded prose. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
+- `Impact on existing features` is **required** whenever `Motivation & Scope` is populated, but its 3 sub-dimensions (`Signature changes` / `Functional contradictions` / `Downstream dependencies`) are individually optional. Omit a sub-dimension entirely when genuinely empty (no label, no `_None._`). If all 3 sub-dimensions would be empty, the change is probably trivial enough that `## Context` itself can be collapsed with `_Intentionally omitted: <reason>._`.
 - **Standalone mode exception** — in standalone mode, `## Context` is **required** and both of its required subfields (`**Problem**` and `**In scope**`) must be populated; `_Intentionally omitted_` is forbidden for `## Context`. See `.claude/rules/workflow.local.md` § `hq:plan` — Standalone-mode `## Context` reinforcement for the rationale. If the brainstorm has not produced both a substantive Problem statement and a concrete In-scope list, keep brainstorming; do not advance to Phase 3.
 
 Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
