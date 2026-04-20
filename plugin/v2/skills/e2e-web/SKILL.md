@@ -122,7 +122,7 @@ On successful verification of an `[auto]` item, toggle its checkbox in the cache
 bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring>"
 ```
 
-Do NOT call `gh issue edit` directly — the plan cache is pushed to GitHub at the Phase 6 sync checkpoint by the caller (`/hq:start`).
+Do NOT call `gh issue edit` directly — the plan cache is pushed to GitHub at the Phase 5 (Acceptance) sync checkpoint by the caller (`/hq:start`).
 
 Useful patterns:
 

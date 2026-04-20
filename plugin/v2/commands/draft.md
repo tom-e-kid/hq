@@ -169,7 +169,7 @@ Marker rules:
 - **`[auto]`** — Claude can execute the check autonomously using available tools: unit / integration tests, CLI / shell commands, API calls, file and type checks, **and browser automation via `/hq:e2e-web` (Playwright)** — navigation, URL / element / text assertions, form submit flows. Prefer `[auto]` whenever possible.
 - **`[manual]`** — requires human judgment: subjective aesthetics / UX feel, physical device / assistive tech, live production or sensitive credentials, or multi-session scenarios Playwright cannot orchestrate. Use sparingly.
 
-**Rule for choosing**: default to `[auto]`. A check is `[manual]` only when one of the four specific conditions above applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically. When unsure, mark as `[auto]` and let `/hq:start` Phase 6 execution surface the gap. See `.claude/rules/workflow.local.md` § `hq:plan` for the authoritative criteria and examples.
+**Rule for choosing**: default to `[auto]`. A check is `[manual]` only when one of the four specific conditions above applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically. When unsure, mark as `[auto]` and let `/hq:start` Phase 5 (Acceptance) execution surface the gap. See `.claude/rules/workflow.local.md` § `hq:plan` for the authoritative criteria and examples.
 
 Each Acceptance item should be a single, concrete, verifiable criterion — not a vague goal.
 

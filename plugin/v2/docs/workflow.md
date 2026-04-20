@@ -125,7 +125,7 @@ Phase 7: Quality Review
 │  │  code-reviewer    ║    security-scanner    │
 │  └──────────┬────────╨────────┬───────────────┘
 │             ▼                 ▼
-│  Fix FB (max 2 rounds) → per-FB fix commits
+│  Fix clearly-actionable FBs (per-FB, capped by § Settings FB retry cap)
 │  (working tree must be clean at end)
 │
 Phase 8: Round 2 Drafting (Round 1 only, conditional)
