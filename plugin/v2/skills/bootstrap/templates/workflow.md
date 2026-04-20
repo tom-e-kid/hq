@@ -447,7 +447,7 @@ Wait for all launched agents to complete before proceeding.
 
 ### Step 3: Fix FB Issues
 
-Read pending FB files from every launched agent. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
+Read pending FB files from `code-reviewer` and `integrity-checker` — these are the agents that output FB files. `security-scanner` findings appear only in its scan report and require human judgment (no FB files). Fix clearly-actionable FBs, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
 
 ### Fallback: Interactive Mode
 
