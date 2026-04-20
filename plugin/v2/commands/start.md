@@ -297,7 +297,7 @@ Delegate to the `pr` skill with the prepared body, title, and — **parented mod
 
 Summarize:
 
-- **hq:task**: number + title
+- **hq:task** *(parented mode only)*: number + title. Omit this line entirely in standalone mode — there is no parent `hq:task` to report.
 - **hq:plan**: number + title + link
 - **Branch**: name
 - **Key changes**: brief bullet list
