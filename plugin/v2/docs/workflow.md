@@ -383,4 +383,4 @@ Closes #<hq:plan>
 Refs #<hq:task>
 ```
 
-Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` and `Refs` are mandatory.
+Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` is mandatory. `Refs` is mandatory **only in parented mode** — in standalone mode (no parent `hq:task`), omit the `Refs` line entirely.
