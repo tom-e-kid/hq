@@ -79,7 +79,7 @@ This rule applies to every skill and command that generates Issue or PR content 
 
 ```
 Milestone (GitHub built-in, optional)
-  └── hq:task Issue  — requirement ("what")
+  └── hq:task Issue  — requirement ("what")  [OPTIONAL: may be absent in standalone mode]
         └── hq:plan Issue  — implementation plan ("how")
               ├── ← Closes → PR
               │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
@@ -87,10 +87,11 @@ Milestone (GitHub built-in, optional)
 ```
 
 - `hq:task` and `hq:plan` are separate issues (separation of concerns)
-- `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API)
+- **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` via `/hq:draft` **standalone mode**. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. In standalone mode, the plan's `## Context` / `**Problem**` becomes the sole source of truth for the requirement.
+- `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API) — **parented mode only**. Standalone-mode plans are top-level Issues with no parent.
 - PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
-- PR uses `Refs #<hq:task>` to maintain a link to the requirement
-- **Traceability inheritance** — if the source `hq:task` has a milestone or project(s), all generated items (`hq:plan`, PR, `hq:feedback`) must inherit them via `--milestone` / `--project` flags. Exception: `hq:feedback` issues do NOT inherit milestones.
+- PR uses `Refs #<hq:task>` to maintain a link to the requirement — **parented mode only**; omitted when the plan has no parent `hq:task`
+- **Traceability inheritance** — if the source `hq:task` has a milestone or project(s), all generated items (`hq:plan`, PR, `hq:feedback`) must inherit them via `--milestone` / `--project` flags. Exception: `hq:feedback` issues do NOT inherit milestones. In standalone mode there is no `hq:task` to inherit from, so milestone / project are left unset.
 - Labels are created lazily at first use:
   - `gh label create "hq:task" --description "HQ requirement (what to do)" --color "39FF14" 2>/dev/null || true`
   - `gh label create "hq:plan" --description "HQ implementation plan (how to do it)" --color "00D4FF" 2>/dev/null || true`
