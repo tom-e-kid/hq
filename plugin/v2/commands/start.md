@@ -151,11 +151,11 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 
 Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`.
 
-**On failure, attempt to fix before falling back to an FB** (`hq:workflow` § Feedback Loop 2-round cycle):
+**Per-`[auto]`-item handling** — the 2-round fix budget is applied **per Acceptance item independently**. Item A's failures do not consume Item B's budget. For each failing item (`hq:workflow` § Feedback Loop 2-round cycle):
 
-1. **Round 1 fix** — diagnose the failure, apply the fix, create a `fix: ...` commit per `hq:workflow` § Commit Policy, re-run the `[auto]` check.
+1. **Round 1 fix** — diagnose the failure, apply the fix, create a `fix: ...` commit per `hq:workflow` § Commit Policy, re-run **only this `[auto]` check**.
 2. **Round 2 fix** — if still failing, try once more with a different approach, commit, re-run.
-3. **After 2 rounds fail** — create **one FB per unresolved `[auto]` item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and continue. Phase 8 Round 2 Drafting will pick these FBs up for a structured retry.
+3. **After 2 rounds fail** — create **one FB for this item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and move on to the next Acceptance item. Phase 8 Round 2 Drafting will pick these FBs up for a structured retry.
 
 Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan, which is by definition a problem to fix.
 
@@ -184,13 +184,13 @@ Phase 7 Quality Review is the safety net for behavior-affecting simplifications:
 
 Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel. Wait for both to complete, then process each FB they emit per the rule below.
 
-**Per-FB handling** (`hq:workflow` § Feedback Loop 2-round cycle):
+**Per-FB handling** — the 2-round fix budget is applied **per FB independently**. FB X's failed retries do not consume FB Y's budget. For each FB (`hq:workflow` § Feedback Loop 2-round cycle):
 
 1. **Classify the FB** — is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
 2. **Clearly-actionable FBs** — attempt to fix:
-   - **Round 1 fix** — apply the fix, create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy, re-run the originating agent to verify.
+   - **Round 1 fix** — apply the fix, create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy, re-run the originating agent to verify this FB is gone.
    - **Round 2 fix** — if the re-run still flags it, try once more, commit, re-verify.
-   - **After 2 rounds** — leave the FB pending; it flows to Phase 8.
+   - **After 2 rounds** — leave the FB pending and move on to the next FB; the remaining work flows to Phase 8.
 3. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 7. Leave them pending (continue-report per Stop Policy). They flow to Phase 8 for Round 2 Drafting to structure the response.
 
 Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.

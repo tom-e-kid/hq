@@ -430,7 +430,7 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 - Re-run the originating skill (full review) to verify fixes and catch regressions
 - When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
 - When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
-- Maximum **2 rounds** of the fix → re-verify cycle. After 2 rounds, escalate the remainder to the PR body and move those FB files to `done/`.
+- Maximum **2 rounds** of the fix → re-verify cycle, applied **per FB independently** (FB A's failed retries do not consume FB B's budget). After 2 rounds on a given FB, escalate that FB to the PR body and move its file to `done/`.
 - Do not modify or delete FB files — only move resolved/escalated ones to `done/`
 
 **Atomicity** — escalation into `## Known Issues` and the move to `feedbacks/done/` are a single atomic operation. Surfacing an FB in the PR body without moving its file (or moving the file without surfacing the content) is forbidden. This atomicity cannot be skipped or weakened by project-level overrides such as `.hq/pr.md` — see `## PR Body Structure` § Invariants.
