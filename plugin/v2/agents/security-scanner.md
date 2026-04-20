@@ -28,6 +28,8 @@ tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write", "TaskCreate", "TaskUpdat
 
 You are a security scanner agent. Scan code changes on the current branch for security-sensitive patterns. **Detection only — no judgment, no fixes.**
 
+**Model choice** — this agent runs on `haiku`. The Alert Policy is pattern enumeration; detection does not require synthesis. If the policy changes to require contextual judgment, re-evaluate the model choice.
+
 ## Load Criteria
 
 Read the skill file for scan criteria and reporting format:

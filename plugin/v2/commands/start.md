@@ -216,11 +216,11 @@ The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing 
 
 ## Diff Classification
 
-Phases 6 and 7 branch on the nature of the diff. Compute the classification once at the start of Phase 6 and reuse it in Phase 7 — `/simplify` may produce an additional commit, but it will not change the file-type mix, so the classification is stable across Phase 6 → Phase 7.
+Phases 6 and 7 branch on the nature of the diff. Compute the classification at the start of Phase 6; Phase 7 recomputes if it is not already available (the `git diff --name-only` check is cheap, so recompute is not an optimization concern).
 
 ### Rule
 
-Single-pass, extension-based, case-insensitive. Run over `git diff --name-only <base>...HEAD`:
+Single-pass, extension-based, case-insensitive. Run over `git diff --name-only <base>...HEAD`. `DIFF_KIND` values: `code` | `doc` | `mixed`.
 
 - **All changed files have a doc extension** → `doc`
 - **No changed file has a doc extension** → `code`
@@ -258,7 +258,7 @@ DIFF_KIND=$(git diff --name-only "$BASE"...HEAD | awk '
   }')
 ```
 
-Record `DIFF_KIND` in conversation state at the start of Phase 6 and reuse it in Phase 7.
+Hold `DIFF_KIND` in conversation state across Phase 6 → Phase 7. If Phase 7 is resumed in a new session and the value is lost, recompute.
 
 ### Agent launch matrix
 
@@ -270,12 +270,12 @@ The classification drives which agents / skills run in Phase 6 (Simplify) and Ph
 | `doc` | — (skip) | ✓ | — (skip) | ✓ |
 | `mixed` | ✓ | ✓ | ✓ | ✓ |
 
-Rationale: `/simplify` and `security-scanner` target runtime / security concepts that do not apply to doc-only changes — running them burns tokens without producing useful output. `code-reviewer` still applies (prose quality, consistency) and `integrity-checker` is mandatory regardless (the skill's whole purpose is to catch gaps that hide precisely when `security-scanner` is silent).
+`integrity-checker` has no skip case by design — its whole purpose is to catch gaps that hide precisely when `security-scanner` is silent (doc diffs, rename-heavy refactors). `/simplify` and `security-scanner` target runtime / security concepts that do not apply to doc-only changes, so running them on `doc` burns tokens without useful output.
 
 ## Phase 6: Simplify
 
-1. Compute `DIFF_KIND` per `## Diff Classification` above and record it in conversation state.
-2. If `DIFF_KIND == doc` → **skip `/simplify` entirely** per the agent launch matrix. Do not create a commit. Proceed to Phase 7. The doc skip is tracked only in conversation state — nothing is written to the cache.
+1. Compute `DIFF_KIND` per `## Diff Classification` above.
+2. If `DIFF_KIND == doc` → **skip `/simplify` entirely** per the agent launch matrix. No commit, no cache write — proceed to Phase 7.
 3. Otherwise (`code` or `mixed`), run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
    1. Run `format` and `build`.
    2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
@@ -285,21 +285,15 @@ Phase 7 Quality Review is the safety net for behavior-affecting simplifications:
 
 ## Phase 7: Quality Review
 
-Phase 7 is **diff-kind aware**: the set of agents it launches depends on `DIFF_KIND` (§ Diff Classification). Fixed parallel launch is no longer the rule — we only run the agents that can produce useful signal for the diff's nature.
+Phase 7 launches the agent subset selected by `DIFF_KIND` (§ Diff Classification § Agent launch matrix).
 
 ### Step 1: Classify the diff
 
-Reuse the `DIFF_KIND` computed at the start of Phase 6. If it is missing (e.g., resume after interruption), recompute it from `git diff --name-only <base>...HEAD` using the same rule.
+Use `DIFF_KIND` from Phase 6. If it is not in state (resumed session, interrupted run), recompute from `git diff --name-only <base>...HEAD` using the same rule.
 
 ### Step 2: Launch agents per the matrix
 
-Launch the agents selected by the agent launch matrix (§ Diff Classification) **in parallel** via the Agent tool. Wait for all launched agents to complete before proceeding.
-
-- `DIFF_KIND == code` → launch `code-reviewer`, `security-scanner`, `integrity-checker`
-- `DIFF_KIND == mixed` → launch `code-reviewer`, `security-scanner`, `integrity-checker` (same as `code`)
-- `DIFF_KIND == doc` → launch `code-reviewer`, `integrity-checker` **only** (skip `security-scanner`)
-
-`integrity-checker` is **always launched**. Its whole purpose is to catch downstream / scope-boundary / end-to-end gaps that the other two agents structurally cannot see — those gaps are most common when `security-scanner` is silent (doc diffs, rename-heavy refactors).
+Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** (§ Diff Classification) in a single Agent-tool call batch so they run in parallel. Wait for all launched agents to complete before proceeding.
 
 Follow the **Quality Review** flow defined in `hq:workflow` § Quality Review for common rules (progress reporting, file output, FB conventions).
 
