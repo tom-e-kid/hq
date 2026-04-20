@@ -111,11 +111,19 @@ Standalone mode (no parent hq:task):
 
 An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body IS the source of truth for what needs to be done and how completion is verified.
 
-The `hq:plan` issue body **must** follow this structure. Angle-bracket `<placeholder>` tokens are substituted with real content; no other text in the fence is emitted literally. Conditional emission rules are documented in the bullet list below the fence.
+The `hq:plan` issue body **must** follow this structure. Substitution / stripping rules for emission:
+
+- Angle-bracket `<placeholder>` tokens are substituted with real content.
+- `<!-- ... -->` HTML comments inside the fence are **meta-annotations** (conditional-emission hints) and MUST be **stripped from the emitted plan body** — they are read by the agent, not written to GitHub.
+- All other fence content is emitted literally.
+
+Conditional emission rules are documented both inline (via the `<!-- ... -->` hints) and in the bullet list below the fence — the two are consistent; the bullet list is authoritative.
 
 ```markdown
+<!-- Parent: conditional — emit in parented mode only; omit the entire line in standalone mode -->
 Parent: #<hq:task issue number>
 
+<!-- ## Context: REQUIRED in standalone mode (populate both Problem and In scope, no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
 ## Context
 
 **Problem** — <pain / why now>
@@ -129,6 +137,7 @@ Parent: #<hq:task issue number>
 **Constraints** *(optional)*
 - <hard dependencies / prerequisites / assumptions>
 
+<!-- ## Approach: optional in BOTH modes; may be collapsed with _Intentionally omitted: <reason>._ (standalone mode does not tighten this section) -->
 ## Approach
 
 **Core decision** — <key architectural choice>

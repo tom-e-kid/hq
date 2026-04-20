@@ -135,11 +135,19 @@ Pass to the agent:
 - **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` populated with **both** required subfields: a substantive `**Problem**` block and an `**In scope**` list (no `_Intentionally omitted_` for `## Context`).
 - The required output format (below)
 
-**Required plan format** — use the fence below as the base template. Angle-bracket `<placeholder>` tokens are substituted with real content; otherwise the template is emitted literally. Conditional emission rules are documented in the bullet list below the fence — they specify which lines are omitted per mode (most notably, `Parent: #...` is omitted in standalone mode).
+**Required plan format** — use the fence below as the base template. Substitution / stripping rules for emission:
+
+- Angle-bracket `<placeholder>` tokens are substituted with real content.
+- `<!-- ... -->` HTML comments inside the fence are **meta-annotations** (conditional-emission hints) and MUST be **stripped from the emitted plan body** — do not pass them through. They are read by the agent, not written to GitHub.
+- All other fence content is emitted literally.
+
+Conditional emission rules are documented both inline (via the `<!-- ... -->` hints inside the fence) and in the bullet list below the fence — the two are consistent. The bullet list is authoritative.
 
 ```markdown
+<!-- Parent: conditional — emit in parented mode only; omit the entire line in standalone mode (see rules below) -->
 Parent: #<hq:task issue number>
 
+<!-- ## Context: REQUIRED in standalone mode (populate both Problem and In scope, no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
 ## Context
 
 **Problem** — <pain / why now>
@@ -153,6 +161,7 @@ Parent: #<hq:task issue number>
 **Constraints** *(optional)*
 - <hard dependencies / prerequisites / assumptions>
 
+<!-- ## Approach: optional in BOTH modes; may be collapsed with _Intentionally omitted: <reason>._ (standalone mode does not tighten this section) -->
 ## Approach
 
 **Core decision** — <key architectural choice>
@@ -176,6 +185,8 @@ or
 - [ ] [manual] <requires user verification — e.g., browser UI check>
 - [ ] [manual] <another manual check>
 ```
+
+The `<!-- ... -->` HTML comments above are conditional-emission hints read by the Plan agent and **MUST be stripped from the emitted plan body** (see the substitution / stripping rules in the preamble). Do NOT replace them with plain text annotations like `<-- ...>` — those would appear as literal garbage in the rendered Issue body.
 
 Conditional emission rules (apply to the template above):
 
