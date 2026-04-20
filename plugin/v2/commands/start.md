@@ -276,6 +276,11 @@ If any of the first two fail, ABORT per Stop Policy. If the working tree is dirt
 
 Build the body per `hq:workflow` § PR Body Structure. Copy unchecked `[manual]` items from Acceptance into `## Manual Verification` verbatim. For each pending FB under `.hq/tasks/<branch-dir>/feedbacks/`, list its title + brief description under `## Known Issues` **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Omit empty sections.
 
+The trailer is mode-dependent (per `hq:workflow` § PR Body Structure § Invariants):
+
+- **Parented mode** — trailer has both `Closes #<plan>` and `Refs #<task>` lines.
+- **Standalone mode** — trailer has only `Closes #<plan>`; omit the `Refs` line entirely (there is no parent `hq:task`).
+
 Title: `<type>: <description>` — plan title with the `(plan)` scope removed.
 
 ### Final Sync Checkpoint (Push)
@@ -286,7 +291,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 ### Create the PR
 
-Delegate to the `pr` skill with the prepared body, title, and milestone/project inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`). The `pr` skill is the single path to `gh pr create` and applies any `.hq/pr.md` overrides within its own documented scope. Do not call `gh pr create` directly.
+Delegate to the `pr` skill with the prepared body, title, and — **parented mode only** — milestone / project inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`). In standalone mode, skip milestone / project resolution entirely — there is no `task.json` cache file and no parent `hq:task` to inherit from, so no `--milestone` / `--project` flags are passed. The `pr` skill is the single path to `gh pr create` and applies any `.hq/pr.md` overrides within its own documented scope. Do not call `gh pr create` directly.
 
 ## Phase 10: Report
 
