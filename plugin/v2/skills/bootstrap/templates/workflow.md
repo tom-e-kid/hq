@@ -78,12 +78,19 @@ This rule applies to every skill and command that generates Issue or PR content 
 ## Issue Hierarchy
 
 ```
-Milestone (GitHub built-in, optional)
-  └── hq:task Issue  — requirement ("what")  [OPTIONAL: may be absent in standalone mode]
-        └── hq:plan Issue  — implementation plan ("how")
-              ├── ← Closes → PR
-              │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
-              └── (or escalated during PR review via /hq:triage)
+Parented mode:
+  Milestone (GitHub built-in, optional)
+    └── hq:task Issue  — requirement ("what")
+          └── hq:plan Issue  — implementation plan ("how")
+                ├── ← Closes → PR  (Refs #hq:task)
+                │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
+                └── (or escalated during PR review via /hq:triage)
+
+Standalone mode (no parent hq:task):
+  hq:plan Issue  — implementation plan ("how"); top-level, requirement captured in ## Context / **Problem**
+    ├── ← Closes → PR  (no Refs trailer)
+    │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
+    └── (or escalated during PR review via /hq:triage)
 ```
 
 - `hq:task` and `hq:plan` are separate issues (separation of concerns)
