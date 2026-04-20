@@ -119,7 +119,7 @@ Phase 5: Acceptance (sweep only — no fixing)
 │
 Phase 6: Simplify
 │  Classify diff: code / doc / mixed
-│  └─ doc  → skip /simplify (runtime-level reviewers don't apply to doc)
+│  └─ doc  → skip /simplify (simplification targets code constructs; no code to simplify)
 │  └─ else → /simplify → format + build → single commit (if changed)
 │
 Phase 7: Quality Review (diff-kind aware)
