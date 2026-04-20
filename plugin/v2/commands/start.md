@@ -129,7 +129,7 @@ Keep the plan payload (and, in parented mode, the task payload) in conversation 
    git checkout <base>
    git checkout -b <branch-name>
    ```
-3. **Write `context.md`** — follow the frontmatter schema in `hq:workflow` § Focus. Path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch with `/` → `-`).
+3. **Write `context.md`** — follow the frontmatter schema in `hq:workflow` § Focus. Path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch with `/` → `-`). In standalone mode, omit `source` and `gh.task` from the frontmatter (no task payload was fetched); parented mode includes all keys.
 4. **Write task cache** *(parented mode only)* — `.hq/tasks/<branch-dir>/gh/task.json` (the JSON fetched in Phase 2). In standalone mode, skip this step — no task JSON was fetched and there is no `gh.task` entry in `context.md`.
 5. **Pull plan cache** (checkpoint: Pull):
    ```bash
