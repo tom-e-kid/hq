@@ -58,6 +58,8 @@ Phase 1: Load hq:task
 │
 Phase 2: Brainstorm (interactive — user intervention)
 │  Review task, investigate code, align scope
+│  Enumerate Impact on existing features (3 sub-dimensions:
+│    Signature changes / Functional contradictions / Downstream dependencies)
 │  Identify [auto] vs [manual] Acceptance opportunities
 │  (wait for user "go")
 │
@@ -77,6 +79,7 @@ Phase 5: Report
 
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
 - Plan agent must produce the exact `## Plan` + `## Acceptance` structure, with `[auto]` / `[manual]` markers on every Acceptance item.
+- Phase 2 enforces `Impact on existing features` enumeration in the Recap — each Impact entry is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 7 quality review.
 - The handoff is intentional — user reviews / edits the `hq:plan` Issue before `/hq:start` is invoked.
 
 ### `/hq:start`
@@ -283,7 +286,7 @@ Phase 5: Report
 
 ### Plan Structure
 
-Every `hq:plan` Issue body MUST follow:
+Minimal structural skeleton — every `hq:plan` Issue body MUST include at least the sections below:
 
 ```markdown
 Parent: #<hq:task issue number>
@@ -297,6 +300,8 @@ Parent: #<hq:task issue number>
 - [ ] [auto] <another>
 - [ ] [manual] <requires user verification>
 ```
+
+> **Note**: this is the execution-driving skeleton. In addition, `## Context` is required whenever populated (always in standalone mode) and MUST include `**Problem**`, `**In scope**`, and `**Impact**` (with at least one of the 3 sub-dimensions `Signature changes` / `Functional contradictions` / `Downstream dependencies`). `## Approach` is optional. See `hq:workflow § hq:plan` for the full schema.
 
 - `## Plan` — implementation steps. All must be checked before PR creation.
 - `## Acceptance` — completion criteria tagged by execution mode:
@@ -378,4 +383,4 @@ Closes #<hq:plan>
 Refs #<hq:task>
 ```
 
-Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` and `Refs` are mandatory.
+Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` is mandatory. `Refs` is mandatory **only in parented mode** — in standalone mode (no parent `hq:task`), omit the `Refs` line entirely.

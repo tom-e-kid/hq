@@ -123,13 +123,24 @@ Conditional emission rules are documented both inline (via the `<!-- ... -->` hi
 <!-- Parent: conditional — emit in parented mode only; omit the entire line in standalone mode -->
 Parent: #<hq:task issue number>
 
-<!-- ## Context: REQUIRED in standalone mode (populate both Problem and In scope, no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
+<!-- ## Context: REQUIRED in standalone mode (populate Problem, In scope, and Impact with at least one sub-dimension — no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
 ## Context
 
 **Problem** — <pain / why now>
 
 **In scope**
 - <what's touched>
+
+<!-- **Impact**: required whenever ## Context is populated. Each of the 3 sub-dimensions is individually optional — omit any that is genuinely empty (no label, no _None._). If all 3 would be empty, collapse ## Context itself with _Intentionally omitted: <reason>._ rather than emitting an empty Impact block. -->
+**Impact**
+- **Signature changes**
+  - Additions: <new public surfaces — functions / frontmatter fields / command names / config keys / rule headings / labels>
+  - Updates: <surfaces whose contract changes — arguments / return shape / emission rules / accepted values>
+  - Deletions: <surfaces being removed>
+- **Functional contradictions**
+  - <signature-stable but semantically-shifted cases where existing callers / consumers may break silently>
+- **Downstream dependencies**
+  - <consumers that need coordinated update — other commands / skills / agents / docs / scripts / templates>
 
 **Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
 - <explicit exclusions>
@@ -163,12 +174,18 @@ or
 ```
 
 - **`Parent: #<hq:task issue number>`** *(optional)* — include when the plan is derived from a parent `hq:task` Issue. Omit the line entirely in **standalone mode** (no parent `hq:task`). Standalone-mode plans are created directly from session brainstorming, with no external requirement Issue to point at.
-- **Standalone-mode `## Context` reinforcement** — when `Parent:` is omitted, `## Context` is **required** (not optional) and both of its required subfields — `**Problem**` and `**In scope**` — must be populated. `_Intentionally omitted: <reason>._` is forbidden for `## Context` in standalone mode, because the Problem statement is now the sole source of truth for the requirement (there is no external Issue to fall back on). `## Approach` retains its normal optionality — only `## Context` is tightened.
+- **Standalone-mode `## Context` reinforcement** — when `Parent:` is omitted, `## Context` is **required** (not optional) and all three of its required subfields — `**Problem**`, `**In scope**`, and `**Impact**` (with at least one populated sub-dimension) — must be present. `_Intentionally omitted: <reason>._` is forbidden for `## Context` in standalone mode, because the Problem statement is the sole source of truth for the requirement (there is no external Issue to fall back on). `**Impact**` becomes transitively required here: the baseline rule ("required whenever `## Context` is populated") combined with the standalone ban on collapsing `## Context` leaves no escape hatch. `## Approach` retains its normal optionality — only `## Context` is tightened.
 - **`## Context`** *(optional in parented mode; required in standalone mode)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
   - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
   - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
+  - `**Impact**` *(required whenever `## Context` is populated)* — existing surfaces affected by the planned change, enumerated across 3 sub-dimensions so downstream drift is caught at drafting time rather than leaking into Phase 7. Each sub-dimension is individually optional — omit any that is genuinely empty **entirely**, meaning drop the `- **<sub-dimension>**` heading line itself, not just its body. No `_None._`, no placeholder-only body. If all 3 would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead of emitting an empty Impact block.
+    - **Signature changes** — public surfaces that gain / change / lose their contract. Group by direction (`Additions` / `Updates` / `Deletions`). Surfaces include: functions / methods / types, frontmatter fields, command & subcommand names, config keys, rule or section headings, labels, file paths treated as references.
+    - **Functional contradictions** — signature-stable but semantically-shifted cases where existing callers / consumers may break silently. Example: a command gains a new mode upstream consumers do not yet understand; a label's meaning narrows; a config key accepts a new set of values.
+    - **Downstream dependencies** — consumers that need coordinated update alongside the in-scope change. Sweep across: other commands, skills, agents, scripts, docs (`README.md`, `plugin/v2/docs/`), `.hq/` templates, the workflow rule.
   - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
   - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
+
+  **Backward compatibility** — `hq:plan` issues created before the `**Impact**` subfield was introduced do not carry it. **Every** skill, agent, or command that reads `hq:plan` bodies — including but not limited to `/hq:start`, the `pr` skill, `/hq:triage`, `/hq:archive`, `/hq:respond`, the `e2e-web` skill, and the `code-reviewer` / `integrity-checker` / `review-comment-analyzer` agents that access plans via `context.md` → `gh/plan.md` — MUST treat a missing `**Impact**` block as valid and proceed without it. A missing `**Impact**` block is NEVER an FB-worthy finding — review agents MUST NOT flag its absence. Do not retroactively edit old plans; new plans produced by `/hq:draft` from this point onward populate the field.
 - **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method. When present, use these bold-labeled blocks:
   - `**Core decision**` — 1-2 sentences on the key architectural choice. Required when `## Approach` is present; if there is no real design decision to highlight, prefer to omit `## Approach` entirely (with `_Intentionally omitted: <reason>._`)
   - `**<Aspect label>**` *(free-form, as many as needed)* — one block per distinct component or concern (new helper, API change, mapping, etc.). Short content inline after an en-dash; long content uses a bullet sublist
@@ -195,7 +212,7 @@ Examples:
 **Principle — clarity first, not form-filling.** The labeled blocks above are scaffolding to structure thinking and make the plan scannable. They are **not** a form to fill. If a field would contain fabricated or padded content, omit it:
 
 - **Optional fields** (`Out of scope`, `Constraints`, `Alternatives considered`) — leave them out entirely. No label, no placeholder.
-- **Required fields** (`Problem`, `In scope`, `Core decision`) that feel genuinely empty — rethink whether the parent section (`## Context` / `## Approach`) applies at all. If not, omit the whole section with `_Intentionally omitted: <reason>._`. If the section genuinely applies but a required field is still empty, the plan likely needs more thought rather than a placeholder.
+- **Required fields** (`Problem`, `In scope`, `Impact`, `Core decision`) that feel genuinely empty — rethink whether the parent section (`## Context` / `## Approach`) applies at all. If not, omit the whole section with `_Intentionally omitted: <reason>._`. If the section genuinely applies but a required field is still empty, the plan likely needs more thought rather than a placeholder. Special case: if `**Impact**`'s three sub-dimensions would all be empty, that is a signal to collapse `## Context` — not to pad Impact with placeholder content.
 
 Never write filler like `_None._` or "Not applicable" as a substitute for thinking.
 

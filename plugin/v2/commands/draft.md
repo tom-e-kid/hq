@@ -76,9 +76,20 @@ Work interactively with the user to shape the plan. This phase is **read-only in
 2. Discuss what the user wants to achieve — use the supplementary context (parented mode) or the user's own framing (standalone mode) to narrow scope
 3. Investigate relevant code: read files, grep the codebase, understand current state
 4. Align on scope, approach, and boundaries
-5. Identify what can be auto-verified (`[auto]`) vs what needs the user's eyes (`[manual]`)
+5. **Enumerate `Impact on existing features`** — for every item in the emerging `In scope`, walk the user through the 3 sub-dimensions explicitly:
+   - **Signature changes** — does any public surface (function / method / frontmatter schema / command or subcommand name / config key / rule heading / label / file path treated as a reference) get **added**, **updated**, or **deleted**? Enumerate by direction.
+   - **Functional contradictions** — are there cases where the signature stays the same but the semantics shift so that existing callers / consumers may break silently? (e.g., a command gains a new mode that upstream consumers do not yet understand; a label's meaning is narrowed; a config key accepts a new set of values.)
+   - **Downstream dependencies** — which consumers need coordinated update alongside the in-scope change? Sweep across: other commands, skills, agents, scripts, docs (`README.md`, `plugin/v2/docs/`), `.hq/` templates, and the workflow rule. Name the files / sections.
+
+   Surface missing items by asking questions, not by listing findings unilaterally. Each sub-dimension that produces no substantive entry is omitted later; no padding.
+6. Identify what can be auto-verified (`[auto]`) vs what needs the user's eyes (`[manual]`)
 
 Drive these steps through **dialogue** — ask the user questions, surface findings, check understanding. Do NOT sequence through them as a monologue. A productive Phase 2 typically spans several back-and-forth turns.
+
+Example prompts for step 5 — adapt to the conversation language (these are English for authoring consistency; use as inspiration, not a script):
+- "What public interfaces does this change add? (functions / commands / frontmatter fields / rule headings / labels)"
+- "Among existing callers / consumers, are there places where the signature stays the same but the semantics shift — breaking them silently?"
+- "Which downstream files need coordinated update? (docs / README / workflow template / other commands)"
 
 **Do NOT write production code.** This phase is purely investigation and alignment.
 
@@ -92,6 +103,13 @@ Only after the investigation + dialogue above has converged on shared understand
 **Motivation & Scope** (→ `## Context`)
 - **Problem**: <pain / why now>
 - **In scope**: <bullets of what's touched>
+- **Impact on existing features** *(required — see sub-dimensions below; omit any individual sub-dimension that is genuinely empty. If all 3 would be empty, drop the `**Impact on existing features**` label entirely and collapse `## Context` via `_Intentionally omitted: <reason>._` — see omission policy)*:
+  - **Signature changes**: existing public surfaces that gain / change / lose their contract
+    - Additions: <new surfaces introduced — functions, frontmatter fields, command names, config keys, rule headings, labels>
+    - Updates: <surfaces whose contract changes — arguments, return shape, emission rules, accepted values>
+    - Deletions: <surfaces being removed>
+  - **Functional contradictions**: <signature-stable but semantically-shifted cases where existing callers / consumers may break silently>
+  - **Downstream dependencies**: <consumers that need coordinated update alongside the in-scope change — other commands, skills, agents, docs, scripts>
 - **Out of scope** *(optional)*: <bullets of explicit exclusions — include only when scope is ambiguous or at risk of creep; omit this line otherwise>
 - **Constraints** *(optional)*: <hard dependencies / prerequisites / assumptions>
 
@@ -105,7 +123,7 @@ Only after the investigation + dialogue above has converged on shared understand
 ```
 
 Mapping rules:
-- `Motivation & Scope` subfields (`Problem`, `In scope`, `Out of scope`, `Constraints`) → written as bold-labeled blocks under `## Context`, in the same order
+- `Motivation & Scope` subfields (`Problem`, `In scope`, `Impact on existing features`, `Out of scope`, `Constraints`) → written as bold-labeled blocks under `## Context`, in the same order. `Impact on existing features` becomes `**Impact**` in the emitted `## Context` and preserves its 3 sub-dimensions (`Signature changes` / `Functional contradictions` / `Downstream dependencies`) verbatim.
 - `Approach` subfields (`Core decision`, `<Aspect label>`, `Alternatives considered`) → written as bold-labeled blocks under `## Approach`, in the same order
 - `Findings` → passed to the Plan agent as **working material only**; do NOT include in the Issue body (concrete Plan items already reference files)
 
@@ -113,7 +131,8 @@ Omission policy:
 - If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
 - Same for `Approach` → `## Approach`.
 - Optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) — if genuinely empty, omit the subfield entirely. Do not write `_None._`, "Not applicable", or padded prose. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
-- **Standalone mode exception** — in standalone mode, `## Context` is **required** and both of its required subfields (`**Problem**` and `**In scope**`) must be populated; `_Intentionally omitted_` is forbidden for `## Context`. See `.claude/rules/workflow.local.md` § `hq:plan` — Standalone-mode `## Context` reinforcement for the rationale. If the brainstorm has not produced both a substantive Problem statement and a concrete In-scope list, keep brainstorming; do not advance to Phase 3.
+- `Impact on existing features` is **required** whenever `Motivation & Scope` is populated, but its 3 sub-dimensions (`Signature changes` / `Functional contradictions` / `Downstream dependencies`) are individually optional. Omit a sub-dimension entirely when genuinely empty — drop the `- **<sub-dimension>**` heading line itself, not just its body. No placeholder, no `_None._`. If all 3 sub-dimensions would be empty, the change is probably trivial enough that `## Context` itself can be collapsed with `_Intentionally omitted: <reason>._`.
+- **Standalone mode exception** — in standalone mode, `## Context` is **required** and all three of its required subfields (`**Problem**`, `**In scope**`, and `**Impact on existing features**` with at least one populated sub-dimension) must be present; `_Intentionally omitted_` is forbidden for `## Context`. `**Impact**` becomes transitively required in standalone mode because the baseline rule ("required whenever `## Context` is populated") combined with the standalone ban on collapsing `## Context` leaves no escape hatch. See `.claude/rules/workflow.local.md` § `hq:plan` — Standalone-mode `## Context` reinforcement for the rationale. If the brainstorm has not produced a substantive Problem statement, a concrete In-scope list, and at least one Impact sub-dimension with substantive content, keep brainstorming; do not advance to Phase 3.
 
 Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
 
@@ -131,8 +150,18 @@ Pass to the agent:
 - Supplementary context from the user — parented mode only
 - The **Brainstorm Recap** produced at the end of Phase 2 — the agent carries `Motivation & Scope` into `## Context`, `Approach` into `## Approach`, and uses `Findings` as working material (not surfaced in the Issue body)
 - **Language directive**: plan body content (`## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition) MUST be written in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `[auto]`, `[manual]`) MUST stay in English regardless. See `.claude/rules/workflow.local.md` § Language.
-- **Anti-filler directive**: optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) MUST be omitted entirely when genuinely empty — no label, no `_None._` placeholder, no padded prose. If a required subfield (`Problem`, `In scope`, `Core decision`) would be empty, the parent section should be collapsed with `_Intentionally omitted: <reason>._` instead. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
-- **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` populated with **both** required subfields: a substantive `**Problem**` block and an `**In scope**` list (no `_Intentionally omitted_` for `## Context`).
+- **Anti-filler directive**: optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) MUST be omitted entirely when genuinely empty — no label, no `_None._` placeholder, no padded prose. If a required subfield (`Problem`, `In scope`, `Impact`, `Core decision`) would be empty, the parent section should be collapsed with `_Intentionally omitted: <reason>._` instead. Special case for `**Impact**`: if all three of its sub-dimensions would be empty, treat that as a signal to collapse `## Context` — never pad Impact with placeholder content. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
+- **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` populated with all three required subfields: a substantive `**Problem**` block, an `**In scope**` list, and an `**Impact**` block with at least one populated sub-dimension. `_Intentionally omitted_` is forbidden for `## Context` in this mode, and the transitive requirement ("`**Impact**` required whenever `## Context` is populated" × "Context always populated in standalone") leaves no legitimate path to drop Impact.
+- **Impact → Plan / Acceptance derivation** — the Recap's `Impact on existing features` becomes `**Impact**` under `## Context`. Each Impact entry MUST drive at least one concrete follow-through in `## Plan` and `## Acceptance`, per the mapping below. The Plan agent is not free to list an Impact entry without a corresponding Plan / Acceptance item — absence is treated as a drafting defect.
+  - **Signature addition** → one `## Plan` item that wires / registers the new surface into every caller that will use it, plus a `## Acceptance` item that verifies the new surface is reachable end-to-end (e.g., `grep -q` for the new identifier in the wiring site; integration-level check where practical).
+  - **Signature update** → one `## Plan` item that adjusts existing callers to the new contract, plus a `## Acceptance` item that verifies a concrete observable behavior on the caller side. Pick exactly one branch:
+    - **Backward-compatible update** — the Acceptance item names the caller and verifies the existing caller path still succeeds end-to-end (describe the observable success state — return value, emitted event, URL transition, file produced).
+    - **Intentional breaking update** — the Acceptance item names the caller and verifies the caller path now produces a specific documented error / rejection / warning state (name the expected failure mode — error message, exit code, raised exception, 4xx response).
+
+    Generic phrases like "works correctly" or "fails as expected" are not acceptable — each Acceptance item MUST name the caller and the expected observable.
+  - **Signature deletion** → one `## Plan` item that sweeps downstream references to the removed surface, plus a `## Acceptance` item that greps the repo for residual mentions and asserts zero hits.
+  - **Functional contradiction** → one `## Acceptance` item per contradiction that exercises the existing caller / consumer path and verifies it still behaves correctly under the new semantics (regression check).
+  - **Downstream dependency** → one `## Plan` item per listed consumer that performs the coordinated update, plus a `## Acceptance` item that verifies the consumer now reflects the new reality (e.g., docs reference the new field, README agents table includes the new agent).
 - The required output format (below)
 
 **Required plan format** — use the fence below as the base template. Substitution / stripping rules for emission:
@@ -147,13 +176,24 @@ Conditional emission rules are documented both inline (via the `<!-- ... -->` hi
 <!-- Parent: conditional — emit in parented mode only; omit the entire line in standalone mode (see rules below) -->
 Parent: #<hq:task issue number>
 
-<!-- ## Context: REQUIRED in standalone mode (populate both Problem and In scope, no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
+<!-- ## Context: REQUIRED in standalone mode (populate Problem, In scope, and Impact with at least one sub-dimension — no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
 ## Context
 
 **Problem** — <pain / why now>
 
 **In scope**
 - <what's touched>
+
+<!-- **Impact**: required whenever ## Context is populated. Each of the 3 sub-dimensions is individually optional — omit any that is genuinely empty (no label, no _None._). If all 3 would be empty, collapse ## Context itself with _Intentionally omitted: <reason>._ rather than emitting an empty Impact block. -->
+**Impact**
+- **Signature changes**
+  - Additions: <new surfaces introduced>
+  - Updates: <surfaces whose contract changes>
+  - Deletions: <surfaces being removed>
+- **Functional contradictions**
+  - <signature-stable but semantically-shifted cases that may break existing callers>
+- **Downstream dependencies**
+  - <consumers that need coordinated update>
 
 **Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
 - <explicit exclusions>
@@ -191,9 +231,10 @@ The `<!-- ... -->` HTML comments above are conditional-emission hints read by th
 Conditional emission rules (apply to the template above):
 
 - `Parent: #<hq:task issue number>` — emit in **parented mode**; **omit the entire line** in standalone mode.
-- `## Context` — **required** in both modes. In parented mode it may be collapsed with `_Intentionally omitted: <reason>._` (heading kept). In standalone mode collapsing is **forbidden** — the labeled blocks below must be populated.
+- `## Context` — **optional in parented mode** (heading may be kept with `_Intentionally omitted: <reason>._` when the body has no substantive content); **required in standalone mode** with the body populated (collapsing is forbidden). When the body is populated, the subfield rules below apply in both modes.
 - `**Problem**` — required in both modes. In standalone mode it is the sole source of truth for the requirement, so it must carry substantive content.
 - `**In scope**` — required in both modes whenever `## Context` is populated (so always populated in standalone mode).
+- `**Impact**` — required in both modes whenever `## Context` is populated. Each of the 3 sub-dimensions (`Signature changes` / `Functional contradictions` / `Downstream dependencies`) is individually optional and MUST be omitted **entirely** when genuinely empty — the `- **<sub-dimension>**` heading line itself is dropped, not just its body. "Empty" means no substantive content beyond the template placeholder. Do NOT emit a sub-dimension heading with an empty body. If all 3 sub-dimensions would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead.
 - `## Approach` — optional in both modes; same `_Intentionally omitted: <reason>._` pattern applies. Standalone mode does not tighten this section.
 
 Marker rules:
