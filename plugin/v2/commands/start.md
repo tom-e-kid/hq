@@ -78,11 +78,11 @@ Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state + `## Round 
 
 - Any `- [ ]` in `## Plan` → resume at **Phase 4** (Execute) at the first unchecked item
 - All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 5** (Simplify)
-- All Round 1 `## Plan` and all `- [ ] [auto]` Acceptance checked, `## Round 2` **absent** → resume at **Phase 7** (Quality Review); Phase 7.5 will decide whether to draft Round 2
+- All Round 1 `## Plan` and all `- [ ] [auto]` Acceptance checked, `## Round 2` **absent** → resume at **Phase 7** (Quality Review); Phase 8 will decide whether to draft Round 2
 - `## Round 2` **present** with any `- [ ]` in `### Plan (Round 2)` → resume at **Phase 4** (Round 2 Execute)
 - `## Round 2` present, all `### Plan (Round 2)` checked, any `- [ ] [auto]` in `### Acceptance (Round 2)` → resume at **Phase 5** (Round 2 Simplify)
-- `## Round 2` present, all Round 2 Plan + all Round 2 `[auto]` Acceptance checked → resume at **Phase 7** (Round 2 Quality Review); Phase 7.5 is skipped since Round 2 cannot draft Round 3
-- Fully checked (both rounds if present) → proceed to Phase 8 (PR Creation); the gate will confirm.
+- `## Round 2` present, all Round 2 Plan + all Round 2 `[auto]` Acceptance checked → resume at **Phase 7** (Round 2 Quality Review); Phase 8 is skipped since Round 2 cannot draft Round 3
+- Fully checked (both rounds if present) → proceed to Phase 9 (PR Creation); the gate will confirm.
 
 The current round is implicit in whether `## Round 2` exists in the cache. Round 1 phases operate on `## Plan` / `## Acceptance`; Round 2 phases operate on `### Plan (Round 2)` / `### Acceptance (Round 2)`.
 
@@ -139,7 +139,7 @@ Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-d
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring of the item>"
    ```
 4. **Commit** the item's changes per `hq:workflow` § Commit Policy (one commit per Plan item, Conventional Commits subject).
-5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 8.
+5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 9.
 6. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, commit the partial work, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
 
 **At the end of Phase 4** (all `## Plan` items checked and committed):
@@ -161,9 +161,9 @@ No cache edits in this phase.
 
 Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`. Failures follow the 2-round FB cycle (`hq:workflow` § Feedback Loop) — fixes land as `fix: ...` commits per `hq:workflow` § Commit Policy.
 
-**On failure that survives the 2-round cap**: create **one FB per unresolved `[auto]` item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and continue. This keeps the Phase 8 Gate ABORT limited to true skips.
+**On failure that survives the 2-round cap**: create **one FB per unresolved `[auto]` item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and continue. This keeps the Phase 9 Gate ABORT limited to true skips.
 
-`[manual]` items stay unchecked and are carried to the PR body in Phase 8.
+`[manual]` items stay unchecked and are carried to the PR body in Phase 9.
 
 **At the end of Phase 6**, push the cache:
 ```bash
@@ -174,12 +174,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 
 Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel, then process their FBs per `hq:workflow` § Feedback Loop (2-round cap). Each resolved FB lands as its own commit (`hq:workflow` § Commit Policy).
 
-Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends. Unresolved FBs stay on disk under `.hq/tasks/<branch-dir>/feedbacks/` (pending) and are evaluated in Phase 7.5.
+Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends. Unresolved FBs stay on disk under `.hq/tasks/<branch-dir>/feedbacks/` (pending) and are evaluated in Phase 8.
 
-## Phase 7.5: Round 2 Drafting (conditional, Round 1 only)
+## Phase 8: Round 2 Drafting (conditional, Round 1 only)
 
 **Skip this phase entirely if any of the following holds**:
-- The current run is already in Round 2 (the cache contains `## Round 2`) — Round 3 does not exist, remaining FBs will escalate in Phase 8.
+- The current run is already in Round 2 (the cache contains `## Round 2`) — Round 3 does not exist, remaining FBs will escalate in Phase 9.
 - Zero pending FB files under `.hq/tasks/<branch-dir>/feedbacks/` — nothing to follow up on.
 
 Otherwise, draft a `## Round 2` section on the `hq:plan` cache per `hq:workflow` § Round 2 Retry:
@@ -189,16 +189,16 @@ Otherwise, draft a `## Round 2` section on the `hq:plan` cache per `hq:workflow`
    - `### Follow-ups from Round 1` — one block per FB: root cause, Round 2 approach, which `### Plan (Round 2)` / `### Acceptance (Round 2)` items address it.
    - `### Plan (Round 2)` — concrete implementation steps (checkboxes).
    - `### Acceptance (Round 2)` — verification items (checkboxes with `[auto]` / `[manual]` markers).
-3. **Archive Round 1 FBs** — move every Round 1 pending FB file to `feedbacks/done/`. Their content has been absorbed into `### Follow-ups from Round 1`; leaving them pending would double-count them as Known Issues in Phase 8. This move is atomic with step 2 (draft without moving, or move without drafting, is forbidden).
+3. **Archive Round 1 FBs** — move every Round 1 pending FB file to `feedbacks/done/`. Their content has been absorbed into `### Follow-ups from Round 1`; leaving them pending would double-count them as Known Issues in Phase 9. This move is atomic with step 2 (draft without moving, or move without drafting, is forbidden).
 4. **Push the cache** (checkpoint: Push):
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
    ```
-5. **Re-enter Phase 4** — the Round 2 section is now the active plan. Phases 4 → 5 → 6 → 7 run again, this time operating on `### Plan (Round 2)` / `### Acceptance (Round 2)`. FBs produced during Round 2 are fresh; on the second arrival at the end of Phase 7, Phase 7.5 is skipped (Round 3 is not allowed) and the Round 2 pending FBs flow to `## Known Issues` in Phase 8.
+5. **Re-enter Phase 4** — the Round 2 section is now the active plan. Phases 4 → 5 → 6 → 7 run again, this time operating on `### Plan (Round 2)` / `### Acceptance (Round 2)`. FBs produced during Round 2 are fresh; on the second arrival at the end of Phase 7, Phase 8 is skipped (Round 3 is not allowed) and the Round 2 pending FBs flow to `## Known Issues` in Phase 9.
 
 The drafting is authored by this root agent — `/hq:draft` is not re-invoked, and the Plan agent is not called. Round 2 item content must follow the `hq:workflow` § Language rule (conversation language for prose, English for markers and structural headings).
 
-## Phase 8: PR Creation
+## Phase 9: PR Creation
 
 ### Gate
 
@@ -226,7 +226,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 Delegate to the `pr` skill with the prepared body, title, and milestone/project inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`). The `pr` skill is the single path to `gh pr create` and applies any `.hq/pr.md` overrides within its own documented scope. Do not call `gh pr create` directly.
 
-## Phase 9: Report
+## Phase 10: Report
 
 Summarize:
 
@@ -242,10 +242,10 @@ Summarize:
 ## Rules
 
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
-- **Cache-first** — during Phases 4–7.5, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
-- **Do not skip Phase 5, 6, or 7** — simplify, acceptance, and quality review are mandatory. Phase 7.5 is skipped only per its own conditions (Round 2 already in progress, or zero pending FBs).
+- **Cache-first** — during Phases 4–8, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
+- **Do not skip Phase 5, 6, or 7** — simplify, acceptance, and quality review are mandatory. Phase 8 is skipped only per its own conditions (Round 2 already in progress, or zero pending FBs).
 - **At most Round 2** — the Round 1 → Round 2 retry is capped at two rounds total. There is no Round 3; unresolved FBs at the end of Round 2 escalate to the PR's `## Known Issues` per `hq:workflow` § Round 2 Retry.
-- **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 8.
+- **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 9.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
 - **No `hq:feedback` creation** — this command does NOT create `hq:feedback` Issues. That happens via `/hq:triage` during PR review.
 
@@ -256,7 +256,7 @@ Three categories only. **Default is `continue-report`**. Anything a user would o
 - **ABORT** — stop the command entirely. Triggers:
   - `find-plan-branch.sh` exit 5 (ambiguous branch mapping)
   - Phase 1 auto-resume `git checkout` fails (report git's error verbatim; the user resolves the working-tree conflict manually)
-  - Phase 8 gate failure — a Plan item or `[auto]` Acceptance item (in Round 1 or Round 2) is unchecked at PR time (continue-report failures toggle their checkbox and record an FB; a genuinely unchecked item means a phase was skipped outright, which is a real gap)
+  - Phase 9 gate failure — a Plan item or `[auto]` Acceptance item (in Round 1 or Round 2) is unchecked at PR time (continue-report failures toggle their checkbox and record an FB; a genuinely unchecked item means a phase was skipped outright, which is a real gap)
 - **continue-report** — proceed with a reasonable assumption, log what was assumed, and write an FB so the residual reaches `## Known Issues`. Triggers:
   - `hq:wip` label detected on the plan Issue
   - Phase 4 step blocked or ambiguous

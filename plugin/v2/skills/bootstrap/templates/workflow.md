@@ -27,7 +27,7 @@ Commit granularity by phase:
 - **Phase 5 (Simplify)** — if `/simplify` produces changes, create a **single commit** `refactor: simplify <short summary>`. If no changes, no commit.
 - **Phase 6 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
 - **Phase 7 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
-- **Phase 8 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
+- **Phase 9 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
 
 All commits must pass `## Before Commit` (format + build). Do not skip hooks.
 
@@ -237,11 +237,11 @@ Rules:
 
 - `### Follow-ups from Round 1` is the narrative bridge: **one block per pending FB**, each stating what failed, the root cause inferred from Round 1, the Round 2 approach, and which Round 2 items address it.
 - `### Plan (Round 2)` and `### Acceptance (Round 2)` follow the same conventions as the Round 1 counterparts (checkbox, `[auto]`/`[manual]` markers, Commit Policy applies per item).
-- Phase 8 Gate treats Round 2 items identically to Round 1 — all `- [ ]` under both sections must be `[x]` before PR creation.
+- Phase 9 Gate treats Round 2 items identically to Round 1 — all `- [ ]` under both sections must be `[x]` before PR creation.
 - Round 2 drafting is authored by the `/hq:start` root agent (not the Plan agent) from FB contents and Phase 7 review outputs — `/hq:draft` is not re-invoked.
-- **Round 1 FB ownership ends at drafting** — as soon as Round 1 FB content is absorbed into `### Follow-ups from Round 1`, the corresponding FB files MUST be moved to `feedbacks/done/` atomically. Only FBs produced during Round 2 remain pending for the Phase 8 Known Issues section.
+- **Round 1 FB ownership ends at drafting** — as soon as Round 1 FB content is absorbed into `### Follow-ups from Round 1`, the corresponding FB files MUST be moved to `feedbacks/done/` atomically. Only FBs produced during Round 2 remain pending for the Phase 9 Known Issues section.
 
-If Round 1 produces zero pending FBs, skip Round 2 entirely and proceed to Phase 8 PR Creation.
+If Round 1 produces zero pending FBs, skip Round 2 entirely and proceed to Phase 9 PR Creation.
 
 ### Focus
 
@@ -372,7 +372,7 @@ For each unchecked `[auto]` item:
    - Browser automation via `/hq:e2e-web` for navigation, URL assertion, element/text presence, form submit, DOM state
 2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only).
 3. **On fail**: try to fix the underlying problem (counts against the 2-round FB limit in `## Feedback Loop`).
-4. **On persistent failure (survives the 2-round cap)**: create **one FB per failed item** describing the failure, **toggle the checkbox to `[x]` anyway**, and move on. The failure is now tracked by the FB — carrying an unchecked `[auto]` forward would deadlock the Phase 8 PR gate.
+4. **On persistent failure (survives the 2-round cap)**: create **one FB per failed item** describing the failure, **toggle the checkbox to `[x]` anyway**, and move on. The failure is now tracked by the FB — carrying an unchecked `[auto]` forward would deadlock the Phase 9 PR gate.
 
 `[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
 

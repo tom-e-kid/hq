@@ -124,14 +124,14 @@ Phase 7: Quality Review
 │  Fix FB (max 2 rounds) → per-FB fix commits
 │  (working tree must be clean at end)
 │
-Phase 7.5: Round 2 Drafting (Round 1 only, conditional)
+Phase 8: Round 2 Drafting (Round 1 only, conditional)
 │  pending FBs > 0 ?
 │    ├─ yes → draft ## Round 2 on cache
 │    │        (Follow-ups + Plan (Round 2) + Acceptance (Round 2))
 │    │        → plan-cache-push → re-enter Phase 4 as Round 2
-│    └─ no  → skip to Phase 8
+│    └─ no  → skip to Phase 9
 │
-Phase 8: PR Creation
+Phase 9: PR Creation
 │  Gate: all Plan + Acceptance [auto] checked
 │  Assemble PR body:
 │    ## Summary / ## Changes / ## Notes
@@ -141,7 +141,7 @@ Phase 8: PR Creation
 │  Final plan-cache-push.sh <plan>               [Sync: Push]
 │  gh pr create --label hq:pr (inherit milestone + projects)
 │
-Phase 9: Report
+Phase 10: Report
    Task, plan, branch, PR URL, [manual] count, Known Issues count
 ```
 
@@ -149,9 +149,9 @@ Phase 9: Report
 
 - **Plan-centric pre-flight** — the given plan number decides everything. Current branch, current focus, uncommitted changes are irrelevant inputs; let git's own errors surface if checkout fails.
 - **Cache-first** — Phases 4–6 touch `.hq/tasks/<branch-dir>/gh/plan.md` only; GitHub is hit at three sync checkpoints (after Phase 4, after Phase 6, before PR creation).
-- **Commit as you go** — each Plan item, simplify, and fix lands as its own commit. Working tree is clean by Phase 8.
+- **Commit as you go** — each Plan item, simplify, and fix lands as its own commit. Working tree is clean by Phase 9.
 - **Acceptance before Quality** — Phase 6 verifies the plan is functionally complete; Phase 7 then reviews code quality on a known-working diff.
-- **Round 2 retry, capped** — if Phase 7 leaves pending FBs, Phase 7.5 appends `## Round 2` (Follow-ups + Plan + Acceptance) to the plan and re-enters Phases 4–7 once. No Round 3; residuals escalate to the PR's `## Known Issues`.
+- **Round 2 retry, capped** — if Phase 7 leaves pending FBs, Phase 8 appends `## Round 2` (Follow-ups + Plan + Acceptance) to the plan and re-enters Phases 4–7 once. No Round 3; residuals escalate to the PR's `## Known Issues`.
 - **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.
 - **No `hq:feedback` creation** — escalation to `hq:feedback` is a `/hq:triage` responsibility, not `/hq:start`.
 - **Strict PR creation gate** — all `## Plan` items and all `[auto]` Acceptance items must be checked. `[manual]` items carry over to the PR body for the user to verify.
@@ -332,7 +332,7 @@ feedbacks/screenshots/  # evidence (optional)
 An FB moves to `done/` when:
 
 1. **Resolved in-branch** — fix committed, originating skill re-run clean.
-2. **Escalated to PR body** — at `/hq:start` Phase 8 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
+2. **Escalated to PR body** — at `/hq:start` Phase 9 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
 
 Local `feedbacks/` should be empty of pending files after PR creation. `/hq:archive` defensively checks this.
 
