@@ -128,16 +128,14 @@ Pass to the agent:
 - **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` with a substantive `**Problem**` block (no `_Intentionally omitted_`).
 - The required output format (below)
 
-**Required plan format** (the Plan agent must produce EXACTLY this structure):
+**Required plan format** (the Plan agent must produce EXACTLY this structure — angle-bracket `<placeholder>` tokens are substituted with real content, nothing else from this fence is emitted literally):
 
 ```markdown
-Parent: #<hq:task issue number>   <-- omit this line entirely in standalone mode
+Parent: #<hq:task issue number>
 
 ## Context
-<parented mode: optional — if omitted, keep heading with `_Intentionally omitted: <reason>._`; otherwise use the labeled blocks below, in conversation language>
-<standalone mode: REQUIRED — must use the labeled blocks below; `_Intentionally omitted_` is forbidden>
 
-**Problem** — <pain / why now>   <-- required always; in standalone mode this is the sole source of truth for the requirement
+**Problem** — <pain / why now>
 
 **In scope**
 - <what's touched>
@@ -149,7 +147,6 @@ Parent: #<hq:task issue number>   <-- omit this line entirely in standalone mode
 - <hard dependencies / prerequisites / assumptions>
 
 ## Approach
-<optional — same omission rule as Context (standalone mode does not add requirements here)>
 
 **Core decision** — <key architectural choice>
 
@@ -172,6 +169,14 @@ or
 - [ ] [manual] <requires user verification — e.g., browser UI check>
 - [ ] [manual] <another manual check>
 ```
+
+Conditional emission rules (apply to the template above):
+
+- `Parent: #<hq:task issue number>` — emit in **parented mode**; **omit the entire line** in standalone mode.
+- `## Context` — **required** in both modes. In parented mode it may be collapsed with `_Intentionally omitted: <reason>._` (heading kept). In standalone mode collapsing is **forbidden** — the labeled blocks below must be populated.
+- `**Problem**` — required in both modes. In standalone mode it is the sole source of truth for the requirement, so it must carry substantive content.
+- `**In scope**` — required in both modes whenever `## Context` is populated (so always populated in standalone mode).
+- `## Approach` — optional in both modes; same `_Intentionally omitted: <reason>._` pattern applies. Standalone mode does not tighten this section.
 
 Marker rules:
 - **`[auto]`** — Claude can execute the check autonomously using available tools: unit / integration tests, CLI / shell commands, API calls, file and type checks, **and browser automation via `/hq:e2e-web` (Playwright)** — navigation, URL / element / text assertions, form submit flows. Prefer `[auto]` whenever possible.

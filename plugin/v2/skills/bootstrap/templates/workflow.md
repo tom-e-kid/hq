@@ -104,14 +104,12 @@ Milestone (GitHub built-in, optional)
 
 An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body IS the source of truth for what needs to be done and how completion is verified.
 
-The `hq:plan` issue body **must** follow this structure:
+The `hq:plan` issue body **must** follow this structure. Angle-bracket `<placeholder>` tokens are substituted with real content; no other text in the fence is emitted literally. Conditional emission rules are documented in the bullet list below the fence.
 
 ```markdown
-Parent: #<hq:task issue number>   <-- optional; omit this line entirely when there is no parent hq:task
+Parent: #<hq:task issue number>
 
 ## Context
-<parented mode (Parent line present): optional — when present, use the labeled blocks below>
-<standalone mode (Parent line omitted): REQUIRED — must use the labeled blocks below; `_Intentionally omitted_` is forbidden>
 
 **Problem** — <pain / why now>
 
@@ -125,7 +123,6 @@ Parent: #<hq:task issue number>   <-- optional; omit this line entirely when the
 - <hard dependencies / prerequisites / assumptions>
 
 ## Approach
-<optional — when present, use the labeled blocks below. Standalone mode does not add extra requirements here — only `## Context` is tightened>
 
 **Core decision** — <key architectural choice>
 
@@ -256,15 +253,15 @@ If Round 1 produces zero pending FBs, skip Round 2 entirely and proceed to Phase
 1. **`.hq/tasks/<branch-dir>/context.md`** — deterministic file (branch name: `/` → `-`). Agents and skills resolve focus from this file.
 2. **Memory** — a project-type memory entry for cross-session awareness. Lets new sessions know what was in progress.
 
-**context.md format** (frontmatter YAML — no free-text body):
+**context.md format** (frontmatter YAML — no free-text body). In parented mode all keys below are present; `source` and `gh.task` are **omitted entirely in standalone mode** (see field descriptions).
 
 ```yaml
 ---
 plan: <hq:plan issue number>
-source: <hq:task issue number>   # optional — omit in standalone mode
+source: <hq:task issue number>
 branch: <original branch name with slashes intact, e.g., feat/oauth-login>
 gh:
-  task: .hq/tasks/<branch-dir>/gh/task.json   # optional — omit in standalone mode
+  task: .hq/tasks/<branch-dir>/gh/task.json
   plan: .hq/tasks/<branch-dir>/gh/plan.md
 ---
 ```
@@ -345,8 +342,10 @@ The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 - <another known issue>
 
 Closes #<hq:plan>
-Refs #<hq:task>    <-- include only when the hq:plan has a parent hq:task (parented mode); omit entirely in standalone mode
+Refs #<hq:task>
 ```
+
+The `Refs #<hq:task>` line is emitted **only in parented mode** — when the `hq:plan` has a parent `hq:task`. In standalone mode, omit the line entirely; the trailer block then contains only `Closes #<hq:plan>`.
 
 - **`## Manual Verification`** — all unchecked `[manual]` items from the Acceptance section, for user verification during PR review.
 - **`## Known Issues`** — unresolved issues that `/hq:start` could not auto-fix. **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
