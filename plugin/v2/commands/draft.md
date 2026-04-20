@@ -29,11 +29,13 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as ta
 
 | Task subject | activeForm |
 |---|---|
-| Load hq:task | Loading hq:task |
+| Load hq:task (if provided) | Loading hq:task |
 | Brainstorm with user | Brainstorming with user |
 | Generate plan | Generating plan |
 | Create hq:plan Issue | Creating hq:plan Issue |
 | Report results | Reporting results |
+
+In standalone mode the first task has nothing to fetch — mark it `completed` immediately after Phase 1 determines the mode. The row is kept so the overall phase count stays stable across modes.
 
 Set each to `in_progress` when starting and `completed` when done.
 
