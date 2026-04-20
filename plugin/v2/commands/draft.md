@@ -76,9 +76,20 @@ Work interactively with the user to shape the plan. This phase is **read-only in
 2. Discuss what the user wants to achieve — use the supplementary context (parented mode) or the user's own framing (standalone mode) to narrow scope
 3. Investigate relevant code: read files, grep the codebase, understand current state
 4. Align on scope, approach, and boundaries
-5. Identify what can be auto-verified (`[auto]`) vs what needs the user's eyes (`[manual]`)
+5. **Enumerate `Impact on existing features`** — for every item in the emerging `In scope`, walk the user through the 3 sub-dimensions explicitly:
+   - **Signature changes** — does any public surface (function / method / frontmatter schema / command or subcommand name / config key / rule heading / label / file path treated as a reference) get **added**, **updated**, or **deleted**? Enumerate by direction.
+   - **Functional contradictions** — are there cases where the signature stays the same but the semantics shift so that existing callers / consumers may break silently? (e.g., a command gains a new mode that upstream consumers do not yet understand; a label's meaning is narrowed; a config key accepts a new set of values.)
+   - **Downstream dependencies** — which consumers need coordinated update alongside the in-scope change? Sweep across: other commands, skills, agents, scripts, docs (`README.md`, `plugin/v2/docs/`), `.hq/` templates, and the workflow rule. Name the files / sections.
+
+   Surface missing items by asking questions, not by listing findings unilaterally. Each sub-dimension that produces no substantive entry is omitted later; no padding.
+6. Identify what can be auto-verified (`[auto]`) vs what needs the user's eyes (`[manual]`)
 
 Drive these steps through **dialogue** — ask the user questions, surface findings, check understanding. Do NOT sequence through them as a monologue. A productive Phase 2 typically spans several back-and-forth turns.
+
+Example prompts for step 5 (use as inspiration, not a script):
+- "この変更で追加される公開インターフェース（関数/コマンド/フロントマターのフィールド/ルール見出し）は？"
+- "既存の呼び出し元・利用者のうち、シグネチャは変わらないが意味が変わってしまう箇所は？"
+- "下流で連動更新が必要なファイルは？ docs / README / workflow template / 他コマンドなど。"
 
 **Do NOT write production code.** This phase is purely investigation and alignment.
 
