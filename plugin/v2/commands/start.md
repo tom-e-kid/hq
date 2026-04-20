@@ -214,19 +214,96 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 
 The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing happens once Phase 5 finally exits.
 
+## Diff Classification
+
+Phases 6 and 7 branch on the nature of the diff. Compute the classification once at the start of Phase 6 and reuse it in Phase 7 — `/simplify` may produce an additional commit, but it will not change the file-type mix, so the classification is stable across Phase 6 → Phase 7.
+
+### Rule
+
+Single-pass, extension-based, case-insensitive. Run over `git diff --name-only <base>...HEAD`:
+
+- **All changed files have a doc extension** → `doc`
+- **No changed file has a doc extension** → `code`
+- **Mix** → `mixed`
+
+Doc extensions (grouped for maintenance):
+
+| Group | Extensions |
+|---|---|
+| Markdown / structured text | `.md`, `.mdx`, `.markdown`, `.txt`, `.rst`, `.adoc`, `.asciidoc` |
+| Microsoft Office | `.docx`, `.doc`, `.pptx`, `.ppt`, `.xlsx`, `.xls` |
+| OpenDocument | `.odt`, `.odp`, `.ods` |
+| Google Docs (Drive shortcuts) | `.gdoc`, `.gsheet`, `.gslides` |
+| Apple iWork | `.pages`, `.numbers`, `.key` |
+| Portable | `.pdf`, `.rtf` |
+
+Anything not in the table above (including `.yaml`, `.json`, `.toml`, `.sh`, and other config / scripting formats) is treated as **code**.
+
+### Computing the classification
+
+Inline bash, 1-liner form (single pipeline — do not outsource to a helper script):
+
+```bash
+DIFF_KIND=$(git diff --name-only "$BASE"...HEAD | awk '
+  BEGIN { d=0; c=0 }
+  {
+    name=tolower($0)
+    if (name ~ /\.(md|mdx|markdown|txt|rst|adoc|asciidoc|docx|doc|pptx|ppt|xlsx|xls|odt|odp|ods|gdoc|gsheet|gslides|pages|numbers|key|pdf|rtf)$/) d=1
+    else c=1
+  }
+  END {
+    if (d && c) print "mixed"
+    else if (d) print "doc"
+    else print "code"
+  }')
+```
+
+Record `DIFF_KIND` in conversation state at the start of Phase 6 and reuse it in Phase 7.
+
+### Agent launch matrix
+
+The classification drives which agents / skills run in Phase 6 (Simplify) and Phase 7 (Quality Review):
+
+| `DIFF_KIND` | Phase 6 `/simplify` | Phase 7 `code-reviewer` | Phase 7 `security-scanner` | Phase 7 `integrity-checker` |
+|---|---|---|---|---|
+| `code` | ✓ | ✓ | ✓ | ✓ |
+| `doc` | — (skip) | ✓ | — (skip) | ✓ |
+| `mixed` | ✓ | ✓ | ✓ | ✓ |
+
+Rationale: `/simplify` and `security-scanner` target runtime / security concepts that do not apply to doc-only changes — running them burns tokens without producing useful output. `code-reviewer` still applies (prose quality, consistency) and `integrity-checker` is mandatory regardless (the skill's whole purpose is to catch gaps that hide precisely when `security-scanner` is silent).
+
 ## Phase 6: Simplify
 
-Run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
-
-1. Run `format` and `build`.
-2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
-3. **Immediately proceed to Phase 7.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
+1. Compute `DIFF_KIND` per `## Diff Classification` above and record it in conversation state.
+2. If `DIFF_KIND == doc` → **skip `/simplify` entirely** per the agent launch matrix. Do not create a commit. Proceed to Phase 7. The doc skip is tracked only in conversation state — nothing is written to the cache.
+3. Otherwise (`code` or `mixed`), run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
+   1. Run `format` and `build`.
+   2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
+   3. **Immediately proceed to Phase 7.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
 
 Phase 7 Quality Review is the safety net for behavior-affecting simplifications: if `/simplify` introduces a functional regression, `code-reviewer` is expected to flag it as an FB. No cache edits in this phase.
 
 ## Phase 7: Quality Review
 
-Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel. Wait for both to complete, then process each FB they emit per the rule below.
+Phase 7 is **diff-kind aware**: the set of agents it launches depends on `DIFF_KIND` (§ Diff Classification). Fixed parallel launch is no longer the rule — we only run the agents that can produce useful signal for the diff's nature.
+
+### Step 1: Classify the diff
+
+Reuse the `DIFF_KIND` computed at the start of Phase 6. If it is missing (e.g., resume after interruption), recompute it from `git diff --name-only <base>...HEAD` using the same rule.
+
+### Step 2: Launch agents per the matrix
+
+Launch the agents selected by the agent launch matrix (§ Diff Classification) **in parallel** via the Agent tool. Wait for all launched agents to complete before proceeding.
+
+- `DIFF_KIND == code` → launch `code-reviewer`, `security-scanner`, `integrity-checker`
+- `DIFF_KIND == mixed` → launch `code-reviewer`, `security-scanner`, `integrity-checker` (same as `code`)
+- `DIFF_KIND == doc` → launch `code-reviewer`, `integrity-checker` **only** (skip `security-scanner`)
+
+`integrity-checker` is **always launched**. Its whole purpose is to catch downstream / scope-boundary / end-to-end gaps that the other two agents structurally cannot see — those gaps are most common when `security-scanner` is silent (doc diffs, rename-heavy refactors).
+
+Follow the **Quality Review** flow defined in `hq:workflow` § Quality Review for common rules (progress reporting, file output, FB conventions).
+
+### Step 3: Process FBs
 
 **Per-FB handling** — the FB retry cap (§ Settings) is applied **per FB independently**. FB X's failed retries do not consume FB Y's budget. For each FB:
 
