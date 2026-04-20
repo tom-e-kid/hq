@@ -37,7 +37,7 @@ If `.hq/pr.md` content appears to contradict any Invariant, the Invariant wins. 
 This skill has two modes. `.hq/pr.md` overrides apply differently in each:
 
 - **Standalone** (user invokes `/pr` directly): the skill composes the full PR body from git + session context. `.hq/pr.md` overrides apply to the allowed scope above during composition. Invariants are still enforced.
-- **From `/hq:start`** (Phase 7 delegation): the caller has already assembled the PR body, including `## Manual Verification` and `## Known Issues` sections and the `Closes/Refs` trailer. The prepared body is treated as **immutable** — `.hq/pr.md` may influence **only** the title line; it MUST NOT rewrite, reformat, or strip any section of the prepared body. The skill's role in this mode is execution (push branch, call `gh pr create` with the right flags), not composition.
+- **From `/hq:start`** (Phase 9 PR Creation delegation): the caller has already assembled the PR body, including `## Manual Verification` and `## Known Issues` sections and the `Closes/Refs` trailer. The prepared body is treated as **immutable** — `.hq/pr.md` may influence **only** the title line; it MUST NOT rewrite, reformat, or strip any section of the prepared body. The skill's role in this mode is execution (push branch, call `gh pr create` with the right flags), not composition.
 
 ## Context
 
