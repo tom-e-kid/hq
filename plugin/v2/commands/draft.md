@@ -180,6 +180,17 @@ Parent: #<hq:task issue number>
 **In scope**
 - <what's touched>
 
+<!-- **Impact**: required whenever ## Context is populated. Each of the 3 sub-dimensions is individually optional — omit any that is genuinely empty (no label, no _None._). If all 3 would be empty, collapse ## Context itself with _Intentionally omitted: <reason>._ rather than emitting an empty Impact block. -->
+**Impact**
+- **Signature changes**
+  - Additions: <new surfaces introduced>
+  - Updates: <surfaces whose contract changes>
+  - Deletions: <surfaces being removed>
+- **Functional contradictions**
+  - <signature-stable but semantically-shifted cases that may break existing callers>
+- **Downstream dependencies**
+  - <consumers that need coordinated update>
+
 **Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
 - <explicit exclusions>
 
@@ -219,6 +230,7 @@ Conditional emission rules (apply to the template above):
 - `## Context` — **required** in both modes. In parented mode it may be collapsed with `_Intentionally omitted: <reason>._` (heading kept). In standalone mode collapsing is **forbidden** — the labeled blocks below must be populated.
 - `**Problem**` — required in both modes. In standalone mode it is the sole source of truth for the requirement, so it must carry substantive content.
 - `**In scope**` — required in both modes whenever `## Context` is populated (so always populated in standalone mode).
+- `**Impact**` — required in both modes whenever `## Context` is populated. Each of the 3 sub-dimensions (`Signature changes` / `Functional contradictions` / `Downstream dependencies`) is individually optional and MUST be omitted when genuinely empty (no label, no `_None._`). If all 3 sub-dimensions would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead.
 - `## Approach` — optional in both modes; same `_Intentionally omitted: <reason>._` pattern applies. Standalone mode does not tighten this section.
 
 Marker rules:
