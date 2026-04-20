@@ -131,6 +131,17 @@ Parent: #<hq:task issue number>
 **In scope**
 - <what's touched>
 
+<!-- **Impact**: required whenever ## Context is populated. Each of the 3 sub-dimensions is individually optional — omit any that is genuinely empty (no label, no _None._). If all 3 would be empty, collapse ## Context itself with _Intentionally omitted: <reason>._ rather than emitting an empty Impact block. -->
+**Impact**
+- **Signature changes**
+  - Additions: <new public surfaces — functions / frontmatter fields / command names / config keys / rule headings / labels>
+  - Updates: <surfaces whose contract changes — arguments / return shape / emission rules / accepted values>
+  - Deletions: <surfaces being removed>
+- **Functional contradictions**
+  - <signature-stable but semantically-shifted cases where existing callers / consumers may break silently>
+- **Downstream dependencies**
+  - <consumers that need coordinated update — other commands / skills / agents / docs / scripts / templates>
+
 **Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
 - <explicit exclusions>
 
@@ -167,8 +178,14 @@ or
 - **`## Context`** *(optional in parented mode; required in standalone mode)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
   - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
   - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
+  - `**Impact**` *(required whenever `## Context` is populated)* — existing surfaces affected by the planned change, enumerated across 3 sub-dimensions so downstream drift is caught at drafting time rather than leaking into Phase 7. Each sub-dimension is individually optional — omit any that is genuinely empty (no `_None._`, no padding). If all 3 would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead of emitting an empty Impact block.
+    - **Signature changes** — public surfaces that gain / change / lose their contract. Group by direction (`Additions` / `Updates` / `Deletions`). Surfaces include: functions / methods / types, frontmatter fields, command & subcommand names, config keys, rule or section headings, labels, file paths treated as references.
+    - **Functional contradictions** — signature-stable but semantically-shifted cases where existing callers / consumers may break silently. Example: a command gains a new mode upstream consumers do not yet understand; a label's meaning narrows; a config key accepts a new set of values.
+    - **Downstream dependencies** — consumers that need coordinated update alongside the in-scope change. Sweep across: other commands, skills, agents, scripts, docs (`README.md`, `plugin/v2/docs/`), `.hq/` templates, the workflow rule.
   - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
   - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
+
+  **Backward compatibility** — `hq:plan` issues created before the `**Impact**` subfield was introduced do not carry it. Downstream consumers (`/hq:start`, `pr` skill, `/hq:triage`) MUST treat a missing `**Impact**` block as valid and proceed without it. Do not retroactively edit old plans; new plans produced by `/hq:draft` from this point onward populate the field.
 - **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method. When present, use these bold-labeled blocks:
   - `**Core decision**` — 1-2 sentences on the key architectural choice. Required when `## Approach` is present; if there is no real design decision to highlight, prefer to omit `## Approach` entirely (with `_Intentionally omitted: <reason>._`)
   - `**<Aspect label>**` *(free-form, as many as needed)* — one block per distinct component or concern (new helper, API change, mapping, etc.). Short content inline after an en-dash; long content uses a bullet sublist
