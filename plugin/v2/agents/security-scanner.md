@@ -21,7 +21,7 @@ description: >
   Parallel quality checks. Launch both agents simultaneously.
   </commentary>
   </example>
-model: sonnet
+model: haiku
 color: red
 tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write", "TaskCreate", "TaskUpdate"]
 ---
