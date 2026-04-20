@@ -103,7 +103,7 @@ Only after the investigation + dialogue above has converged on shared understand
 **Motivation & Scope** (→ `## Context`)
 - **Problem**: <pain / why now>
 - **In scope**: <bullets of what's touched>
-- **Impact on existing features** *(required — see sub-dimensions below; omit any sub-dimension that is genuinely empty)*:
+- **Impact on existing features** *(required — see sub-dimensions below; omit any individual sub-dimension that is genuinely empty. If all 3 would be empty, drop the `**Impact on existing features**` label entirely and collapse `## Context` via `_Intentionally omitted: <reason>._` — see omission policy)*:
   - **Signature changes**: existing public surfaces that gain / change / lose their contract
     - Additions: <new surfaces introduced — functions, frontmatter fields, command names, config keys, rule headings, labels>
     - Updates: <surfaces whose contract changes — arguments, return shape, emission rules, accepted values>
