@@ -106,6 +106,7 @@ Omission policy:
 - If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
 - Same for `Approach` → `## Approach`.
 - Optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) — if genuinely empty, omit the subfield entirely. Do not write `_None._`, "Not applicable", or padded prose. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
+- **Standalone mode exception** — when Phase 1 ended in standalone mode (no `hq:task`), `## Context` and its `**Problem**` block are **required**. Do NOT use `_Intentionally omitted_` for `## Context`, and do NOT leave `**Problem**` empty. The requirement source-of-truth has moved from the external Issue into this plan's body — the Problem statement is now load-bearing. If the brainstorm has not produced a substantive Problem statement, keep brainstorming; do not advance to Phase 3.
 
 Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
 
@@ -118,22 +119,25 @@ Agent(subagent_type=Plan)
 ```
 
 Pass to the agent:
-- `hq:task` issue content (title + body)
-- Supplementary context from the user
+- **Mode flag** — `parented` (with `hq:task`) or `standalone` (no `hq:task`). This determines whether the `Parent: #N` line is emitted and whether `## Context` can be omitted (see below).
+- `hq:task` issue content (title + body) — parented mode only
+- Supplementary context from the user — parented mode only
 - The **Brainstorm Recap** produced at the end of Phase 2 — the agent carries `Motivation & Scope` into `## Context`, `Approach` into `## Approach`, and uses `Findings` as working material (not surfaced in the Issue body)
 - **Language directive**: plan body content (`## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition) MUST be written in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `[auto]`, `[manual]`) MUST stay in English regardless. See `.claude/rules/workflow.local.md` § Language.
 - **Anti-filler directive**: optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) MUST be omitted entirely when genuinely empty — no label, no `_None._` placeholder, no padded prose. If a required subfield (`Problem`, `In scope`, `Core decision`) would be empty, the parent section should be collapsed with `_Intentionally omitted: <reason>._` instead. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
+- **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line and MUST NOT collapse `## Context` with `_Intentionally omitted_`. `## Context` and its `**Problem**` block are required in standalone mode because the Problem statement is now the sole source of truth for the requirement.
 - The required output format (below)
 
 **Required plan format** (the Plan agent must produce EXACTLY this structure):
 
 ```markdown
-Parent: #<hq:task issue number>
+Parent: #<hq:task issue number>   <-- omit this line entirely in standalone mode
 
 ## Context
-<optional — if omitted, keep heading with `_Intentionally omitted: <reason>._`; otherwise use the labeled blocks below, in conversation language>
+<parented mode: optional — if omitted, keep heading with `_Intentionally omitted: <reason>._`; otherwise use the labeled blocks below, in conversation language>
+<standalone mode: REQUIRED — must use the labeled blocks below; `_Intentionally omitted_` is forbidden>
 
-**Problem** — <pain / why now>
+**Problem** — <pain / why now>   <-- required always; in standalone mode this is the sole source of truth for the requirement
 
 **In scope**
 - <what's touched>
@@ -145,7 +149,7 @@ Parent: #<hq:task issue number>
 - <hard dependencies / prerequisites / assumptions>
 
 ## Approach
-<optional — same omission rule as Context>
+<optional — same omission rule as Context (standalone mode does not add requirements here)>
 
 **Core decision** — <key architectural choice>
 
