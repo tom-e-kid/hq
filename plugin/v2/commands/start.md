@@ -106,13 +106,15 @@ gh issue view <plan> --json title,body,labels,milestone,projectItems
 - Verify the `hq:plan` label is present. If not, warn but continue.
 - If `hq:wip` label is present, log a warning and continue (continue-report — see Stop Policy below). Automation-invoked callers are expected to gate on `hq:wip` upstream.
 
-Parse `Parent: #<N>` from the body to get the `hq:task` number. Fetch the task JSON:
+Detect mode by inspecting the plan body:
 
-```bash
-gh issue view <task> --json title,body,milestone,labels,projectItems
-```
+- **Parented mode** — the body contains a `Parent: #<N>` line. Parse `<N>` to get the `hq:task` number and fetch the task JSON:
+  ```bash
+  gh issue view <task> --json title,body,milestone,labels,projectItems
+  ```
+- **Standalone mode** — the body has no `Parent:` line (produced by `/hq:draft` standalone mode per `hq:workflow` § `hq:plan`). Skip the `hq:task` fetch entirely; conversation state holds only the plan payload. Downstream phases (3 / 9 / 10) branch on this.
 
-Keep both payloads in conversation state; they are written to cache in Phase 3.
+Keep the plan payload (and, in parented mode, the task payload) in conversation state; they are written to cache in Phase 3.
 
 **Branch name** — derive from the plan title:
 - Pattern: `<type>(plan): <description>` → branch `<type>/<slugified-description>`
