@@ -26,6 +26,7 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 | `pr`               | Create a pull request linked to `hq:plan` and `hq:task` issues                |
 | `code-review`      | Code review criteria — readability, correctness, performance, security         |
 | `security-scan`    | Security scan criteria — credentials, external comms, dynamic code, etc.       |
+| `integrity-check`  | End-to-end integrity criteria — downstream references, scope boundary, feature completeness |
 | `xcodebuild-config`| Interactive xcodebuild configuration (project, scheme, device, OS)             |
 | `e2e-web`          | End-to-end web verification via Playwright CLI                                 |
 | `worktree-setup`   | Create a new git worktree with local file setup (.env, .claude, .hq configs)   |
@@ -36,10 +37,13 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 | Agent                      | Description                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------ |
 | `code-reviewer`            | Autonomous code review — reads `code-review` skill criteria, outputs report + FB files to `.hq/tasks/` |
-| `security-scanner`         | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` |
+| `security-scanner`         | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` (Haiku model — pattern detection) |
+| `integrity-checker`        | Autonomous integrity check — reads `integrity-check` skill criteria, looks beyond the hunks for downstream / scope-boundary / end-to-end gaps, outputs report + FB files to `.hq/tasks/` |
 | `review-comment-analyzer`  | Read-only analysis of a single PR review comment — classifies as Fix/Feedback/Dismiss with evidence. Launched in parallel by `/hq:respond` |
 
-Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. Both agents can run **in parallel** and in the **background**.
+Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. They can run **in parallel** and in the **background**.
+
+`/hq:start` Phase 7 (Quality Review) is **diff-kind aware**: `code-reviewer` and `integrity-checker` always run; `security-scanner` and `/simplify` skip on doc-only diffs (the cost of running runtime / security reviewers on markdown is not paid for by their signal). See [plugin/v2/docs/workflow.md](plugin/v2/docs/workflow.md#hqstart) for the agent launch matrix.
 
 **Commands** (user-invoked workflow shortcuts — invoked via `/hq:command-name`):
 
@@ -117,7 +121,7 @@ Parent: #<hq:task issue number>
 - Code review produces FB files instead of direct code modifications
 - Per-project overrides via `.hq/<skill>.md` files
 - Separate `security-scan` skill (was part of `reviewer` in v1)
-- `code-reviewer` and `security-scanner` agents enable parallel verification
+- `code-reviewer`, `security-scanner`, and `integrity-checker` agents enable parallel, diff-kind-aware verification
 
 #### Design Philosophy
 

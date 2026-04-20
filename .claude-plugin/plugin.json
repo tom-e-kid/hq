@@ -5,6 +5,7 @@
   "agents": [
     "./plugin/v2/agents/code-reviewer.md",
     "./plugin/v2/agents/security-scanner.md",
+    "./plugin/v2/agents/integrity-checker.md",
     "./plugin/v2/agents/review-comment-analyzer.md"
   ],
   "skills": "./plugin/v2/skills"

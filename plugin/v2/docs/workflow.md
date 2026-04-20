@@ -118,13 +118,22 @@ Phase 5: Acceptance (sweep only — no fixing)
 │  Retry cap = FB retry cap (§ Settings, default 2)
 │
 Phase 6: Simplify
-│  /simplify → format + build → single commit (if changed)
+│  Classify diff: code / doc / mixed
+│  └─ doc  → skip /simplify (simplification targets code constructs; no code to simplify)
+│  └─ else → /simplify → format + build → single commit (if changed)
 │
-Phase 7: Quality Review
-│  ┌────────────────────────────────────────────┐
-│  │  code-reviewer    ║    security-scanner    │
-│  └──────────┬────────╨────────┬───────────────┘
-│             ▼                 ▼
+Phase 7: Quality Review (diff-kind aware)
+│  Reuse DIFF_KIND from Phase 6
+│  code / mixed:
+│    ┌──────────────────────────────────────────────────────────┐
+│    │  code-reviewer  ║  security-scanner  ║  integrity-checker │
+│    └────────┬────────╨──────────┬─────────╨─────────┬──────────┘
+│             ▼                   ▼                   ▼
+│  doc:
+│    ┌────────────────────────────────────────┐
+│    │  code-reviewer  ║  integrity-checker   │
+│    └────────┬────────╨──────────┬───────────┘
+│             ▼                   ▼
 │  Fix clearly-actionable FBs (per-FB, capped by § Settings FB retry cap)
 │  (working tree must be clean at end)
 │
@@ -155,6 +164,8 @@ Phase 10: Report
 - **Cache-first** — Phases 4–8 touch `.hq/tasks/<branch-dir>/gh/plan.md` only; GitHub is hit at sync checkpoints (after Phase 4 Execute, after Phase 5 Acceptance, after Phase 8 Round 2 Drafting if drafted, and before PR creation).
 - **Commit as you go** — each Plan item, simplify, and fix lands as its own commit. Working tree is clean by Phase 9.
 - **Acceptance → Simplify → Quality Review** — Phase 5 confirms the implementation works first (sweep only, looping back to Phase 4 to fix), Phase 6 then refactors a known-working baseline, Phase 7 reviews code quality on the simplified diff. Simplifying before Acceptance would tangle refactor with functional fixes; reviewing quality before Acceptance would waste effort on code that may not work.
+- **Diff-kind aware Phase 6 / Phase 7** — Phase 6 classifies the diff into `code` / `doc` / `mixed`. `/simplify` and `security-scanner` skip on `doc`-only diffs (runtime / security reviewers produce no useful signal on docs). `code-reviewer` and `integrity-checker` always run. The classification is stable across Phase 6 → Phase 7 (`/simplify` does not shift file types).
+- **Integrity is its own agent** — `integrity-checker` joins `code-reviewer` + `security-scanner` as a third Phase 7 reviewer. It reads the diff, extracts every referenceable token (symbols, file paths, commands, rule names, config keys, signature changes), and greps the whole repo for stale downstream references and scope-boundary violations. Whereas the other two agents look at the hunks, `integrity-checker` looks at the files the hunks depend on.
 - **Phase 4 ↔ Phase 5 mini-loop** — Phase 5 is a pure sweep; fixes live in Phase 4 (loopback entry). Capped by § Settings FB retry cap per item. This batch-fix model surfaces shared root causes across multiple failing items.
 - **Round 2 retry, capped** — if Phase 7 leaves pending FBs, Phase 8 appends `## Round 2` (Follow-ups + Plan + Acceptance) to the plan and re-enters Phases 4–7 once. No Round 3; residuals escalate to the PR's `## Known Issues`.
 - **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.

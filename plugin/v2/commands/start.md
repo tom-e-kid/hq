@@ -214,19 +214,90 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 
 The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing happens once Phase 5 finally exits.
 
+## Diff Classification
+
+Phases 6 and 7 branch on the nature of the diff. Compute the classification at the start of Phase 6; Phase 7 recomputes if it is not already available (the `git diff --name-only` check is cheap, so recompute is not an optimization concern).
+
+### Rule
+
+Single-pass, extension-based, case-insensitive. Run over `git diff --name-only <base>...HEAD`. `DIFF_KIND` values: `code` | `doc` | `mixed`.
+
+- **All changed files have a doc extension** → `doc`
+- **No changed file has a doc extension** → `code`
+- **Mix** → `mixed`
+
+Doc extensions (grouped for maintenance):
+
+| Group | Extensions |
+|---|---|
+| Markdown / structured text | `.md`, `.mdx`, `.markdown`, `.txt`, `.rst`, `.adoc`, `.asciidoc` |
+| Microsoft Office | `.docx`, `.doc`, `.pptx`, `.ppt`, `.xlsx`, `.xls` |
+| OpenDocument | `.odt`, `.odp`, `.ods` |
+| Google Docs (Drive shortcuts) | `.gdoc`, `.gsheet`, `.gslides` |
+| Apple iWork | `.pages`, `.numbers`, `.key` |
+| Portable | `.pdf`, `.rtf` |
+
+Anything not in the table above (including `.yaml`, `.json`, `.toml`, `.sh`, and other config / scripting formats) is treated as **code**.
+
+### Computing the classification
+
+Inline bash, 1-liner form (single pipeline — do not outsource to a helper script):
+
+```bash
+DIFF_KIND=$(git diff --name-only <base>...HEAD | awk '
+  BEGIN { d=0; c=0 }
+  {
+    name=tolower($0)
+    if (name ~ /\.(md|mdx|markdown|txt|rst|adoc|asciidoc|docx|doc|pptx|ppt|xlsx|xls|odt|odp|ods|gdoc|gsheet|gslides|pages|numbers|key|pdf|rtf)$/) d=1
+    else c=1
+  }
+  END {
+    if (d && c) print "mixed"
+    else if (d) print "doc"
+    else print "code"
+  }')
+```
+
+Hold `DIFF_KIND` in conversation state across Phase 6 → Phase 7. If Phase 7 is resumed in a new session and the value is lost, recompute.
+
+### Agent launch matrix
+
+The classification drives which agents / skills run in Phase 6 (Simplify) and Phase 7 (Quality Review):
+
+| `DIFF_KIND` | Phase 6 `/simplify` | Phase 7 `code-reviewer` | Phase 7 `security-scanner` | Phase 7 `integrity-checker` |
+|---|---|---|---|---|
+| `code` | ✓ | ✓ | ✓ | ✓ |
+| `doc` | — (skip) | ✓ | — (skip) | ✓ |
+| `mixed` | ✓ | ✓ | ✓ | ✓ |
+
+`integrity-checker` has no skip case by design — its whole purpose is to catch gaps that hide precisely when `security-scanner` is silent (doc diffs, rename-heavy refactors). `/simplify` and `security-scanner` target runtime / security concepts that do not apply to doc-only changes, so running them on `doc` burns tokens without useful output.
+
 ## Phase 6: Simplify
 
-Run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
-
-1. Run `format` and `build`.
-2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
-3. **Immediately proceed to Phase 7.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
+1. Compute `DIFF_KIND` per `## Diff Classification` above.
+2. If `DIFF_KIND == doc` → **skip `/simplify` entirely** per the agent launch matrix. No commit, no cache write — proceed to Phase 7.
+3. Otherwise (`code` or `mixed`), run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
+   1. Run `format` and `build`.
+   2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
+   3. **Immediately proceed to Phase 7.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
 
 Phase 7 Quality Review is the safety net for behavior-affecting simplifications: if `/simplify` introduces a functional regression, `code-reviewer` is expected to flag it as an FB. No cache edits in this phase.
 
 ## Phase 7: Quality Review
 
-Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel. Wait for both to complete, then process each FB they emit per the rule below.
+Phase 7 launches the agent subset selected by `DIFF_KIND` per the **Agent launch matrix** in `## Diff Classification` above.
+
+### Step 1: Classify the diff
+
+Use `DIFF_KIND` from Phase 6. If it is not in state (resumed session, interrupted run), recompute from `git diff --name-only <base>...HEAD` using the same rule.
+
+### Step 2: Launch agents per the matrix
+
+Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `## Diff Classification` above. Issue them in a single Agent-tool call batch so they run in parallel; wait for all launched agents to complete before proceeding.
+
+Phase 7 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
+
+### Step 3: Process FBs
 
 **Per-FB handling** — the FB retry cap (§ Settings) is applied **per FB independently**. FB X's failed retries do not consume FB Y's budget. For each FB:
 
@@ -301,7 +372,7 @@ Summarize:
 - **hq:plan**: number + title + link
 - **Branch**: name
 - **Key changes**: brief bullet list
-- **Verification**: code-reviewer / security-scanner summary
+- **Verification**: summaries from every Phase 7 reviewer that ran per `## Diff Classification` (code-reviewer and integrity-checker always; security-scanner on `code` / `mixed` diffs)
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
 - **Known Issues**: count (handle via `/hq:triage <PR>` after review)

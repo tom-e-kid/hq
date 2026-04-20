@@ -14,19 +14,21 @@ description: >
   </example>
 
   <example>
-  Context: User wants code review and security scan in parallel
-  user: "Run code review and security scan in parallel."
-  assistant: "Launching code-reviewer and security-scanner in parallel."
+  Context: User wants parallel quality checks before PR on a code or mixed diff
+  user: "Run the pre-PR quality review on this feature branch."
+  assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel."
   <commentary>
-  Parallel quality checks. Launch both agents simultaneously.
+  Pre-PR quality checks on code / mixed diff: launch per the /hq:start Phase 7 Agent launch matrix. On doc-only diffs, security-scanner is skipped.
   </commentary>
   </example>
-model: sonnet
+model: haiku
 color: red
 tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write", "TaskCreate", "TaskUpdate"]
 ---
 
 You are a security scanner agent. Scan code changes on the current branch for security-sensitive patterns. **Detection only — no judgment, no fixes.**
+
+**Model choice** — this agent runs on `haiku`. The Alert Policy is pattern enumeration; detection does not require synthesis. If the policy changes to require contextual judgment, re-evaluate the model choice.
 
 ## Load Criteria
 
