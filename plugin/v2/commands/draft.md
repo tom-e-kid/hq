@@ -38,22 +38,25 @@ Set each to `in_progress` when starting and `completed` when done.
 - Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
 - Workflow rule exists: !`test -f .claude/rules/workflow.local.md && echo "yes" || echo "no"`
 
-## Phase 1: Load `hq:task`
+## Phase 1: Load `hq:task` (optional)
 
-Determine the `hq:task` Issue to work on.
+The `hq:task` Issue is **optional**. `/hq:draft` supports two modes:
 
-1. **From argument** — if `$ARGUMENTS` is provided:
+1. **With argument (parented mode)** — if `$ARGUMENTS` is provided:
    - Parse the issue number (accept `#1234` or `1234`)
    - Any text after the issue number is **supplementary context** (e.g., `#1234 implement only task 7`)
    - Fetch the issue: `gh issue view <number> --json title,body,milestone,labels,projectItems`
    - Verify it has the `hq:task` label. If not, warn the user but continue.
    - If the issue has the `hq:wip` label, warn the user: "This issue has the `hq:wip` label — it seems to be still under discussion. Do you want to proceed anyway?" — if the user declines, stop.
+   - Conversation state: `hq:task` is present.
 
-2. **No argument** — ask the user:
-   - Ask for the `hq:task` Issue number to implement, plus any supplementary context they want to add.
-   - Example: `#1234 implement only task 7`
+2. **No argument (standalone mode)** — run without an `hq:task`:
+   - Do NOT ask the user for an Issue number. Skip the `hq:task` fetch entirely.
+   - Conversation state: `hq:task` is absent (`null`). Downstream phases branch on this.
+   - The plan's `## Context` / `**Problem**` becomes the sole source of truth for the requirement — see Phase 2 for the reinforced drafting rule that applies in this mode.
+   - Phase 2 will open by asking the user what the plan is about (title / topic). No prompt is issued in Phase 1.
 
-Keep the fetched task data (title, body, milestone, labels, projects) and the supplementary context in conversation state. **Do not** write the cache yet — the cache is created after the feature branch exists (which happens in `/hq:start`, not here).
+Keep the fetched task data (title, body, milestone, labels, projects) and the supplementary context in conversation state **when in parented mode**. In standalone mode, there is no task data to keep. **Do not** write the cache yet — the cache is created after the feature branch exists (which happens in `/hq:start`, not here).
 
 ## Phase 2: Brainstorm (interactive — MUST pause for user)
 
