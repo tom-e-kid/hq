@@ -185,9 +185,20 @@ Each Acceptance item should be a single, concrete, verifiable criterion — not 
 
 Fully autonomous from here. Do not pause for user input unless an error occurs.
 
+The Issue registration behavior depends on the mode decided in Phase 1:
+
+| Step | Parented mode (with `hq:task`) | Standalone mode (no `hq:task`) |
+|---|---|---|
+| Plan title | `<type>(plan): ...` — `<type>` derived from the `hq:task` title | `<type>(plan): ...` — `<type>` derived from the brainstorm (default `feat` if ambiguous) |
+| `Parent: #N` line in body | Emitted (by the Plan agent) | **Omitted** (by the Plan agent) |
+| `gh issue create` — `--milestone` | Inherit from `hq:task` if present | Skip entirely |
+| `gh issue create` — `--project` | Inherit every project from `hq:task` | Skip entirely |
+| Sub-issue registration | **Required** — register the new plan as a sub-issue of the parent `hq:task` | **Skipped** — no parent to register under |
+
 1. **Compose plan title** following the naming convention in `.claude/rules/workflow.local.md`:
    - Format: `<type>(plan): <implementation approach>`
-   - `<type>` is derived from the `hq:task` title type (e.g., if `hq:task` is `feat: ...`, plan is `feat(plan): ...`)
+   - Parented mode: `<type>` is derived from the `hq:task` title type (e.g., if `hq:task` is `feat: ...`, plan is `feat(plan): ...`).
+   - Standalone mode: `<type>` is derived from the brainstorm outcome. If none of `feat` / `fix` / `docs` / `refactor` / `chore` / `test` clearly apply, default to `feat`.
 
 2. **Create the Issue**:
    ```bash
@@ -195,19 +206,20 @@ Fully autonomous from here. Do not pause for user input unless an error occurs.
      --title "<plan title>" \
      --body "<plan body>" \
      --label "hq:plan" \
-     [--milestone "<inherited from hq:task>"] \
-     [--project "<inherited from hq:task>" ...]
+     [--milestone "<inherited from hq:task, parented mode only>"] \
+     [--project "<inherited from hq:task, parented mode only>" ...]
    ```
-   - Inherit milestone from the source `hq:task` if it has one (`--milestone`)
-   - Inherit every project from the source `hq:task` (repeat `--project` for each)
+   - Parented mode: include `--milestone` if the `hq:task` has one, and repeat `--project` for each project on the `hq:task`.
+   - Standalone mode: omit `--milestone` and `--project` entirely (nothing to inherit).
 
-3. **Register as sub-issue** of the parent `hq:task`:
+3. **Register as sub-issue** — parented mode only:
    ```bash
    PLAN_ID=$(gh api /repos/{owner}/{repo}/issues/<plan> --jq '.id')
    gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_issue_id="$PLAN_ID"
    ```
+   In standalone mode, **skip this step entirely** — there is no parent issue.
 
-4. **Label creation** — create any missing labels lazily (see workflow.local.md Issue Hierarchy section).
+4. **Label creation** — create any missing labels lazily (see workflow.local.md Issue Hierarchy section). Applies to both modes.
 
 ## Phase 5: Report
 
