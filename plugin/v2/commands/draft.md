@@ -218,9 +218,9 @@ Fully autonomous from here. Do not pause for user input unless an error occurs. 
 
 ## Phase 5: Report
 
-Return the following to the user:
+Return the following to the user, branching on the mode from Phase 1:
 
-- **hq:task**: number, title, URL
+- **hq:task** *(parented mode only)*: number, title, URL. Omit this line entirely in standalone mode — there is no `hq:task` to report.
 - **hq:plan**: number, title, URL (the newly created Issue)
 - **Next step**: tell the user to review and edit this `hq:plan` on the GitHub UI, then start implementation with `/hq:start <plan>`.
 
