@@ -82,7 +82,7 @@ Milestone (optional grouping)
 **How it works:**
 
 1. Create an `hq:task` Issue describing the requirement (e.g., `feat: add user authentication`)
-2. Run `/hq:draft <hq:task>` — interactive brainstorm → the `hq:plan` Issue is created (sub-issue of `hq:task`) with `## Plan` + `## Acceptance` structure
+2. Run `/hq:draft <hq:task>` — interactive brainstorm (enumerates `Impact on existing features` in 3 sub-dimensions) → the `hq:plan` Issue is created (sub-issue of `hq:task`) with `## Plan` + `## Acceptance` structure
 3. Review / edit the `hq:plan` Issue on GitHub UI (intervention point #1)
 4. Run `/hq:start <hq:plan>` — autonomous: branch → execute → acceptance → simplify → quality review → PR
 5. Review the PR (intervention point #2). Use `/hq:respond` to handle external review comments, `/hq:triage <PR>` to process the PR body's `## Known Issues` section
