@@ -36,7 +36,7 @@ Creation path:
 
 1. **`/hq:draft <hq:task>`** — interactive brainstorm → Plan agent → creates `hq:plan` Issue as a sub-issue of the `hq:task`.
    → **User intervention #1**: review / edit the `hq:plan` Issue on GitHub UI.
-2. **`/hq:start <hq:plan>`** — autonomous: branch → execute → simplify → verify → PR (labeled `hq:pr`).
+2. **`/hq:start <hq:plan>`** — autonomous: branch → execute → acceptance → simplify → quality review → (Round 2 retry if pending FBs) → PR (labeled `hq:pr`).
    → **User intervention #2**: review the `hq:pr`, then choose how to proceed.
 3. **Merge the `hq:pr`** — GitHub auto-closes `hq:plan` via `Closes #<plan>`.
 4. **`/hq:archive`** — safety-checked close-out: requires PR merged + no pending FBs, then archives `.hq/tasks/<branch-dir>/` and deletes the local feature branch.

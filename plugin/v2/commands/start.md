@@ -1,6 +1,6 @@
 ---
 name: start
-description: Autonomous workflow — branch → execute → verify → PR from an hq:plan
+description: Autonomous workflow — branch → execute → acceptance → simplify → quality review → PR from an hq:plan
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), Bash(mkdir:*), Bash(mv:*), Bash(rm:*), Agent, TaskCreate, TaskUpdate
 ---
 
