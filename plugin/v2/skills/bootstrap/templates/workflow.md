@@ -212,7 +212,7 @@ Examples:
 **Principle — clarity first, not form-filling.** The labeled blocks above are scaffolding to structure thinking and make the plan scannable. They are **not** a form to fill. If a field would contain fabricated or padded content, omit it:
 
 - **Optional fields** (`Out of scope`, `Constraints`, `Alternatives considered`) — leave them out entirely. No label, no placeholder.
-- **Required fields** (`Problem`, `In scope`, `Core decision`) that feel genuinely empty — rethink whether the parent section (`## Context` / `## Approach`) applies at all. If not, omit the whole section with `_Intentionally omitted: <reason>._`. If the section genuinely applies but a required field is still empty, the plan likely needs more thought rather than a placeholder.
+- **Required fields** (`Problem`, `In scope`, `Impact`, `Core decision`) that feel genuinely empty — rethink whether the parent section (`## Context` / `## Approach`) applies at all. If not, omit the whole section with `_Intentionally omitted: <reason>._`. If the section genuinely applies but a required field is still empty, the plan likely needs more thought rather than a placeholder. Special case: if `**Impact**`'s three sub-dimensions would all be empty, that is a signal to collapse `## Context` — not to pad Impact with placeholder content.
 
 Never write filler like `_None._` or "Not applicable" as a substitute for thinking.
 
