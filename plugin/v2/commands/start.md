@@ -149,11 +149,19 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 
 ## Phase 5: Acceptance
 
-Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`. Failures follow the 2-round FB cycle (`hq:workflow` § Feedback Loop) — fixes land as `fix: ...` commits per `hq:workflow` § Commit Policy.
+Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`.
+
+**On failure, attempt to fix before falling back to an FB** (`hq:workflow` § Feedback Loop 2-round cycle):
+
+1. **Round 1 fix** — diagnose the failure, apply the fix, create a `fix: ...` commit per `hq:workflow` § Commit Policy, re-run the `[auto]` check.
+2. **Round 2 fix** — if still failing, try once more with a different approach, commit, re-run.
+3. **After 2 rounds fail** — create **one FB per unresolved `[auto]` item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and continue. Phase 8 Round 2 Drafting will pick these FBs up for a structured retry.
+
+Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan, which is by definition a problem to fix.
 
 Running Acceptance **before** Simplify is intentional: verify the implementation actually works, then let Simplify refactor a known-working baseline. Acceptance failures are easier to diagnose while the Round 1 diff is still unadorned by simplification.
 
-**On failure that survives the 2-round cap**: create **one FB per unresolved `[auto]` item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and continue. This keeps the Phase 9 Gate ABORT limited to true skips.
+The `[x]`-anyway rule keeps the Phase 9 Gate ABORT limited to true skips.
 
 `[manual]` items stay unchecked and are carried to the PR body in Phase 9.
 
@@ -174,9 +182,20 @@ Phase 7 Quality Review is the safety net for behavior-affecting simplifications:
 
 ## Phase 7: Quality Review
 
-Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel, then process their FBs per `hq:workflow` § Feedback Loop (2-round cap). Each resolved FB lands as its own commit (`hq:workflow` § Commit Policy).
+Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel. Wait for both to complete, then process each FB they emit per the rule below.
 
-Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends. Unresolved FBs stay on disk under `.hq/tasks/<branch-dir>/feedbacks/` (pending) and are evaluated in Phase 8.
+**Per-FB handling** (`hq:workflow` § Feedback Loop 2-round cycle):
+
+1. **Classify the FB** — is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
+2. **Clearly-actionable FBs** — attempt to fix:
+   - **Round 1 fix** — apply the fix, create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy, re-run the originating agent to verify.
+   - **Round 2 fix** — if the re-run still flags it, try once more, commit, re-verify.
+   - **After 2 rounds** — leave the FB pending; it flows to Phase 8.
+3. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 7. Leave them pending (continue-report per Stop Policy). They flow to Phase 8 for Round 2 Drafting to structure the response.
+
+Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
+
+Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends.
 
 ## Phase 8: Round 2 Drafting (conditional, Round 1 only)
 
