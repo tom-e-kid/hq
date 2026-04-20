@@ -286,7 +286,7 @@ Phase 5: Report
 
 ### Plan Structure
 
-Every `hq:plan` Issue body MUST follow:
+Minimal structural skeleton — every `hq:plan` Issue body MUST include at least the sections below:
 
 ```markdown
 Parent: #<hq:task issue number>
@@ -300,6 +300,8 @@ Parent: #<hq:task issue number>
 - [ ] [auto] <another>
 - [ ] [manual] <requires user verification>
 ```
+
+> **Note**: this is the execution-driving skeleton. In addition, `## Context` is required whenever populated (always in standalone mode) and MUST include `**Problem**`, `**In scope**`, and `**Impact**` (with at least one of the 3 sub-dimensions `Signature changes` / `Functional contradictions` / `Downstream dependencies`). `## Approach` is optional. See `hq:workflow § hq:plan` for the full schema.
 
 - `## Plan` — implementation steps. All must be checked before PR creation.
 - `## Acceptance` — completion criteria tagged by execution mode:
