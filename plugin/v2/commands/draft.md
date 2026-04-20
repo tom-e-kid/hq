@@ -231,7 +231,7 @@ The `<!-- ... -->` HTML comments above are conditional-emission hints read by th
 Conditional emission rules (apply to the template above):
 
 - `Parent: #<hq:task issue number>` — emit in **parented mode**; **omit the entire line** in standalone mode.
-- `## Context` — **required** in both modes. In parented mode it may be collapsed with `_Intentionally omitted: <reason>._` (heading kept). In standalone mode collapsing is **forbidden** — the labeled blocks below must be populated.
+- `## Context` — **optional in parented mode** (heading may be kept with `_Intentionally omitted: <reason>._` when the body has no substantive content); **required in standalone mode** with the body populated (collapsing is forbidden). When the body is populated, the subfield rules below apply in both modes.
 - `**Problem**` — required in both modes. In standalone mode it is the sole source of truth for the requirement, so it must carry substantive content.
 - `**In scope**` — required in both modes whenever `## Context` is populated (so always populated in standalone mode).
 - `**Impact**` — required in both modes whenever `## Context` is populated. Each of the 3 sub-dimensions (`Signature changes` / `Functional contradictions` / `Downstream dependencies`) is individually optional and MUST be omitted **entirely** when genuinely empty — the `- **<sub-dimension>**` heading line itself is dropped, not just its body. "Empty" means no substantive content beyond the template placeholder. Do NOT emit a sub-dimension heading with an empty body. If all 3 sub-dimensions would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead.
