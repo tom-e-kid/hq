@@ -176,7 +176,7 @@ Conditional emission rules are documented both inline (via the `<!-- ... -->` hi
 <!-- Parent: conditional — emit in parented mode only; omit the entire line in standalone mode (see rules below) -->
 Parent: #<hq:task issue number>
 
-<!-- ## Context: REQUIRED in standalone mode (populate both Problem and In scope, no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
+<!-- ## Context: REQUIRED in standalone mode (populate Problem, In scope, and Impact with at least one sub-dimension — no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
 ## Context
 
 **Problem** — <pain / why now>
