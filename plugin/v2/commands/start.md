@@ -244,7 +244,7 @@ Anything not in the table above (including `.yaml`, `.json`, `.toml`, `.sh`, and
 Inline bash, 1-liner form (single pipeline — do not outsource to a helper script):
 
 ```bash
-DIFF_KIND=$(git diff --name-only "$BASE"...HEAD | awk '
+DIFF_KIND=$(git diff --name-only <base>...HEAD | awk '
   BEGIN { d=0; c=0 }
   {
     name=tolower($0)
@@ -285,7 +285,7 @@ Phase 7 Quality Review is the safety net for behavior-affecting simplifications:
 
 ## Phase 7: Quality Review
 
-Phase 7 launches the agent subset selected by `DIFF_KIND` (§ Diff Classification § Agent launch matrix).
+Phase 7 launches the agent subset selected by `DIFF_KIND` per the **Agent launch matrix** in `## Diff Classification` above.
 
 ### Step 1: Classify the diff
 
@@ -293,9 +293,9 @@ Use `DIFF_KIND` from Phase 6. If it is not in state (resumed session, interrupte
 
 ### Step 2: Launch agents per the matrix
 
-Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** (§ Diff Classification) in a single Agent-tool call batch so they run in parallel. Wait for all launched agents to complete before proceeding.
+Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `## Diff Classification` above. Issue them in a single Agent-tool call batch so they run in parallel; wait for all launched agents to complete before proceeding.
 
-Follow the **Quality Review** flow defined in `hq:workflow` § Quality Review for common rules (progress reporting, file output, FB conventions).
+Phase 7 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
 
 ### Step 3: Process FBs
 
@@ -372,7 +372,7 @@ Summarize:
 - **hq:plan**: number + title + link
 - **Branch**: name
 - **Key changes**: brief bullet list
-- **Verification**: code-reviewer / security-scanner summary
+- **Verification**: summaries from every Phase 7 reviewer that ran per `## Diff Classification` (code-reviewer and integrity-checker always; security-scanner on `code` / `mixed` diffs)
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
 - **Known Issues**: count (handle via `/hq:triage <PR>` after review)
