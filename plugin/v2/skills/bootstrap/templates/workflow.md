@@ -261,22 +261,22 @@ If Round 1 produces zero pending FBs, skip Round 2 entirely and proceed to Phase
 ```yaml
 ---
 plan: <hq:plan issue number>
-source: <hq:task issue number>
+source: <hq:task issue number>   # optional — omit in standalone mode
 branch: <original branch name with slashes intact, e.g., feat/oauth-login>
 gh:
-  task: .hq/tasks/<branch-dir>/gh/task.json
+  task: .hq/tasks/<branch-dir>/gh/task.json   # optional — omit in standalone mode
   plan: .hq/tasks/<branch-dir>/gh/plan.md
 ---
 ```
 
 - `plan` — **MUST**. The `hq:plan` issue number driving current work.
-- `source` — **MUST**. The `hq:task` issue number this plan implements. Focus cannot be set without a source.
+- `source` — **optional**. The `hq:task` issue number this plan implements. Present in parented mode (the normal case); **omitted in standalone mode** (plans created via `/hq:draft` without an `hq:task` argument).
 - `branch` — **MUST**. The original git branch name (with slashes). Lets tooling check out the correct branch given a plan number (the directory name has `/` → `-` transformation which is not reliably invertible).
-- `gh` — paths to the local GitHub issue cache (see Cache-First Principle below).
+- `gh` — paths to the local GitHub issue cache (see Cache-First Principle below). `gh.plan` is always present; `gh.task` is present only when `source` is set (parented mode).
 
 **Lifecycle**:
 
-- **On start** (`/hq:start`): write `.hq/tasks/<branch-dir>/context.md`. Save focus info to your memory (project type) — include the branch name, plan number, and source number.
+- **On start** (`/hq:start`): write `.hq/tasks/<branch-dir>/context.md`. Save focus info to your memory (project type) — include the branch name, plan number, and source number (omit source when the plan has no parent `hq:task`).
 - **On status query**: read `.hq/tasks/<branch-dir>/context.md` → read the plan body from `.hq/tasks/<branch-dir>/gh/plan.md`. If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
 - **On completion**: when a PR is created and all Plan items + Acceptance `[auto]` items are checked, update your memory to indicate no active task. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` file is left in place — it travels with the task folder until `/hq:archive` moves it.
 
@@ -284,7 +284,7 @@ gh:
 
 When the user gives a **vague instruction** (e.g., "the auth task", "issue 42"), resolve the focus by searching in order:
 
-1. **context.md** — check `.hq/tasks/<current-branch-dir>/context.md` for the current branch. If it exists, use it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" If the user says no, continue to the steps below.
+1. **context.md** — check `.hq/tasks/<current-branch-dir>/context.md` for the current branch. If it exists, use it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" (drop the `source=` part when the plan has no parent `hq:task`). If the user says no, continue to the steps below.
 2. **memory** — check your memory for active focus info.
 3. **direct issue number** — if the user provides a number, check `.hq/tasks/` cache dirs first. If not cached, use `gh issue view <number>` to verify it exists and has the `hq:plan` label.
 4. **search** — run `gh issue list --label hq:plan --state open --json number,title` and match against the user's keyword.
