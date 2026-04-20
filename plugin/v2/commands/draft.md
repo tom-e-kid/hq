@@ -86,10 +86,10 @@ Work interactively with the user to shape the plan. This phase is **read-only in
 
 Drive these steps through **dialogue** — ask the user questions, surface findings, check understanding. Do NOT sequence through them as a monologue. A productive Phase 2 typically spans several back-and-forth turns.
 
-Example prompts for step 5 (use as inspiration, not a script):
-- "この変更で追加される公開インターフェース（関数/コマンド/フロントマターのフィールド/ルール見出し）は？"
-- "既存の呼び出し元・利用者のうち、シグネチャは変わらないが意味が変わってしまう箇所は？"
-- "下流で連動更新が必要なファイルは？ docs / README / workflow template / 他コマンドなど。"
+Example prompts for step 5 — adapt to the conversation language (these are English for authoring consistency; use as inspiration, not a script):
+- "What public interfaces does this change add? (functions / commands / frontmatter fields / rule headings / labels)"
+- "Among existing callers / consumers, are there places where the signature stays the same but the semantics shift — breaking them silently?"
+- "Which downstream files need coordinated update? (docs / README / workflow template / other commands)"
 
 **Do NOT write production code.** This phase is purely investigation and alignment.
 
