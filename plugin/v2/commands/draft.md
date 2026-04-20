@@ -64,7 +64,7 @@ Keep the fetched task data (title, body, milestone, labels, projects) and the su
 
 Work interactively with the user to shape the plan. This phase is **read-only investigation**:
 
-0. **Standalone mode only** — if Phase 1 ended in standalone mode (no `hq:task`), open Phase 2 by asking the user what the plan is about. Get a short topic / working title before anything else; without it there is nothing to brainstorm. Skip this step entirely in parented mode — the `hq:task` supplies the starting topic.
+0. **Standalone mode only** — if Phase 1 ended in standalone mode, open Phase 2 by asking the user for a short topic or working title. Skipped in parented mode — the `hq:task` already supplies the starting topic.
 1. Review the starting material together — the `hq:task` issue content (parented mode) or the user-supplied topic (standalone mode)
 2. Discuss what the user wants to achieve — use the supplementary context (parented mode) or the user's own framing (standalone mode) to narrow scope
 3. Investigate relevant code: read files, grep the codebase, understand current state
@@ -106,7 +106,7 @@ Omission policy:
 - If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
 - Same for `Approach` → `## Approach`.
 - Optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) — if genuinely empty, omit the subfield entirely. Do not write `_None._`, "Not applicable", or padded prose. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
-- **Standalone mode exception** — when Phase 1 ended in standalone mode (no `hq:task`), `## Context` and its `**Problem**` block are **required**. Do NOT use `_Intentionally omitted_` for `## Context`, and do NOT leave `**Problem**` empty. The requirement source-of-truth has moved from the external Issue into this plan's body — the Problem statement is now load-bearing. If the brainstorm has not produced a substantive Problem statement, keep brainstorming; do not advance to Phase 3.
+- **Standalone mode exception** — in standalone mode, `## Context` and its `**Problem**` block are **required**; `_Intentionally omitted_` is forbidden for `## Context`. See `.claude/rules/workflow.local.md` § `hq:plan` — Standalone-mode `## Context` reinforcement for the rationale. If the brainstorm has not produced a substantive Problem statement, keep brainstorming; do not advance to Phase 3.
 
 Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
 
@@ -125,7 +125,7 @@ Pass to the agent:
 - The **Brainstorm Recap** produced at the end of Phase 2 — the agent carries `Motivation & Scope` into `## Context`, `Approach` into `## Approach`, and uses `Findings` as working material (not surfaced in the Issue body)
 - **Language directive**: plan body content (`## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition) MUST be written in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `[auto]`, `[manual]`) MUST stay in English regardless. See `.claude/rules/workflow.local.md` § Language.
 - **Anti-filler directive**: optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) MUST be omitted entirely when genuinely empty — no label, no `_None._` placeholder, no padded prose. If a required subfield (`Problem`, `In scope`, `Core decision`) would be empty, the parent section should be collapsed with `_Intentionally omitted: <reason>._` instead. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
-- **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line and MUST NOT collapse `## Context` with `_Intentionally omitted_`. `## Context` and its `**Problem**` block are required in standalone mode because the Problem statement is now the sole source of truth for the requirement.
+- **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` with a substantive `**Problem**` block (no `_Intentionally omitted_`).
 - The required output format (below)
 
 **Required plan format** (the Plan agent must produce EXACTLY this structure):
@@ -183,17 +183,7 @@ Each Acceptance item should be a single, concrete, verifiable criterion — not 
 
 ## Phase 4: Create `hq:plan` Issue
 
-Fully autonomous from here. Do not pause for user input unless an error occurs.
-
-The Issue registration behavior depends on the mode decided in Phase 1:
-
-| Step | Parented mode (with `hq:task`) | Standalone mode (no `hq:task`) |
-|---|---|---|
-| Plan title | `<type>(plan): ...` — `<type>` derived from the `hq:task` title | `<type>(plan): ...` — `<type>` derived from the brainstorm (default `feat` if ambiguous) |
-| `Parent: #N` line in body | Emitted (by the Plan agent) | **Omitted** (by the Plan agent) |
-| `gh issue create` — `--milestone` | Inherit from `hq:task` if present | Skip entirely |
-| `gh issue create` — `--project` | Inherit every project from `hq:task` | Skip entirely |
-| Sub-issue registration | **Required** — register the new plan as a sub-issue of the parent `hq:task` | **Skipped** — no parent to register under |
+Fully autonomous from here. Do not pause for user input unless an error occurs. Issue registration branches on the mode decided in Phase 1 — parented and standalone differ on `Parent:` emission, milestone/project inheritance, and sub-issue registration. The steps below spell out each mode inline.
 
 1. **Compose plan title** following the naming convention in `.claude/rules/workflow.local.md`:
    - Format: `<type>(plan): <implementation approach>`
