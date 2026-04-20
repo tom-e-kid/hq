@@ -106,7 +106,7 @@ Omission policy:
 - If `Motivation & Scope` has no substantive content, the plan's `## Context` should use the explicit omission form: `_Intentionally omitted: <one-line reason>._` (see `.claude/rules/workflow.local.md` § `hq:plan`).
 - Same for `Approach` → `## Approach`.
 - Optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) — if genuinely empty, omit the subfield entirely. Do not write `_None._`, "Not applicable", or padded prose. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
-- **Standalone mode exception** — in standalone mode, `## Context` and its `**Problem**` block are **required**; `_Intentionally omitted_` is forbidden for `## Context`. See `.claude/rules/workflow.local.md` § `hq:plan` — Standalone-mode `## Context` reinforcement for the rationale. If the brainstorm has not produced a substantive Problem statement, keep brainstorming; do not advance to Phase 3.
+- **Standalone mode exception** — in standalone mode, `## Context` is **required** and both of its required subfields (`**Problem**` and `**In scope**`) must be populated; `_Intentionally omitted_` is forbidden for `## Context`. See `.claude/rules/workflow.local.md` § `hq:plan` — Standalone-mode `## Context` reinforcement for the rationale. If the brainstorm has not produced both a substantive Problem statement and a concrete In-scope list, keep brainstorming; do not advance to Phase 3.
 
 Take as many turns as needed to build shared understanding. Transition to Phase 3 only when the user gives an explicit **"go"** signal ("go ahead", "OK", "LGTM", or equivalent) on the recap.
 
@@ -125,7 +125,7 @@ Pass to the agent:
 - The **Brainstorm Recap** produced at the end of Phase 2 — the agent carries `Motivation & Scope` into `## Context`, `Approach` into `## Approach`, and uses `Findings` as working material (not surfaced in the Issue body)
 - **Language directive**: plan body content (`## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition) MUST be written in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `[auto]`, `[manual]`) MUST stay in English regardless. See `.claude/rules/workflow.local.md` § Language.
 - **Anti-filler directive**: optional subfields (`Out of scope`, `Constraints`, `Alternatives considered`) MUST be omitted entirely when genuinely empty — no label, no `_None._` placeholder, no padded prose. If a required subfield (`Problem`, `In scope`, `Core decision`) would be empty, the parent section should be collapsed with `_Intentionally omitted: <reason>._` instead. See `.claude/rules/workflow.local.md` § `hq:plan` — Principle (clarity first, not form-filling).
-- **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` with a substantive `**Problem**` block (no `_Intentionally omitted_`).
+- **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line, and MUST produce `## Context` populated with **both** required subfields: a substantive `**Problem**` block and an `**In scope**` list (no `_Intentionally omitted_` for `## Context`).
 - The required output format (below)
 
 **Required plan format** (the Plan agent must produce EXACTLY this structure — angle-bracket `<placeholder>` tokens are substituted with real content, nothing else from this fence is emitted literally):

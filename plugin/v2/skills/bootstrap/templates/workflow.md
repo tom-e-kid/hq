@@ -154,7 +154,7 @@ or
 ```
 
 - **`Parent: #<hq:task issue number>`** *(optional)* — include when the plan is derived from a parent `hq:task` Issue. Omit the line entirely in **standalone mode** (no parent `hq:task`). Standalone-mode plans are created directly from session brainstorming, with no external requirement Issue to point at.
-- **Standalone-mode `## Context` reinforcement** — when `Parent:` is omitted, `## Context` is **required** (not optional) and `**Problem**` must carry a substantive statement. `_Intentionally omitted: <reason>._` is forbidden for `## Context` in standalone mode, because the Problem statement is now the sole source of truth for the requirement (there is no external Issue to fall back on). `## Approach` retains its normal optionality — only `## Context` is tightened.
+- **Standalone-mode `## Context` reinforcement** — when `Parent:` is omitted, `## Context` is **required** (not optional) and both of its required subfields — `**Problem**` and `**In scope**` — must be populated. `_Intentionally omitted: <reason>._` is forbidden for `## Context` in standalone mode, because the Problem statement is now the sole source of truth for the requirement (there is no external Issue to fall back on). `## Approach` retains its normal optionality — only `## Context` is tightened.
 - **`## Context`** *(optional in parented mode; required in standalone mode)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
   - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
   - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
