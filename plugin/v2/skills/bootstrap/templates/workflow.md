@@ -406,20 +406,48 @@ Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing,
 
 ## Quality Review
 
-Runs after Acceptance is satisfied. Verifies the diff meets the project's quality and security bar, independent of whether the plan was met.
+Runs after Acceptance is satisfied. Verifies the diff meets the project's quality, security, and end-to-end integrity bar, independent of whether the plan was met.
 
-### Step 1: Static Analysis (parallel)
+### Step 1: Classify the diff
 
-Launch `security-scanner` and `code-reviewer` agents **simultaneously** via the Agent tool. Both run autonomously and return summaries with report/FB file paths.
+Quality Review is **diff-kind aware** — the agent set depends on whether the diff is code, doc, or a mix. Single-pass, extension-based, case-insensitive classification of `git diff --name-only <base>...HEAD`:
 
-- **security-scanner** — security alert detection → report file
+- **All changed files have a doc extension** → `doc`
+- **No changed file has a doc extension** → `code`
+- **Mix** → `mixed`
+
+Doc extensions (case-insensitive):
+
+| Group | Extensions |
+|---|---|
+| Markdown / structured text | `.md`, `.mdx`, `.markdown`, `.txt`, `.rst`, `.adoc`, `.asciidoc` |
+| Microsoft Office | `.docx`, `.doc`, `.pptx`, `.ppt`, `.xlsx`, `.xls` |
+| OpenDocument | `.odt`, `.odp`, `.ods` |
+| Google Docs (Drive shortcuts) | `.gdoc`, `.gsheet`, `.gslides` |
+| Apple iWork | `.pages`, `.numbers`, `.key` |
+| Portable | `.pdf`, `.rtf` |
+
+Anything not in this table (including `.yaml`, `.json`, `.toml`, `.sh`, and other config / scripting formats) is treated as **code**.
+
+### Step 2: Static Analysis (parallel — set depends on kind)
+
+Launch the agent set selected by kind **simultaneously** via the Agent tool. All launched agents run autonomously and return summaries with report/FB file paths.
+
+| Kind | `code-reviewer` | `security-scanner` | `integrity-checker` |
+|---|---|---|---|
+| `code` | ✓ | ✓ | ✓ |
+| `doc` | ✓ | — (skip) | ✓ |
+| `mixed` | ✓ | ✓ | ✓ |
+
 - **code-reviewer** — quality review → report + FB files
+- **security-scanner** — security alert detection → report file (skipped on `doc` — doc-only diffs rarely carry injection / credential risk and wall-clock savings are real)
+- **integrity-checker** — downstream reference / scope boundary / end-to-end feature integrity → report + FB files. **Always launched** — its whole purpose is to catch gaps that the other two structurally cannot see, which is most common when `security-scanner` is silent (doc diffs, rename-heavy refactors)
 
-Wait for both agents to complete before proceeding.
+Wait for all launched agents to complete before proceeding.
 
-### Step 2: Fix FB Issues
+### Step 3: Fix FB Issues
 
-Read pending FB files from both agents. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
+Read pending FB files from every launched agent. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
 
 ### Fallback: Interactive Mode
 
@@ -427,6 +455,7 @@ If you need fine-grained control or mid-scan user interaction, use the skills di
 
 1. `/security-scan` — pauses on credential detection for user confirmation
 2. `/code-review` — warns about uncommitted changes
+3. `/integrity-check` — reports downstream reference / scope boundary / end-to-end integrity gaps
 
 If any step produces unresolved issues, do not skip ahead. Fix or get user confirmation before continuing.
 
