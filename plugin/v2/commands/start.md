@@ -136,7 +136,7 @@ Keep the plan payload (and, in parented mode, the task payload) in conversation 
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-pull.sh" <plan>
    ```
    This writes the canonical working copy to `.hq/tasks/<branch-dir>/gh/plan.md`.
-6. **Save focus to memory** — a project-type memory entry with branch name, plan number, source number.
+6. **Save focus to memory** — a project-type memory entry with branch name, plan number, and — **parented mode only** — source number. In standalone mode, omit the source number from the memory entry (there is no parent `hq:task`).
 7. **Read `hq:workflow`** (`.claude/rules/workflow.local.md`) and follow all applicable rules.
 
 ## Phase 4: Execute
