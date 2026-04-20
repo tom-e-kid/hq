@@ -64,8 +64,9 @@ Keep the fetched task data (title, body, milestone, labels, projects) and the su
 
 Work interactively with the user to shape the plan. This phase is **read-only investigation**:
 
-1. Review the `hq:task` issue content together
-2. Discuss what the user wants to achieve — use the supplementary context to narrow scope
+0. **Standalone mode only** — if Phase 1 ended in standalone mode (no `hq:task`), open Phase 2 by asking the user what the plan is about. Get a short topic / working title before anything else; without it there is nothing to brainstorm. Skip this step entirely in parented mode — the `hq:task` supplies the starting topic.
+1. Review the starting material together — the `hq:task` issue content (parented mode) or the user-supplied topic (standalone mode)
+2. Discuss what the user wants to achieve — use the supplementary context (parented mode) or the user's own framing (standalone mode) to narrow scope
 3. Investigate relevant code: read files, grep the codebase, understand current state
 4. Align on scope, approach, and boundaries
 5. Identify what can be auto-verified (`[auto]`) vs what needs the user's eyes (`[manual]`)
