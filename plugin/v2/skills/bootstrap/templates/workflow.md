@@ -372,8 +372,8 @@ For each unchecked `[auto]` item:
    - API / file / directory check
    - Browser automation via `/hq:e2e-web` for navigation, URL assertion, element/text presence, form submit, DOM state
 2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only).
-3. **On fail**: try to fix the underlying problem (counts against the 2-round FB limit in `## Feedback Loop`).
-4. **On persistent failure (survives the 2-round cap)**: create **one FB per failed item** describing the failure, **toggle the checkbox to `[x]` anyway**, and move on. The failure is now tracked by the FB — carrying an unchecked `[auto]` forward would deadlock the Phase 9 PR gate.
+3. **On fail**: try to fix the underlying problem (counts against the FB retry cap — see `## Feedback Loop` and the caller's retry-cap setting, e.g. `/hq:start` § Settings).
+4. **On persistent failure (cap exhausted)**: create **one FB per failed item** describing the failure, **toggle the checkbox to `[x]` anyway**, and move on. The failure is now tracked by the FB — carrying an unchecked `[auto]` forward would deadlock the Phase 9 PR gate.
 
 `[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
 
@@ -394,7 +394,7 @@ Wait for both agents to complete before proceeding.
 
 ### Step 2: Fix FB Issues
 
-Read pending FB files from both agents. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop` (2-round cap).
+Read pending FB files from both agents. Fix issues, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
 
 ### Fallback: Interactive Mode
 
@@ -430,7 +430,7 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 - Re-run the originating skill (full review) to verify fixes and catch regressions
 - When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
 - When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
-- Maximum **2 rounds** of the fix → re-verify cycle, applied **per FB independently** (FB A's failed retries do not consume FB B's budget). After 2 rounds on a given FB, escalate that FB to the PR body and move its file to `done/`.
+- The fix → re-verify cycle runs up to the caller's **FB retry cap**, applied **per FB independently** (FB A's failed retries do not consume FB B's budget). `/hq:start` defines its cap in its `## Settings` section (default `2`); other callers MUST supply their own. When the cap is exhausted on a given FB, escalate that FB to the PR body and move its file to `done/`.
 - Do not modify or delete FB files — only move resolved/escalated ones to `done/`
 
 **Atomicity** — escalation into `## Known Issues` and the move to `feedbacks/done/` are a single atomic operation. Surfacing an FB in the PR body without moving its file (or moving the file without surfacing the content) is forbidden. This atomicity cannot be skipped or weakened by project-level overrides such as `.hq/pr.md` — see `## PR Body Structure` § Invariants.

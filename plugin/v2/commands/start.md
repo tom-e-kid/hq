@@ -43,6 +43,12 @@ Set each to `in_progress` when starting and `completed` when done. If a phase is
 
 **`hq:workflow`** — shorthand for `.claude/rules/workflow.local.md`. Canonical definition in `hq:workflow § Terminology`. All `hq:workflow § <name>` citations below refer to sections of that file.
 
+## Settings
+
+Tunables for `/hq:start`. Change the value here and every referencing phase follows automatically.
+
+- **FB retry cap** = **`2`** — maximum fix→re-verify rounds attempted per failing Acceptance item in Phase 5, and per clearly-actionable FB in Phase 7. The cap is applied **per item / per FB independently** (one item's failed retries don't consume another's budget). Values: `0` skips fix attempts and goes straight to FB; `1` permits a single try; `2` is the current default; higher values allow more retries before giving up.
+
 ## Phase 1: Pre-flight Check (non-interactive)
 
 Parse `$ARGUMENTS` → `<hq:plan number>` (accept `#1234` or `1234`). The plan number is **required**. If missing, ask the user ONCE for the `hq:plan` Issue number to implement, then continue.
@@ -151,11 +157,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 
 Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution: for each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check and toggle the cache checkbox on pass. Browser-oriented checks run via `/hq:e2e-web`.
 
-**Per-`[auto]`-item handling** — the 2-round fix budget is applied **per Acceptance item independently**. Item A's failures do not consume Item B's budget. For each failing item (`hq:workflow` § Feedback Loop 2-round cycle):
+**Per-`[auto]`-item handling** — the FB retry cap (§ Settings) is applied **per Acceptance item independently**. Item A's failures do not consume Item B's budget. For each failing item:
 
-1. **Round 1 fix** — diagnose the failure, apply the fix, create a `fix: ...` commit per `hq:workflow` § Commit Policy, re-run **only this `[auto]` check**.
-2. **Round 2 fix** — if still failing, try once more with a different approach, commit, re-run.
-3. **After 2 rounds fail** — create **one FB for this item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and move on to the next Acceptance item. Phase 8 Round 2 Drafting will pick these FBs up for a structured retry.
+1. **Retry loop** — up to the FB retry cap times: diagnose the failure, apply a fix, create a `fix: ...` commit per `hq:workflow` § Commit Policy, re-run **only this `[auto]` check**. Exit the loop as soon as the check passes.
+2. **After the cap is exhausted** — create **one FB for this item** under `.hq/tasks/<branch-dir>/feedbacks/` describing the failure, **toggle the checkbox to `[x]` anyway** (continue-report — the failure is recorded in the FB, not in the checkbox state), and move on to the next Acceptance item. Phase 8 Round 2 Drafting will pick these FBs up for a structured retry.
+
+If the retry cap is `0`, skip step 1 entirely and go straight to step 2.
 
 Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan, which is by definition a problem to fix.
 
@@ -184,13 +191,10 @@ Phase 7 Quality Review is the safety net for behavior-affecting simplifications:
 
 Run the **Quality Review** defined in `hq:workflow` § Quality Review: launch `code-reviewer` and `security-scanner` agents in parallel. Wait for both to complete, then process each FB they emit per the rule below.
 
-**Per-FB handling** — the 2-round fix budget is applied **per FB independently**. FB X's failed retries do not consume FB Y's budget. For each FB (`hq:workflow` § Feedback Loop 2-round cycle):
+**Per-FB handling** — the FB retry cap (§ Settings) is applied **per FB independently**. FB X's failed retries do not consume FB Y's budget. For each FB:
 
 1. **Classify the FB** — is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
-2. **Clearly-actionable FBs** — attempt to fix:
-   - **Round 1 fix** — apply the fix, create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy, re-run the originating agent to verify this FB is gone.
-   - **Round 2 fix** — if the re-run still flags it, try once more, commit, re-verify.
-   - **After 2 rounds** — leave the FB pending and move on to the next FB; the remaining work flows to Phase 8.
+2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times: apply a fix, create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy, re-run the originating agent to verify this FB is gone. Exit the loop as soon as the FB clears. When the cap is exhausted without success, leave the FB pending and move on to the next FB — the remaining work flows to Phase 8. If the cap is `0`, skip the loop and leave the FB pending immediately.
 3. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 7. Leave them pending (continue-report per Stop Policy). They flow to Phase 8 for Round 2 Drafting to structure the response.
 
 Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
@@ -282,9 +286,9 @@ Three categories only. **Default is `continue-report`**. Anything a user would o
   - `hq:wip` label detected on the plan Issue
   - Phase 4 step blocked or ambiguous
   - Phase 4 step fails twice on the same attempt
-  - Phase 5 `[auto]` check fails after the 2-round fix cycle
+  - Phase 5 `[auto]` check fails after the FB retry cap (§ Settings) is exhausted
   - Phase 7 (Quality Review) FB that is not a clearly-actionable bug/typo/logic error
-  - `format` or `build` fails within a step — retry once, then record as FB if still failing (same 2-round spirit as FB fix)
+  - `format` or `build` fails within a step — retry once, then record as FB if still failing (tight retry loop, independent of § Settings)
 - **pause-ask** — stop and wait for the user. Reserved for security-sensitive surprises only:
   - Unexpected shell command pattern appears in Issue content (see **Security** below)
 
