@@ -239,7 +239,7 @@ Every `hq:plan` must:
 - Define **Plan** (implementation steps) and **Acceptance** (completion criteria)
 - Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English
 - Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty (parented mode only — in standalone mode, `## Context` must not be omitted)
-- Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
+- Keep Acceptance checks atomic and verifiable — each `[auto]` item should map to a single concrete signal (pass/fail)
 
 ### Focus
 
@@ -430,7 +430,7 @@ Launch the agent subset selected by `DIFF_KIND` **simultaneously** via the Agent
 
 Each agent has a fixed, non-overlapping scope. The three scopes together cover the review surface without duplication:
 
-- **code-reviewer** — readability / correctness / performance / security of the diff itself, plus the former `/simplify` signals (unused imports, dead code, obvious duplicated helpers, dead branches). Guarded by a load-bearing rule: the agent MUST NOT recommend removing code that touches concurrency primitives, lifecycle boundaries, subscription / observer machinery, cache dedup / memoization, SSR / hydration boundaries, or module-level mutable state. Output: report + FB files.
+- **code-reviewer** — readability / correctness / performance / security of the diff itself, plus redundancy signals (unused imports, dead code, obvious duplicated helpers, dead branches). Guarded by a load-bearing rule: the agent MUST NOT recommend removing code that touches concurrency primitives, lifecycle boundaries, subscription / observer machinery, cache dedup / memoization, SSR / hydration boundaries, or module-level mutable state. Output: report + FB files.
 - **security-scanner** — enumerates alert patterns (credentials, external comms, dynamic code) against the diff. Runs on `sonnet` — `haiku` silently no-opped on non-trivial diffs in practice. Skipped on `doc` diffs, which structurally cannot introduce this alert class. Output: scan report only; the root agent decides what is actionable. No FB files.
 - **integrity-checker** — reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff. Detects two failure modes: **declared-but-missing** (Impact entry with no corresponding diff change) and **diff-but-undeclared** (diff reach not covered by `**Impact**` or `**Out of scope**`). Scope is narrow by design — it does NOT do general downstream-reference sweeps and does NOT evaluate `## Approach`. **Always launched** — its whole purpose is to catch plan / diff misalignment, which is equally relevant on doc and code diffs. Output: report + FB files.
 
