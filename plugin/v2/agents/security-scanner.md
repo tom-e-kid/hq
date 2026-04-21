@@ -18,7 +18,7 @@ description: >
   user: "Run the pre-PR quality review on this feature branch."
   assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel."
   <commentary>
-  Pre-PR quality checks on code / mixed diff: launch per the /hq:start Phase 7 Agent launch matrix. On doc-only diffs, security-scanner is skipped.
+  Pre-PR quality checks on code / mixed diff: launch per the /hq:start Phase 6 Agent launch matrix. On doc-only diffs, security-scanner is skipped.
   </commentary>
   </example>
 model: sonnet

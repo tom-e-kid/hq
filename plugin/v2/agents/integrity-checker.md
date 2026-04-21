@@ -23,7 +23,7 @@ description: >
   user: "Run the full quality review before the PR."
   assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel."
   <commentary>
-  Pre-PR quality check on code / mixed diff: launch per the /hq:start Phase 7 Agent launch matrix.
+  Pre-PR quality check on code / mixed diff: launch per the /hq:start Phase 6 Agent launch matrix.
   </commentary>
   </example>
 
