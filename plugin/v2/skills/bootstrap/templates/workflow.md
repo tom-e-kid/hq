@@ -17,21 +17,6 @@
 1. Run `format` command (see Commands table in CLAUDE.md)
 2. Verify `build` command passes
 
-## Commit Policy
-
-`/hq:start` commits as work progresses, not at the end. Commits are the unit of work — they make `/hq:start` resume-safe, keep the PR reviewable, and ensure the working tree is clean by the time the PR is created.
-
-Commit granularity by phase:
-
-- **Phase 4 (Execute)** — **one commit per `## Plan` item**. After implementing a step and checking its cache checkbox, create a commit whose subject matches the Plan item. Use Conventional Commits types (`feat`/`fix`/`refactor`/`docs`/`chore`/`test`).
-- **Phase 5 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
-- **Phase 6 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
-- **Phase 7 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
-
-All commits must pass `## Before Commit` (format + build). Do not skip hooks.
-
-If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix:` commit over `--amend` to keep history linear and resume-safe.
-
 ## Terminology
 
 - **`hq:workflow`** — shorthand for `.claude/rules/workflow.local.md` (the project-local copy of the workflow rule file, produced by `/hq:bootstrap`). Skills and commands cite sections as `hq:workflow § <section>` instead of repeating the full path.
