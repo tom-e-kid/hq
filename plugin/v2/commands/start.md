@@ -64,7 +64,22 @@ All commits must pass `hq:workflow` § Before Commit (format + build). Do not sk
 
 If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix:` commit over `--amend` to keep history linear and resume-safe.
 
+## Phase Timing
+
+`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 8 can report where the run spent its time. For each of Phase 1–7, stamp once at the top of the phase and once at the bottom:
+
+```
+bash plugin/v2/scripts/phase-timing.sh stamp <N> start
+bash plugin/v2/scripts/phase-timing.sh stamp <N> end
+```
+
+Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Auto-resume sessions append to the same file; session count is the number of `phase":"1","event":"start"` entries. Phase 8 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
+
+The concrete stamp invocation for each phase is placed at that phase's top and bottom below.
+
 ## Phase 1: Pre-flight Check (non-interactive)
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 1 start`
 
 Parse `$ARGUMENTS` → `<hq:plan number>` (accept `#1234` or `1234`). The plan number is **required**. If missing, ask the user ONCE for the `hq:plan` Issue number to implement, then continue.
 
@@ -104,7 +119,11 @@ Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state:
 
 The Phase 4 ↔ Phase 5 loopback has no cache-visible state of its own — the sweep counter lives in conversation context only. On auto-resume after interruption, the sweep counter resets to zero (Phase 5 re-runs from the beginning; already-passed items stay `[x]` and are skipped).
 
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 1 end`
+
 ## Phase 2: Load Plan (fresh start only)
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 2 start`
 
 Fetch the `hq:plan` Issue:
 
@@ -130,7 +149,11 @@ Keep the plan payload (and, in parented mode, the task payload) in conversation 
 - Example: `feat(plan): implement user authentication with OAuth 2.0` → `feat/oauth-login`
 - Keep the description short (≤ 40 chars, kebab-case, alphanumeric + hyphens).
 
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 2 end`
+
 ## Phase 3: Execution Prep (fresh start only)
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 3 start`
 
 1. **Resolve base branch** per workflow rule: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → `main`.
 2. **Create feature branch** from base:
@@ -148,7 +171,11 @@ Keep the plan payload (and, in parented mode, the task payload) in conversation 
 6. **Save focus to memory** — a project-type memory entry with branch name, plan number, and — **parented mode only** — source number. In standalone mode, omit the source number from the memory entry (there is no parent `hq:task`).
 7. **Read `hq:workflow`** (`${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md`) and follow all applicable rules.
 
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 3 end`
+
 ## Phase 4: Execute
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 4 start`
 
 Phase 4 runs in two modes depending on how it was entered:
 
@@ -185,7 +212,11 @@ Phase 5 has just recorded one or more failing `[auto]` items and handed them bac
 
 Then return to Phase 5 for the next sweep. The retry cap (§ Settings) limits how many times a given `[auto]` item can cycle back here before being recorded as an FB.
 
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 4 end`
+
 ## Phase 5: Acceptance
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 5 start`
 
 Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in Phase 4 (loopback entry). Keeping "does the implementation meet the plan?" and "what needs to change to meet it?" in separate phases makes root-cause analysis easier — a batch of failures often points to a shared cause that's obvious only when all of them are visible at once.
 
@@ -237,6 +268,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 ```
 
 The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing happens once Phase 5 finally exits.
+
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 5 end`
 
 ## Diff Classification
 
@@ -298,6 +331,8 @@ The classification drives which agents run in Phase 6 (Quality Review). Each age
 
 ## Phase 6: Quality Review
 
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 start`
+
 Phase 6 launches the agent subset selected by `DIFF_KIND` per the **Agent launch matrix** in `## Diff Classification` above.
 
 ### Step 1: Classify the diff
@@ -341,7 +376,11 @@ Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; 
 
 Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends.
 
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 end`
+
 ## Phase 7: PR Creation
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 7 start`
 
 ### Gate
 
@@ -374,6 +413,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 Delegate to the `pr` skill with the prepared body, title, and — **parented mode only** — milestone / project inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`). In standalone mode, skip milestone / project resolution entirely — there is no `task.json` cache file and no parent `hq:task` to inherit from, so no `--milestone` / `--project` flags are passed. The `pr` skill is the single path to `gh pr create` and applies any `.hq/pr.md` overrides within its own documented scope. Do not call `gh pr create` directly.
 
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 7 end`
+
 ## Phase 8: Report
 
 Summarize:
@@ -386,6 +427,18 @@ Summarize:
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
 - **Known Issues**: count (handle via `/hq:triage <PR>` after review)
+
+### Timing
+
+Run the phase-timing summary and include its output in the report so the user can see where the run spent its time:
+
+```bash
+bash plugin/v2/scripts/phase-timing.sh summary
+```
+
+The summary prints per-phase wall-clock duration (Phase 1–7), a total, and the session count (how many times Phase 1 `start` fired — i.e., how often the run was interrupted and auto-resumed). Note in the Report that the durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work.
+
+Phases that have no recorded stamps appear as `(no data)` — typically Phase 2 / Phase 3 on auto-resume (skipped entirely) or phases that ran on a different branch before Phase 3 created the feature branch. This is an accepted limitation of the wall-clock design.
 
 ## Rules
 
