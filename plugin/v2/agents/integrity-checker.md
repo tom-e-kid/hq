@@ -125,7 +125,7 @@ Use TaskCreate and TaskUpdate to report progress so the parent session can track
 - Run fully autonomously from start to finish.
 - Do not modify source code — issues are reported via FB files only.
 - **Stay in the reconciliation lane.** Do not re-do what `code-reviewer` does (quality / style) or `security-scanner` does (credential / runtime risk). If you spot something outside reconciliation that feels important, note it informationally in the report, but do not emit an FB.
-- **Ignore `**Core decision**` and `**Change Map**`** even if you stumble across them — they are explicitly kept out of your scope.
+- Ignore `**Core decision**` and `**Change Map**` even if you stumble across them — they are explicitly kept out of your scope.
 - Restrict Bash usage to `git` commands.
 - Only write files under `.hq/tasks/`.
 

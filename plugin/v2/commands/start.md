@@ -300,7 +300,7 @@ Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `##
 
 1. Read `.hq/tasks/<branch-dir>/gh/plan.md` (the cached plan body).
 2. Extract the **entire `## Plan Sketch` section** — `**Problem**`, `**Editable surface**`, `**Read-only surface**`, the `**Impact**` table, `**Constraints**`. Preserve the block structure verbatim.
-3. **Do NOT pass `**Core decision**` or `**Change Map**`** — those fields reflect the root agent's mental model of the solution. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**` table.
+3. Do NOT pass `**Core decision**` or `**Change Map**` — those fields reflect the root agent's mental model of the solution. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**` table.
 4. Pass the extracted `## Plan Sketch` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
 
 Phase 6 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
