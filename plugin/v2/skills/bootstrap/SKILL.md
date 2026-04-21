@@ -19,7 +19,6 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`) to show progress. At the
 | Set up CLAUDE.md | Setting up CLAUDE.md |
 | Set up AGENTS.md | Setting up AGENTS.md |
 | Merge settings.local.json | Merging settings.local.json |
-| Install workflow rule | Installing workflow rule |
 | Update .gitignore | Updating .gitignore |
 
 Set each task to `in_progress` when starting and `completed` when done. If a task is skipped (e.g., AGENTS.md without argument), mark it as `completed` immediately with subject updated to show "skipped".
@@ -58,19 +57,11 @@ After creating or merging, detect the project type and append platform-specific 
 
 Multiple detections can match (e.g., a monorepo with both Go and TypeScript). Add all matching permissions.
 
-### 4. Workflow Rule
-
-**Target**: `<project_root>/.claude/rules/workflow.local.md`
-
-Copy [templates/workflow.md](templates/workflow.md) to the target path. If the target already exists, overwrite it (the template is the source of truth — updates are expected).
-
-Create the `.claude/rules/` directory if it doesn't exist.
-
-### 5. .gitignore
+### 4. .gitignore
 
 **Target**: `<project_root>/.gitignore`
 
 Ensure the following entries are listed in `.gitignore`. For each entry, append it if missing. If the file doesn't exist, create it.
 
-- `**/*.local.*` — excludes local-only config files (settings.local.json, workflow.local.md, etc.)
+- `**/*.local.*` — excludes local-only config files (e.g., `settings.local.json`)
 - `.hq/` — excludes HQ working directory
