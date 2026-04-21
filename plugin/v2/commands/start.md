@@ -292,6 +292,16 @@ Compute `DIFF_KIND` per `## Diff Classification` above (recompute from `git diff
 
 Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `## Diff Classification` above. Issue them in a single Agent-tool call batch so they run in parallel; wait for all launched agents to complete before proceeding.
 
+#### `integrity-checker` invocation prompt
+
+`integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
+
+1. Read `.hq/tasks/<branch-dir>/gh/plan.md` (the cached plan body).
+2. Extract the **entire `## Context` section** — `**Problem**`, `**In scope**`, `**Impact**` (all 3 sub-dimensions if present), `**Out of scope**`, `**Constraints**`. Preserve the block structure verbatim.
+3. **Do NOT pass `## Approach`** — the Approach block reflects the root agent's mental model of the solution. Passing it to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**`.
+4. Pass the extracted `## Context` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
+5. If the plan has no `**Impact**` block (backward compatibility with pre-Impact plans), the agent is expected to skip the Impact-reconciliation step and exit cleanly — do NOT fabricate an Impact block or ask the agent to infer one.
+
 Phase 6 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
 
 ### Step 3: Process FBs
