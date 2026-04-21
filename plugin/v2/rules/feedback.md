@@ -16,7 +16,7 @@ covers_acceptance: <optional — unique substring of the `## Acceptance` item th
   and integrity-checker findings generally do not map 1:1 to Acceptance items.
 - Leave it unset in FBs from external sources (`/hq:respond`, ad-hoc drops).
 
-See `.claude/rules/workflow.local.md` § Feedback Loop for the rationale (linear audit trail
+See `plugin/v2/rules/workflow.md` § Feedback Loop for the rationale (linear audit trail
 for the Phase 5 1-by-1 toggle rule).
 -->
 
