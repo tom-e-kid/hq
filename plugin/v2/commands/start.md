@@ -438,7 +438,12 @@ bash plugin/v2/scripts/phase-timing.sh summary
 
 The summary prints per-phase wall-clock duration (Phase 1–7), a total, and the session count (how many times Phase 1 `start` fired — i.e., how often the run was interrupted and auto-resumed). Note in the Report that the durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work.
 
-Phases that have no recorded stamps appear as `(no data)` — typically Phase 2 / Phase 3 on auto-resume (skipped entirely) or phases that ran on a different branch before Phase 3 created the feature branch. This is an accepted limitation of the wall-clock design.
+Phases that have no recorded stamps appear as `(no data)`. Two scenarios produce this:
+
+- **Fresh start** — Phase 1 and Phase 2 run before the feature branch is created (Phase 3 step 2), so their stamps land in the base branch's `.hq/tasks/<base-branch-dir>/phase-timings.jsonl`. Phase 8 reads the feature branch's file and therefore shows Phase 1 and Phase 2 as `(no data)`.
+- **Auto-resume** — Phase 2 and Phase 3 are skipped entirely (the branch and cache already exist), so they produce no stamps for that session.
+
+This is an accepted limitation of the wall-clock design — the stamped phases (4–7 always, plus 1–3 when they run on the feature branch) cover the bulk of the execution time.
 
 ## Rules
 
