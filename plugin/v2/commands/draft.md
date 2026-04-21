@@ -167,7 +167,7 @@ The orchestrator composes the `hq:plan` body **inline** from the Brainstorm Reca
 
 Inputs available from conversation state:
 - **Mode flag** — `parented` (with `hq:task`) or `standalone` (no `hq:task`). Determines whether the `Parent: #N` line is emitted.
-- `hq:task` issue content (title + body) — parented mode only.
+- `hq:task` issue content (title, body, milestone, labels, projectItems) — parented mode only.
 - Supplementary context from the user — parented mode only.
 - The **Brainstorm Recap** from Phase 2 — emit `Problem` / `Editable surface` / `Read-only surface` / `Impact` / `Core decision` / `Constraints` verbatim under `## Plan Sketch`, use `Primary acceptance (draft)` as the `[auto] [primary]` item, use `Plan grain (draft)` to size `## Plan`, and treat `Findings` as working material (not surfaced in the body).
 
