@@ -1,6 +1,6 @@
 # HQ Workflow
 
-This document describes the full hq workflow and how its commands fit together. For the authoritative rule specifications, see `.claude/rules/workflow.local.md` (auto-loaded as project context).
+This document describes the full hq workflow and how its commands fit together. For the authoritative rule specifications, see `plugin/v2/rules/workflow.md` (loaded on demand by each command).
 
 ## Overview
 

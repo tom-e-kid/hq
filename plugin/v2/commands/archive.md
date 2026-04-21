@@ -19,6 +19,8 @@ If the pre-checks fail, the command **stops** and reports what remains. There is
 
 **Security**: This command deletes a local branch. It never pushes, never force-pushes, and never touches remote branches.
 
+**`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this command starts so all phases have Focus, FB Lifecycle, etc. available. All `hq:workflow § <name>` citations refer to sections of that file.
+
 ## Progress Tracking
 
 Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as tasks at the start:
