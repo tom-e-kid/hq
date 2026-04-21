@@ -257,15 +257,15 @@ Hold `DIFF_KIND` in conversation state during Phase 6. If Phase 6 is resumed in 
 
 ### Agent launch matrix
 
-The classification drives which agents run in Phase 6 (Quality Review):
+The classification drives which agents run in Phase 6 (Quality Review). Each agent has a fixed scope; only presence / absence in the matrix depends on `DIFF_KIND`:
 
-| `DIFF_KIND` | Phase 6 `code-reviewer` | Phase 6 `security-scanner` | Phase 6 `integrity-checker` |
+| `DIFF_KIND` | `code-reviewer` (quality / load-bearing guard) | `security-scanner` (runtime risk pattern detection) | `integrity-checker` (`## Context` / `**Impact**` ↔ diff reconciliation) |
 |---|---|---|---|
 | `code` | ✓ | ✓ | ✓ |
 | `doc` | ✓ | — (skip) | ✓ |
 | `mixed` | ✓ | ✓ | ✓ |
 
-`integrity-checker` has no skip case by design — its whole purpose is to catch gaps that hide precisely when `security-scanner` is silent (doc diffs, rename-heavy refactors). `security-scanner` targets runtime / credential / injection risk that doc-only changes structurally cannot introduce, so running it on `doc` burns tokens without useful output.
+`integrity-checker` has no skip case by design — its whole purpose is to reconcile the `hq:plan` `**Impact**` declarations against the diff, which is equally relevant on doc and code diffs. `security-scanner` targets runtime / credential / injection risk that doc-only changes structurally cannot introduce, so running it on `doc` burns tokens without useful output.
 
 ## Phase 6: Quality Review
 
