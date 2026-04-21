@@ -50,6 +50,21 @@ Tunables for `/hq:start`. Change the value here and every referencing phase foll
   - **Phase 6 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the **originating agent only** — no cross-agent regression check) before being left pending and escalated to the PR's `## Known Issues`. Per FB independently.
   - Values: `0` skips retries entirely (NG goes straight to FB); `1` permits one retry; `2` is the current default.
 
+## Commit Policy
+
+`/hq:start` commits as work progresses, not at the end. Commits are the unit of work — they make `/hq:start` resume-safe, keep the PR reviewable, and ensure the working tree is clean by the time the PR is created.
+
+Commit granularity by phase:
+
+- **Phase 4 (Execute)** — **one commit per `## Plan` item**. After implementing a step and checking its cache checkbox, create a commit whose subject matches the Plan item. Use Conventional Commits types (`feat`/`fix`/`refactor`/`docs`/`chore`/`test`).
+- **Phase 5 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
+- **Phase 6 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
+- **Phase 7 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
+
+All commits must pass `hq:workflow` § Before Commit (format + build). Do not skip hooks.
+
+If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix:` commit over `--amend` to keep history linear and resume-safe.
+
 ## Phase 1: Pre-flight Check (non-interactive)
 
 Parse `$ARGUMENTS` → `<hq:plan number>` (accept `#1234` or `1234`). The plan number is **required**. If missing, ask the user ONCE for the `hq:plan` Issue number to implement, then continue.
@@ -66,7 +81,7 @@ existing_branch=$(bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/find-plan-branch
    - `git checkout <existing_branch>` (let git handle any uncommitted changes in the caller's working tree — if checkout fails, **ABORT** per Stop Policy with git's error verbatim)
    - Run `plan-cache-pull.sh <plan>` to refresh the cache (checkpoint: Pull)
    - If the refreshed body differs from the prior cache, print a short unified-diff summary as an advisory note (do not stop)
-   - **Read `hq:workflow`** (`.claude/rules/workflow.local.md`) — auto-resume skips Phase 3, so load the rule file here to have Commit Policy, Feedback Loop, etc. available
+   - **Read `hq:workflow`** (`.claude/rules/workflow.local.md`) — auto-resume skips Phase 3, so load the rule file here to have Feedback Loop, etc. available
    - Determine which phase to resume from by inspecting the cache (see "Resume Phase Selection" below)
    - Mark skipped progress tracking phases as completed
 
@@ -151,7 +166,7 @@ Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-d
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring of the item>"
    ```
-4. **Commit** the item's changes per `hq:workflow` § Commit Policy (one commit per Plan item, Conventional Commits subject).
+4. **Commit** the item's changes per § Commit Policy (one commit per Plan item, Conventional Commits subject).
 5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 7.
 6. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, commit the partial work, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
 
@@ -177,9 +192,9 @@ Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in 
 
 ### Sweep
 
-Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution:
+For each unchecked `[auto]` item in the plan's `## Acceptance`:
 
-1. For each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check. Browser-oriented checks run via `/hq:e2e-web`.
+1. Execute the check. Browser-oriented checks run via `/hq:e2e-web`.
 2. **On pass**: toggle the cache checkbox via `plan-check-item.sh` (1 tool call = 1 item — see 1-by-1 toggle rule below).
 3. **On fail**: leave the checkbox as `[ ]` and record the failure summary in conversation context (no FB yet).
 4. Track a **sweep counter per item** — how many times this item has cycled through the Phase 4 → Phase 5 loop.
@@ -197,7 +212,7 @@ The sequence per `[auto]` item:
 3. **Toggle** — call `plan-check-item.sh "<unique substring of the item>"` as a **single** tool call. Do not chain multiple items in one call.
 4. Proceed to the next item.
 
-This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and keeps the integrity hook quiet. See `hq:workflow` § Acceptance Execution for the shared rule.
+This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and keeps the integrity hook quiet.
 
 ### After the sweep
 
@@ -303,8 +318,6 @@ Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `##
 3. Do NOT pass `**Core decision**` or `**Change Map**` — those fields reflect the root agent's mental model of the solution. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**` table.
 4. Pass the extracted `## Plan Sketch` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
 
-Phase 6 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
-
 ### Step 3: Process FBs
 
 Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these are the only Phase 6 agents that write FB files). `security-scanner` findings live in its scan report only — the root agent reads the report, decides what is actionable, and either applies a fix inline (same per-FB rules below, but the "re-run" step consults the scan report rather than re-running the agent) or leaves the residual for human judgment at PR review.
@@ -317,7 +330,7 @@ For each FB:
 2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times:
    1. Apply a fix.
    2. Run `format` and `build` (`hq:workflow` § Before Commit).
-   3. Create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy.
+   3. Create a `fix: <FB subject>` commit per § Commit Policy.
    4. **Re-run the originating agent only** — the single agent that wrote this FB. Do not re-run the full Phase 6 agent set; cross-agent regression is not a Phase 6 concern (see Per-FB independence above).
    5. If the FB is gone from the re-run output, move the FB file to `feedbacks/done/` and exit the loop.
    6. Otherwise, continue the loop up to the cap.
@@ -380,7 +393,7 @@ Summarize:
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
 - **Cache-first** — during Phases 4–7, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
 - **Do not skip Phase 5 or Phase 6** — acceptance and quality review are mandatory.
-- **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 7.
+- **Commit as you go** — follow § Commit Policy. The working tree must be clean by Phase 7.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
 - **No `hq:feedback` creation** — this command does NOT create `hq:feedback` Issues. That happens via `/hq:triage` during PR review.
 
