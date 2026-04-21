@@ -346,7 +346,7 @@ feedbacks/screenshots/  # evidence (optional)
 An FB moves to `done/` when:
 
 1. **Resolved in-branch** — fix committed, originating skill re-run clean.
-2. **Escalated to PR body** — at `/hq:start` Phase 9 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
+2. **Escalated to PR body** — at `/hq:start` Phase 7 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
 
 Local `feedbacks/` should be empty of pending files after PR creation. `/hq:archive` defensively checks this.
 
