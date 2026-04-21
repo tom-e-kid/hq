@@ -153,6 +153,6 @@ Use the Write tool for every file — do not just return text.
 After saving all files, return a brief summary to the caller:
 - **Report file path** (the file you just saved)
 - Total issues by severity
-- Count of `## Out of scope` violations (subset)
+- Count of diff-but-undeclared findings (subset)
 - FB files created (with paths)
 - Informational items (no FB needed)
