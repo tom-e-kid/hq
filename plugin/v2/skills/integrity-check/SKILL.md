@@ -91,7 +91,7 @@ If a feature cannot reach from its declared entrypoint to its declared effect us
 
 ## Reporting Format
 
-Report findings grouped by the three Review Criteria classes (Downstream reference integrity / Scope boundary integrity / End-to-end feature completeness). Within each group, sort by severity: Critical / High / Medium / Low.
+Report findings grouped by the Review Criteria class they belong to. When operating under the primary (plan / diff reconciliation) criterion, group entries by failure mode (declared-but-missing / diff-but-undeclared). When operating under the fallback criteria (no plan context), group by downstream reference integrity / end-to-end feature completeness. Within each group, sort by severity: Critical / High / Medium / Low.
 
 Each item must include:
 
