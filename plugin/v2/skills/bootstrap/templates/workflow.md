@@ -241,43 +241,6 @@ Every `hq:plan` must:
 - Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty (parented mode only — in standalone mode, `## Context` must not be omitted)
 - Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
 
-### Round 2 Retry
-
-When Round 1 of `/hq:start` (Phases 4 → 7) completes with pending FBs still on disk, `/hq:start` appends a `## Round 2` section to the `hq:plan` body and re-enters Phases 4 → 7 with that section as the new plan. Round 2 is a **one-shot extension** — there is no Round 3. Anything still unresolved after Round 2 flows to the PR's `## Known Issues`.
-
-The `## Round 2` section structure:
-
-```markdown
-## Round 2
-
-### Follow-ups from Round 1
-
-**<FB id>: <FB title>**
-- Root cause: <what went wrong in Round 1>
-- Approach: <what Round 2 will do differently>
-- Addressed by: `### Plan (Round 2)` item N, `### Acceptance (Round 2)` item M
-
-(one block per pending FB)
-
-### Plan (Round 2)
-- [ ] follow-up implementation step 1
-- [ ] follow-up implementation step 2
-
-### Acceptance (Round 2)
-- [ ] [auto] follow-up check 1
-- [ ] [auto] follow-up check 2
-```
-
-Rules:
-
-- `### Follow-ups from Round 1` is the narrative bridge: **one block per pending FB**, each stating what failed, the root cause inferred from Round 1, the Round 2 approach, and which Round 2 items address it.
-- `### Plan (Round 2)` and `### Acceptance (Round 2)` follow the same conventions as the Round 1 counterparts (checkbox, `[auto]`/`[manual]` markers, Commit Policy applies per item).
-- Phase 9 Gate treats Round 2 items identically to Round 1 — all `- [ ]` under both sections must be `[x]` before PR creation.
-- Round 2 drafting is authored by the `/hq:start` root agent (not the Plan agent) from FB contents and Phase 7 review outputs — `/hq:draft` is not re-invoked.
-- **Round 1 FB ownership ends at drafting** — as soon as Round 1 FB content is absorbed into `### Follow-ups from Round 1`, the corresponding FB files MUST be moved to `feedbacks/done/` atomically. Only FBs produced during Round 2 remain pending for the Phase 9 Known Issues section.
-
-If Round 1 produces zero pending FBs, skip Round 2 entirely and proceed to Phase 9 PR Creation.
-
 ### Focus
 
 **Focus** is a pointer to the `hq:plan` issue currently driving work. It is stored in two places:
@@ -340,7 +303,6 @@ During `/hq:start` execution, **all reads and writes to the plan body go to the 
 | Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
 | Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
 | Push (cache → GitHub) | After Phase 5 (Acceptance) complete | Push Acceptance `[auto]` checkbox updates |
-| Push (cache → GitHub) | After Phase 8 (Round 2 Drafting) complete | Push `## Round 2` section |
 | Push (cache → GitHub) | Before PR creation | Final consistency sync |
 
 ### Helper scripts
