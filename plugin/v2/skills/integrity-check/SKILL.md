@@ -2,7 +2,7 @@
 name: integrity-check
 description: >
   Detect end-to-end integrity gaps created by a diff — downstream references that were
-  not updated, half-shipped features, and hidden violations of the plan's `## Out of scope`.
+  not updated, half-shipped features, and hidden violations of the plan's `**Read-only surface**`.
   Explicitly looks **beyond** the hunks: extracts changed symbols / file paths / command /
   rule names from the diff and greps the whole repo for stale references.
 ---
@@ -15,9 +15,9 @@ If `.hq/integrity-check.md` exists, its instructions take precedence over the de
 
 ## Why This Skill Exists
 
-`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. Plans try to guard this via `## Out of scope`, but scope carve-outs are frequently where the gaps hide: the plan says "X is out of scope," the change depends on X, X is not updated, and no reviewer objects because reviewers honor scope too strictly.
+`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. Plans try to guard this via `**Read-only surface**`, but scope carve-outs are frequently where the gaps hide: the plan says "X is read-only," the change depends on X, X is not updated, and no reviewer objects because reviewers honor scope too strictly.
 
-This skill's job is to break that blind spot. It reads the diff, pulls every referenceable token out of the changed side, and greps the repo to verify downstream consumers are consistent. Violations are reported as FBs even when they fall outside the plan's `## In scope`.
+This skill's job is to break that blind spot. It reads the diff, pulls every referenceable token out of the changed side, and greps the repo to verify downstream consumers are consistent. Violations are reported as FBs even when they fall outside the plan's `**Editable surface**`.
 
 ## Diff Scope
 
@@ -40,22 +40,22 @@ From the diff, extract every item that can be referenced from elsewhere. For eac
 - **Symbols** — function / method / type / constant / enum-variant names introduced, removed, or renamed. Include language-level identifiers from added/removed declarations on both sides of the hunk.
 - **File paths** — paths that were created, deleted, moved, or renamed. Include both the old and the new path for renames.
 - **Command / subcommand names** — new or removed slash-commands (`/hq:<name>`), CLI subcommands, npm/bun scripts, mise tasks, make targets.
-- **Rule / section names** — structural heading names (`## Out of scope`, `## Known Issues`, `## Context`, `## Acceptance`, …), FB field names, workflow-rule section names (`hq:workflow § <section>`), label names (`hq:plan`, `hq:pr`, …).
+- **Rule / section names** — structural heading names (`## Plan Sketch`, `## Plan`, `## Acceptance`, `## Known Issues`, …), bold-labeled field names (`**Editable surface**`, `**Read-only surface**`, `**Impact**`, `**Core decision**`, …), Impact `Direction` column values (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`), FB field names, workflow-rule section names (`hq:workflow § <section>`), label names (`hq:plan`, `hq:pr`, …).
 - **Config keys** — JSON/YAML/TOML keys added or removed (e.g., `base_branch`, `allowed-tools`), environment variable names.
 - **Public API shape** — exported symbols whose signature (arguments, return type, frontmatter schema) changed. The token did not move, but its contract did — callers may silently break.
 
 ## Review Criteria
 
-The baseline criteria below capture the skill's historical three-class model. The `integrity-checker` agent overrides these at runtime with a narrower scope: reconciliation of the `hq:plan` `## Context` (especially `**Impact**`) against the diff (declared-but-missing / diff-but-undeclared). When invoked interactively via `/integrity-check` without an active plan context, fall back to the three-class model below.
+The baseline criteria below capture the skill's historical three-class model. The `integrity-checker` agent overrides these at runtime with a narrower scope: reconciliation of the `hq:plan` `## Plan Sketch` (especially the `**Impact**` table) against the diff (declared-but-missing / diff-but-undeclared). When invoked interactively via `/integrity-check` without an active plan context, fall back to the three-class model below.
 
 ### 1. Plan / diff reconciliation (primary — agent override)
 
-When a plan's `## Context` with `**Impact**` is available, evaluate these two failure modes:
+When a plan's `## Plan Sketch` with an `**Impact**` table is available, evaluate these two failure modes:
 
-- **Declared-but-missing** — an Impact entry lists a surface / consumer / contradiction, but the diff shows no corresponding change. Either the diff is incomplete or the Impact was aspirational.
-- **Diff-but-undeclared** — the diff reaches a surface or consumer that Impact does not list, and no `## Out of scope` carve-out excuses it. Scope creep hiding in the implementation.
+- **Declared-but-missing** — an `**Impact**` table row lists a surface / consumer / contradiction (`Direction` ∈ {`Add`, `Update`, `Delete`, `Contradict`, `Downstream`}), but the diff shows no corresponding change. Either the diff is incomplete or the Impact row was aspirational.
+- **Diff-but-undeclared** — the diff reaches a surface or consumer that the `**Impact**` table does not list, and no `**Read-only surface**` carve-out excuses it. Scope creep hiding in the implementation.
 
-Backward compat: if the plan has no `**Impact**` block (pre-Impact plans), skip this criterion entirely and exit cleanly without FBs.
+If the `**Impact**` table is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (drafting defect) rather than silently skipping — reconciliation cannot proceed without declared reach.
 
 ### 2. Downstream reference integrity (fallback)
 
@@ -86,7 +86,7 @@ If a feature cannot reach from its declared entrypoint to its declared effect us
 ## Fix Policy
 
 - **Do not modify code directly** — all issues are reported via FB files; the root agent decides what to fix
-- **Scope carve-outs are not a defense** — if the plan's `## Out of scope` is the reason a gap exists, report the gap and call out the scope violation explicitly
+- **Scope carve-outs are not a defense** — if the plan's `**Read-only surface**` is the reason a gap exists, report the gap and call out the scope violation explicitly
 - **Prefer under-reporting false positives over suppressing real gaps** — if integrity cannot be verified (grep is inconclusive), escalate to an FB with the evidence gathered
 
 ## Reporting Format
@@ -100,10 +100,10 @@ Each item must include:
 - **Description** — what is inconsistent, in one or two sentences
 - **Impact** — what breaks, or what misleads, because of this
 - **Severity** — Critical / High / Medium / Low
-- **Scope note** — if the gap falls inside a `## Out of scope` area of the plan, say so and recommend adjusting scope or completing the feature
+- **Scope note** — if the gap falls inside a `**Read-only surface**` area of the plan, say so and recommend adjusting scope or completing the feature
 
 End with a summary:
 
 - Total issues by severity
-- Count of `## Out of scope` violations (subset of the above)
+- Count of `**Read-only surface**` boundary violations (subset of the above)
 - Informational items (no action needed)
