@@ -318,8 +318,6 @@ Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `##
 3. Do NOT pass `**Core decision**` or `**Change Map**` — those fields reflect the root agent's mental model of the solution. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**` table.
 4. Pass the extracted `## Plan Sketch` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
 
-Phase 6 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
-
 ### Step 3: Process FBs
 
 Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these are the only Phase 6 agents that write FB files). `security-scanner` findings live in its scan report only — the root agent reads the report, decides what is actionable, and either applies a fix inline (same per-FB rules below, but the "re-run" step consults the scan report rather than re-running the agent) or leaves the residual for human judgment at PR review.
