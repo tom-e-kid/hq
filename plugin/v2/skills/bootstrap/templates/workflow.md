@@ -64,11 +64,11 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
 
 - **English (fixed)**:
   - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `Closes #<plan>`, `Refs #<task>`
-  - Prescribed headings: `## Plan`, `## Acceptance`, `## Context`, `## Approach`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - Prescribed headings: `## Plan Sketch`, `## Plan`, `## Acceptance`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
   - File paths, identifiers, code fences, shell commands
 - **Conversation language (content)**:
   - `hq:task` body (background / requirements / scope / success criteria)
-  - `hq:plan` body content — `## Context` / `## Approach` prose, each `## Plan` step description, each `## Acceptance` condition
+  - `hq:plan` body content — `## Plan Sketch` prose (Problem / Editable surface / Read-only surface / Impact table cells / Core decision / Constraints), each `## Plan` step description, each `## Acceptance` condition
   - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
 
@@ -86,14 +86,14 @@ Parented mode:
                 └── (or escalated during PR review via /hq:triage)
 
 Standalone mode (no parent hq:task):
-  hq:plan Issue  — implementation plan ("how"); top-level, requirement captured in ## Context / **Problem**
+  hq:plan Issue  — implementation plan ("how"); top-level, requirement captured in ## Plan Sketch / **Problem**
     ├── ← Closes → PR  (no Refs trailer)
     │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
     └── (or escalated during PR review via /hq:triage)
 ```
 
 - `hq:task` and `hq:plan` are separate issues (separation of concerns)
-- **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` via `/hq:draft` **standalone mode**. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. In standalone mode, the plan's `## Context` / `**Problem**` becomes the sole source of truth for the requirement.
+- **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` via `/hq:draft` **standalone mode**. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. In standalone mode, the plan's `## Plan Sketch` / `**Problem**` becomes the sole source of truth for the requirement.
 - `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API) — **parented mode only**. Standalone-mode plans are top-level Issues with no parent.
 - PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
 - PR uses `Refs #<hq:task>` to maintain a link to the requirement — **parented mode only**; omitted when the plan has no parent `hq:task`
@@ -110,119 +110,109 @@ Standalone mode (no parent hq:task):
 
 An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body IS the source of truth for what needs to be done and how completion is verified.
 
-The `hq:plan` issue body **must** follow this structure. Substitution / stripping rules for emission:
+The `hq:plan` body follows a 3-section structure: `## Plan Sketch` + `## Plan` + `## Acceptance`. Emission rules:
 
 - Angle-bracket `<placeholder>` tokens are substituted with real content.
-- `<!-- ... -->` HTML comments inside the fence are **meta-annotations** (conditional-emission hints) and MUST be **stripped from the emitted plan body** — they are read by the agent, not written to GitHub.
-- All other fence content is emitted literally.
-
-Conditional emission rules are documented both inline (via the `<!-- ... -->` hints) and in the bullet list below the fence — the two are consistent; the bullet list is authoritative.
+- The `Parent:` line is emitted only in **parented mode** (when the plan has a parent `hq:task`); omit it entirely in **standalone mode**.
+- Optional fields with no substantive content are **omitted entirely** — no label, no placeholder line. Never write `_None._` / `Not applicable` / padded prose as filler.
 
 ```markdown
-<!-- Parent: conditional — emit in parented mode only; omit the entire line in standalone mode -->
 Parent: #<hq:task issue number>
 
-<!-- ## Context: REQUIRED in standalone mode (populate Problem, In scope, and Impact with at least one sub-dimension — no _Intentionally omitted_); optional in parented mode (may be collapsed with _Intentionally omitted: <reason>._) -->
-## Context
+## Plan Sketch
 
-**Problem** — <pain / why now>
+**Problem** — <1-3 sentences: pain and why now>
 
-**In scope**
-- <what's touched>
+**Change Map** *(optional — Mermaid or ASCII figure showing before/after shape; include only when a figure clarifies structure more than prose)*
 
-<!-- **Impact**: required whenever ## Context is populated. Each of the 3 sub-dimensions is individually optional — omit any that is genuinely empty (no label, no _None._). If all 3 would be empty, collapse ## Context itself with _Intentionally omitted: <reason>._ rather than emitting an empty Impact block. -->
+**Editable surface**
+- <file / symbol that this plan MAY modify>
+
+**Read-only surface**
+- <file / symbol that this plan MUST NOT modify>
+
 **Impact**
-- **Signature changes**
-  - Additions: <new public surfaces — functions / frontmatter fields / command names / config keys / rule headings / labels>
-  - Updates: <surfaces whose contract changes — arguments / return shape / emission rules / accepted values>
-  - Deletions: <surfaces being removed>
-- **Functional contradictions**
-  - <signature-stable but semantically-shifted cases where existing callers / consumers may break silently>
-- **Downstream dependencies**
-  - <consumers that need coordinated update across surface categories — code dependencies / build & test / runtime config / documentation / distribution artifacts>
 
-**Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
-- <explicit exclusions>
+| Direction | Surface | Kind | Note |
+|---|---|---|---|
+| Add | <new surface> | <field / marker / section / command / ...> | <short note> |
+| Update | <changed surface> | <...> | <what changes> |
+| Delete | <removed surface> | <...> | <...> |
+| Contradict | <semantically-shifted surface> | <...> | <how existing callers may break silently> |
+| Downstream | <consumer needing coordinated update> | <file / section> | <...> |
+
+**Core decision** — <1-2 sentences: the key architectural choice>
 
 **Constraints** *(optional)*
-- <hard dependencies / prerequisites / assumptions>
-
-<!-- ## Approach: optional in BOTH modes; may be collapsed with _Intentionally omitted: <reason>._ (standalone mode does not tighten this section) -->
-## Approach
-
-**Core decision** — <key architectural choice>
-
-**<Aspect label>** — <short detail inline>
-or
-**<Aspect label>**
-- <bullet>
-- <bullet>
-
-**Alternatives considered** *(optional)*
-- <rejected option> — <reason>
+- <hard dependency / prerequisite / assumption>
 
 ## Plan
-- [ ] implementation step 1
-- [ ] implementation step 2
-- [ ] implementation step 3
+- [ ] <implementation step — single meaningful commit unit>
 
 ## Acceptance
-- [ ] [auto] <self-verifiable check, e.g., `pnpm test` passes>
-- [ ] [auto] <e.g., `/api/auth/login` returns 200>
-- [ ] [manual] <requires user confirmation, e.g., browser UI check>
+- [ ] [auto] [primary] <the single concrete pass/fail signal that tells the plan succeeded>
+- [ ] [auto] <secondary verifiable check>
+- [ ] [manual] <human-eye check, used sparingly>
 ```
 
-- **`Parent: #<hq:task issue number>`** *(optional)* — include when the plan is derived from a parent `hq:task` Issue. Omit the line entirely in **standalone mode** (no parent `hq:task`). Standalone-mode plans are created directly from session brainstorming, with no external requirement Issue to point at.
-- **Standalone-mode `## Context` reinforcement** — when `Parent:` is omitted, `## Context` is **required** (not optional) and all three of its required subfields — `**Problem**`, `**In scope**`, and `**Impact**` (with at least one populated sub-dimension) — must be present. `_Intentionally omitted: <reason>._` is forbidden for `## Context` in standalone mode, because the Problem statement is the sole source of truth for the requirement (there is no external Issue to fall back on). `**Impact**` becomes transitively required here: the baseline rule ("required whenever `## Context` is populated") combined with the standalone ban on collapsing `## Context` leaves no escape hatch. `## Approach` retains its normal optionality — only `## Context` is tightened.
-- **`## Context`** *(optional in parented mode; required in standalone mode)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
-  - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
-  - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
-  - `**Impact**` *(required whenever `## Context` is populated)* — existing surfaces affected by the planned change, enumerated across 3 sub-dimensions so downstream drift is caught at drafting time rather than leaking into Phase 6. Each sub-dimension is individually optional — omit any that is genuinely empty **entirely**, meaning drop the `- **<sub-dimension>**` heading line itself, not just its body. No `_None._`, no placeholder-only body. If all 3 would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead of emitting an empty Impact block.
-    - **Signature changes** — public surfaces that gain / change / lose their contract. Group by direction (`Additions` / `Updates` / `Deletions`). Surfaces include: functions / methods / types, frontmatter fields, command & subcommand names, config keys, rule or section headings, labels, file paths treated as references.
-    - **Functional contradictions** — signature-stable but semantically-shifted cases where existing callers / consumers may break silently. Example: a command gains a new mode upstream consumers do not yet understand; a label's meaning narrows; a config key accepts a new set of values.
-    - **Downstream dependencies** — consumers that need coordinated update alongside the in-scope change. Sweep across **surface categories** rather than a fixed list of files: (1) **code dependencies** — other modules / commands / skills / agents that import or reference the changed surfaces; (2) **build & test** — build scripts, CI config, test fixtures that encode the old contract; (3) **runtime config** — env vars, feature flags, `.hq/` templates, project-level override files; (4) **documentation** — `README.md`, architecture docs, published guides, tutorials; (5) **distribution artifacts** — plugin manifests, package descriptors, release notes. Name the specific files / sections per category.
-  - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
-  - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
+### `## Plan Sketch`
 
-  **Backward compatibility** — `hq:plan` issues created before the `**Impact**` subfield was introduced do not carry it. **Every** skill, agent, or command that reads `hq:plan` bodies — including but not limited to `/hq:start`, the `pr` skill, `/hq:triage`, `/hq:archive`, `/hq:respond`, the `e2e-web` skill, and the `code-reviewer` / `integrity-checker` / `review-comment-analyzer` agents that access plans via `context.md` → `gh/plan.md` — MUST treat a missing `**Impact**` block as valid and proceed without it. A missing `**Impact**` block is NEVER an FB-worthy finding — review agents MUST NOT flag its absence. Do not retroactively edit old plans; new plans produced by `/hq:draft` from this point onward populate the field.
-- **`## Approach`** *(optional)* — high-level implementation direction and key design decisions. Complements the concrete `## Plan` steps by explaining the method. When present, use these bold-labeled blocks:
-  - `**Core decision**` — 1-2 sentences on the key architectural choice. Required when `## Approach` is present; if there is no real design decision to highlight, prefer to omit `## Approach` entirely (with `_Intentionally omitted: <reason>._`)
-  - `**<Aspect label>**` *(free-form, as many as needed)* — one block per distinct component or concern (new helper, API change, mapping, etc.). Short content inline after an en-dash; long content uses a bullet sublist
-  - `**Alternatives considered**` *(optional)* — rejected options with a one-line reason each
-- **`## Plan`** — implementation steps (ToDo list). All items must be checked before PR creation. Progress is visible in the GitHub UI.
-- **`## Acceptance`** — verifiable completion criteria. Each item is tagged with an execution marker:
-  - **`[auto]`** — Claude can verify autonomously using available tools. This includes unit / integration test runs, type checks, builds, shell / CLI commands, API calls, file and directory checks, **and browser automation via `/hq:e2e-web` (Playwright)** — navigation, URL assertions, element / text presence, form submit flows, DOM state checks. Executed during `/hq:start` verification phase.
-  - **`[manual]`** — requires human judgment that tools cannot provide. Four conditions qualify: (1) **subjective** — aesthetics, UX feel, "does this look right"; (2) **physical device or assistive tech** — touch gestures on real devices, screen reader flow, real-world accessibility audits; (3) **live production or sensitive credentials** — checks that require prod auth or customer data Claude should not handle; (4) **multi-session / cross-tab scenarios** Playwright cannot reliably orchestrate. Carried into the PR body and verified by the user during PR review.
+`## Plan Sketch` is the single scannable section that captures motivation, scope boundaries, surface-level impact, and the core design decision. All fields below are bold-labeled blocks within this one heading.
 
-**Choosing `[auto]` vs `[manual]`** — default to `[auto]`. A check is `[manual]` only when one of the four conditions above genuinely applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically via Playwright. When unsure, mark as `[auto]` and let `/hq:start` Phase 5 (Acceptance) execution surface the gap if the check is not actually automatable.
+- **`**Problem**`** *(required)* — the pain and why now. 1-3 sentences.
+- **`**Change Map**`** *(optional)* — a Mermaid or ASCII figure showing the before/after shape, included only when the structure of the change reads better as a figure than as prose. GitHub renders Mermaid natively in issue bodies. Omit when a figure would be forced.
+- **`**Editable surface**`** *(required)* — files or symbols this plan MAY modify. Declared explicitly so the implementation phase has an unambiguous "may touch" list.
+- **`**Read-only surface**`** *(required)* — files or symbols this plan MUST NOT modify. The symmetric counterpart to `**Editable surface**` — together they close the set of "what's in play" vs "what stays put". Include adjacent surfaces a reader might assume are in scope but are not.
+- **`**Impact**`** *(required whenever any non-trivial surface is touched)* — a 4-column table: `Direction` / `Surface` / `Kind` / `Note`. The `Direction` column uses a closed set of 5 values:
+  - **`Add`** — a new surface is introduced (new function / field / command / config key / section / label / file path).
+  - **`Update`** — an existing surface's contract changes (arguments, return shape, emission rules, accepted values).
+  - **`Delete`** — an existing surface is removed.
+  - **`Contradict`** — the surface's signature is stable but its semantics shift, potentially breaking existing callers silently. These are the highest-risk entries — flag them clearly in the `Note` column.
+  - **`Downstream`** — a consumer of the edited surface needs a coordinated update (docs, tests, other commands / skills / agents, README, templates, distribution artifacts).
+
+  Omit rows for directions that do not apply. If all 5 directions would be empty, the change is trivial and the `**Impact**` block itself can be skipped.
+- **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
+- **`**Constraints**`** *(optional)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
+
+### `## Plan`
+
+Implementation steps as a checkbox list. Every item must be `[x]` before PR creation.
+
+**Granularity — ideal 1-5 items, upper bound 10.** Each item is a **single meaningful commit unit** — something that reads as one independent change in `git log` afterward:
+
+- If two consecutive items would edit the same file in the same editing session, they are **one item**, not two.
+- If an item would produce a half-working intermediate state, it is split wrong — merge upward with its neighbor.
+- 1-item plans are valid (atomic change).
+- 6-10 items is acceptable when the change genuinely spans that many independent concerns.
+- Past 10 items is a drafting defect to fix, not a ceiling to plan up to. 10+ items signals the plan is being written as a step-by-step instruction manual rather than a commit-grain list.
+
+### `## Acceptance`
+
+Verifiable completion criteria. Each item carries an execution marker (`[auto]` or `[manual]`) and optionally a role marker (`[primary]`):
+
+- **`[auto]`** — Claude can verify autonomously: unit / integration tests, type checks, builds, shell / CLI commands, API calls, file / directory / content checks, **and browser automation via `/hq:e2e-web` (Playwright)** — navigation, URL assertions, element / text presence, form submit flows, DOM state. Executed during `/hq:start` Acceptance phase.
+- **`[manual]`** — requires human judgment tools cannot provide. Four conditions qualify: (1) **subjective** — aesthetics, UX feel; (2) **physical device or assistive tech** — touch gestures on real devices, screen reader flow; (3) **live production or sensitive credentials**; (4) **multi-session / cross-tab scenarios** Playwright cannot reliably orchestrate. Carried into the PR body and verified by the user during PR review.
+- **`[primary]`** *(role marker, combines with `[auto]` only)* — **exactly one** `## Acceptance` item per plan MUST carry `[primary]` in addition to `[auto]`. It designates the **single pass/fail signal** that tells the plan succeeded — the one check whose outcome the plan is ultimately judged by. All other `[auto]` items are **secondary** (no explicit marker). `[manual] [primary]` is forbidden — primary must be machine-verifiable so Acceptance Execution can evaluate it deterministically.
+
+**Choosing `[auto]` vs `[manual]`** — default to `[auto]`. A check is `[manual]` only when one of the four conditions above genuinely applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically.
+
+**Choosing primary** — the `[primary]` item answers: *"if this single check passes, is the plan done?"* It must be concrete and verifiable (commit count, file existence, specific string presence, API return code, URL transition, etc.) — not an abstract phrase like "plan works" or "implementation complete". Generic phrases dissolve the primary/secondary distinction and count as a drafting defect.
 
 Examples:
 
-| Check | Marker | Why |
+| Check | Markers | Why |
 |---|---|---|
+| Final commit count ≤ 10 and each `## Plan` item appears in a commit subject | `[auto] [primary]` | Single machine-checkable signal of plan success |
+| `pnpm test` passes | `[auto]` | Secondary — necessary but not sufficient |
 | Click "Save" → page URL becomes `/issues/{id}` | `[auto]` | Playwright URL assertion |
 | Form submit → DB row exists | `[auto]` | API / DB check |
-| Back button on direct-loaded `/issues/{id}/edit` navigates to `/issues/{id}` | `[auto]` | Playwright navigation |
-| `pnpm test` passes | `[auto]` | Shell command |
 | Back button's icon matches app's visual style | `[manual]` | Subjective / visual |
 | Swipe-back gesture feels responsive on iOS Safari | `[manual]` | Physical device |
 | Two browser tabs each show the correct tenant after login | `[manual]` | Multi-session orchestration |
 
-**Principle — clarity first, not form-filling.** The labeled blocks above are scaffolding to structure thinking and make the plan scannable. They are **not** a form to fill. If a field would contain fabricated or padded content, omit it:
+Each Acceptance item is a single concrete signal — not a vague goal.
 
-- **Optional fields** (`Out of scope`, `Constraints`, `Alternatives considered`) — leave them out entirely. No label, no placeholder.
-- **Required fields** (`Problem`, `In scope`, `Impact`, `Core decision`) that feel genuinely empty — rethink whether the parent section (`## Context` / `## Approach`) applies at all. If not, omit the whole section with `_Intentionally omitted: <reason>._`. If the section genuinely applies but a required field is still empty, the plan likely needs more thought rather than a placeholder. Special case: if `**Impact**`'s three sub-dimensions would all be empty, that is a signal to collapse `## Context` — not to pad Impact with placeholder content.
-
-Never write filler like `_None._` or "Not applicable" as a substitute for thinking.
-
-**Optional section omission** — when `## Context` or `## Approach` is omitted, do NOT silently drop the heading. Keep the heading and write a single italic line stating the reason, e.g.:
-
-```markdown
-## Approach
-_Intentionally omitted: <one-line reason>._
-```
-
-This signals the author considered the section and chose to leave it empty (vs. forgot it). The preferred form is always "heading present + explicit omission"; silently dropping the heading is discouraged.
+### Registration
 
 After creating an `hq:plan` issue **in parented mode**, register it as a sub-issue of the parent `hq:task`:
 
@@ -231,15 +221,16 @@ PLAN_ID=$(gh api /repos/{owner}/{repo}/issues/<plan> --jq '.id')
 gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_issue_id="$PLAN_ID"
 ```
 
-In **standalone mode** (no parent `hq:task`), skip sub-issue registration entirely — there is no parent Issue to register under.
+In **standalone mode** (no parent `hq:task`), skip sub-issue registration entirely.
+
+### Self-contained invariant
 
 Every `hq:plan` must:
 
-- Be **self-contained** — it survives session clears (it's on GitHub, not local)
-- Define **Plan** (implementation steps) and **Acceptance** (completion criteria)
-- Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English
-- Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty (parented mode only — in standalone mode, `## Context` must not be omitted)
-- Keep Acceptance checks atomic and verifiable — each `[auto]` item should map to a single concrete signal (pass/fail)
+- Be **self-contained** — it survives session clears (it lives on GitHub, not locally).
+- Define **`## Plan`** (implementation steps) and **`## Acceptance`** (completion criteria, including exactly one `[auto] [primary]` item).
+- Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English.
+- Keep Acceptance checks atomic and verifiable — each `[auto]` item maps to a single concrete signal (pass/fail).
 
 ### Focus
 
@@ -432,11 +423,9 @@ Each agent has a fixed, non-overlapping scope. The three scopes together cover t
 
 - **code-reviewer** — readability / correctness / performance / security of the diff itself, plus redundancy signals (unused imports, dead code, obvious duplicated helpers, dead branches). Guarded by a load-bearing rule: the agent MUST NOT recommend removing code that touches concurrency primitives, lifecycle boundaries, subscription / observer machinery, cache dedup / memoization, SSR / hydration boundaries, or module-level mutable state. Output: report + FB files.
 - **security-scanner** — enumerates alert patterns (credentials, external comms, dynamic code) against the diff. Runs on `sonnet` — `haiku` silently no-opped on non-trivial diffs in practice. Skipped on `doc` diffs, which structurally cannot introduce this alert class. Output: scan report only; the root agent decides what is actionable. No FB files.
-- **integrity-checker** — reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff. Detects two failure modes: **declared-but-missing** (Impact entry with no corresponding diff change) and **diff-but-undeclared** (diff reach not covered by `**Impact**` or `**Out of scope**`). Scope is narrow by design — it does NOT do general downstream-reference sweeps and does NOT evaluate `## Approach`. **Always launched** — its whole purpose is to catch plan / diff misalignment, which is equally relevant on doc and code diffs. Output: report + FB files.
+- **integrity-checker** — reconciles the `hq:plan` `## Plan Sketch` (especially the `**Impact**` table) against the diff. Detects two failure modes: **declared-but-missing** (Impact row with no corresponding diff change) and **diff-but-undeclared** (diff reach not covered by `**Impact**` or `**Read-only surface**`). Scope is narrow by design — it does NOT do general downstream-reference sweeps and does NOT evaluate the author's `**Core decision**` rationale. **Always launched** — its whole purpose is to catch plan / diff misalignment, which is equally relevant on doc and code diffs. Output: report + FB files.
 
-The caller's invocation prompt MUST pass `integrity-checker` the full `## Context` block of the `hq:plan` (Problem / In scope / Impact / Out of scope / Constraints) and MUST NOT pass `## Approach`. `## Approach` reflects the author's mental model of the solution; passing it would contaminate the agent's external lens.
-
-**Backward compatibility** — when an `hq:plan` has no `**Impact**` block (pre-Impact plans), `integrity-checker` skips the Impact-reconciliation step and exits cleanly with zero FB files. A missing `**Impact**` block is NEVER an FB-worthy finding.
+The caller's invocation prompt MUST pass `integrity-checker` the full `## Plan Sketch` block (Problem / Editable surface / Read-only surface / Impact table / Constraints) and MUST NOT pass `**Core decision**` or `**Change Map**`. Those fields reflect the author's mental model of the solution; passing them would contaminate the agent's external lens.
 
 Wait for all launched agents to complete before proceeding.
 
@@ -452,7 +441,7 @@ If you need fine-grained control or mid-scan user interaction, use the skills di
 
 1. `/security-scan` — pauses on credential detection for user confirmation
 2. `/code-review` — warns about uncommitted changes
-3. `/integrity-check` — reports plan `## Context` / diff reconciliation gaps
+3. `/integrity-check` — reports plan `## Plan Sketch` / diff reconciliation gaps
 
 If any step produces unresolved issues, do not skip ahead. Fix or get user confirmation before continuing.
 
