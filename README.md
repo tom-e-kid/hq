@@ -149,7 +149,7 @@ Run once when initializing a new project. Pass `agents.md` as argument to also i
 | `.claude/settings.local.json` | Deep-merge | Add missing keys from template + auto-detected platform permissions |
 | `.gitignore` | Append if missing | Adds `**/*.local.*` and `.hq/` entries |
 
-> **Migration note**: earlier versions of `/hq:bootstrap` also installed `.claude/rules/workflow.local.md` as a project-local copy of the workflow rule. The rule now lives at `plugin/v2/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command, so re-running `/hq:bootstrap` no longer touches the consumer's `.claude/rules/`. If your project has an existing `.claude/rules/workflow.local.md` from a prior bootstrap, it is now stale and can be deleted manually — `/hq:*` commands ignore it.
+> **Migration note**: earlier versions of `/hq:bootstrap` also installed a project-local copy of the workflow rule under `.claude/rules/`. The rule now lives at `plugin/v2/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command, so re-running `/hq:bootstrap` no longer touches the consumer's `.claude/rules/`. If your project has an existing copy under `.claude/rules/` from a prior bootstrap, it is now stale and can be deleted manually — `/hq:*` commands ignore it.
 
 **Platform detection for settings.local.json:**
 
