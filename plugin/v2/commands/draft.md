@@ -82,6 +82,8 @@ Work interactively with the user to shape the plan. This phase is **read-only in
    - **Downstream dependencies** — which consumers need coordinated update alongside the in-scope change? Sweep across: other commands, skills, agents, scripts, docs (`README.md`, `plugin/v2/docs/`), `.hq/` templates, and the workflow rule. Name the files / sections.
 
    Surface missing items by asking questions, not by listing findings unilaterally. Each sub-dimension that produces no substantive entry is omitted later; no padding.
+
+   **Downstream contract with `integrity-checker`**: the finalized `**Impact**` block becomes the sole input `/hq:start` Phase 6 (Quality Review) hands to the `integrity-checker` agent — alongside the `hq:plan` `## Context` (Problem / In scope / Out of scope / Constraints), but **not** `## Approach`. The agent reconciles each declared Impact entry against the produced diff (both "declared-but-missing" and "diff-but-undeclared" misses become FBs). Under-populating Impact during the brainstorm means under-inspection at review time. Over-populating it with aspirational items produces false "declared-but-missing" FBs. Aim for honesty, not coverage theater.
 6. Identify what can be auto-verified (`[auto]`) vs what needs the user's eyes (`[manual]`)
 
 Drive these steps through **dialogue** — ask the user questions, surface findings, check understanding. Do NOT sequence through them as a monologue. A productive Phase 2 typically spans several back-and-forth turns.
