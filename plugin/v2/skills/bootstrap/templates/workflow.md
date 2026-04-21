@@ -391,7 +391,7 @@ After the sweep, the caller decides what to do with failures (loopback to implem
 
 `[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
 
-Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before Simplify and Quality Review run. The order is deliberate: confirm the implementation works first, then refactor a known-working baseline, then review quality. Simplifying before Acceptance risks tangling refactor diffs with functional fixes; reviewing quality before Acceptance wastes effort on code that may not work.
+Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before Quality Review runs. The order is deliberate: confirm the implementation works first, then review quality on a known-working baseline. Reviewing quality before Acceptance wastes effort on code that may not work.
 
 ## Quality Review
 
