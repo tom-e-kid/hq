@@ -61,6 +61,9 @@ case "$cmd" in
     fi
     awk '
       {
+        # Skip lines that are not complete timing records (e.g., truncated writes).
+        if ($0 !~ /"phase":"[1-7]".*"event":"(start|end)".*"ts":[0-9]+/) next
+
         ph = $0
         sub(/.*"phase":"/, "", ph); sub(/".*/, "", ph)
         ev = $0
