@@ -63,7 +63,7 @@ Titles follow **Conventional Commits** style. Recognized `<type>` values: `feat`
 Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored in the **conversation language** (the language the user is speaking in this session). Workflow markers and prescribed structural headings stay in **English** regardless, so downstream tooling can parse them.
 
 - **English (fixed)**:
-  - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `Closes #<plan>`, `Refs #<task>`
+  - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `[primary]`, `Closes #<plan>`, `Refs #<task>`
   - Prescribed headings: `## Plan Sketch`, `## Plan`, `## Acceptance`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
   - File paths, identifiers, code fences, shell commands
 - **Conversation language (content)**:
