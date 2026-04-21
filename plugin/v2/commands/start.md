@@ -1,6 +1,6 @@
 ---
 name: start
-description: Autonomous workflow — branch → execute → acceptance → simplify → quality review → PR from an hq:plan
+description: Autonomous workflow — branch → execute → acceptance → quality review → PR from an hq:plan
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), Bash(mkdir:*), Bash(mv:*), Bash(rm:*), Agent, TaskCreate, TaskUpdate
 ---
 
@@ -27,13 +27,11 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as ta
 | Execution prep | Preparing execution environment |
 | Execute plan | Executing plan |
 | Run acceptance | Running acceptance checks |
-| Simplify changeset | Simplifying changeset |
 | Quality review | Reviewing code quality |
-| Draft Round 2 (if needed) | Drafting Round 2 follow-ups |
 | Create PR | Creating pull request |
 | Report results | Reporting results |
 
-Set each to `in_progress` when starting and `completed` when done. If a phase is skipped during auto-resume or because it is conditionally unnecessary (e.g., Round 2 drafting with zero pending FBs), mark it `completed` immediately.
+Set each to `in_progress` when starting and `completed` when done. If a phase is skipped during auto-resume, mark it `completed` immediately.
 
 ## Context
 
@@ -48,8 +46,8 @@ Set each to `in_progress` when starting and `completed` when done. If a phase is
 Tunables for `/hq:start`. Change the value here and every referencing phase follows automatically.
 
 - **FB retry cap** = **`2`** — applied in two places, with the same value:
-  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB. Per item independently.
-  - **Phase 7 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the originating agent) before being left pending. Per FB independently.
+  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB and `[x]`-toggled anyway. Per item independently.
+  - **Phase 6 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the **originating agent only** — no cross-agent regression check) before being left pending and escalated to the PR's `## Known Issues`. Per FB independently.
   - Values: `0` skips retries entirely (NG goes straight to FB); `1` permits one retry; `2` is the current default.
 
 ## Phase 1: Pre-flight Check (non-interactive)
@@ -83,17 +81,14 @@ existing_branch=$(bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/find-plan-branch
 
 ### Resume Phase Selection
 
-Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state + `## Round 2` presence:
+Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state:
 
 - Any `- [ ]` in `## Plan` → resume at **Phase 4** (Execute, fresh entry) at the first unchecked item
 - All `## Plan` checked, any `- [ ] [auto]` in `## Acceptance` → resume at **Phase 5** (Acceptance sweep). If that sweep shows failures, Phase 5 decides whether to loop back to Phase 4 or record FBs per the retry cap.
-- All Round 1 `## Plan` and all `- [ ] [auto]` Acceptance checked, `## Round 2` **absent** → resume at **Phase 6** (Simplify); Phases 6 → 7 → 8 follow
-- `## Round 2` **present** with any `- [ ]` in `### Plan (Round 2)` → resume at **Phase 4** (Round 2, fresh entry)
-- `## Round 2` present, all `### Plan (Round 2)` checked, any `- [ ] [auto]` in `### Acceptance (Round 2)` → resume at **Phase 5** (Round 2 Acceptance sweep)
-- `## Round 2` present, all Round 2 Plan + all Round 2 `[auto]` Acceptance checked → resume at **Phase 6** (Round 2 Simplify); Phase 8 is skipped since Round 2 cannot draft Round 3
-- Fully checked (both rounds if present) → proceed to Phase 9 (PR Creation); the gate will confirm.
+- All `## Plan` and all `- [ ] [auto]` Acceptance checked → resume at **Phase 6** (Quality Review); Phase 7 (PR Creation) follows.
+- Fully checked → proceed to Phase 7 (PR Creation); the gate will confirm.
 
-The current round is implicit in whether `## Round 2` exists in the cache. Round 1 phases operate on `## Plan` / `## Acceptance`; Round 2 phases operate on `### Plan (Round 2)` / `### Acceptance (Round 2)`. The Phase 4 ↔ Phase 5 loopback has no cache-visible state of its own — the sweep counter lives in conversation context only. On auto-resume after interruption, the sweep counter resets to zero (Phase 5 re-runs from the beginning; already-passed items stay `[x]` and are skipped).
+The Phase 4 ↔ Phase 5 loopback has no cache-visible state of its own — the sweep counter lives in conversation context only. On auto-resume after interruption, the sweep counter resets to zero (Phase 5 re-runs from the beginning; already-passed items stay `[x]` and are skipped).
 
 ## Phase 2: Load Plan (fresh start only)
 
@@ -157,7 +152,7 @@ Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-d
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring of the item>"
    ```
 4. **Commit** the item's changes per `hq:workflow` § Commit Policy (one commit per Plan item, Conventional Commits subject).
-5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 9.
+5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 7.
 6. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, commit the partial work, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
 
 **At the end of fresh entry** (all `## Plan` items checked and committed):
@@ -185,25 +180,38 @@ Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in 
 Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution:
 
 1. For each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check. Browser-oriented checks run via `/hq:e2e-web`.
-2. **On pass**: toggle the cache checkbox via `plan-check-item.sh`.
+2. **On pass**: toggle the cache checkbox via `plan-check-item.sh` (1 tool call = 1 item — see 1-by-1 toggle rule below).
 3. **On fail**: leave the checkbox as `[ ]` and record the failure summary in conversation context (no FB yet).
 4. Track a **sweep counter per item** — how many times this item has cycled through the Phase 4 → Phase 5 loop.
 
-`[manual]` items are not executed — they stay `[ ]` and flow to the PR body in Phase 9.
+`[manual]` items are not executed — they stay `[ ]` and flow to the PR body in Phase 7.
+
+### 1-by-1 toggle rule (batch toggle prohibited)
+
+Phase 5 MUST process each `[auto]` item **sequentially**, one tool call per item. Batch toggling multiple checkboxes in a single `plan-check-item.sh` invocation (or in a single compound bash line) is forbidden — it trips the integrity hook, which treats multi-toggle activity without per-item FB evidence as a state-laundering signal.
+
+The sequence per `[auto]` item:
+
+1. **Classify** — determine the outcome: `pass` / `retry-possible` / `pre-existing` / `deferred` / `deliberate` / `partial-verification`.
+2. **FB (if applicable)** — for any outcome other than `pass`, write or reference an FB file under `.hq/tasks/<branch-dir>/feedbacks/`. Populate the FB frontmatter `covers_acceptance` field with a unique substring of the acceptance item it covers (see `hq:workflow` § Feedback Loop).
+3. **Toggle** — call `plan-check-item.sh "<unique substring of the item>"` as a **single** tool call. Do not chain multiple items in one call.
+4. Proceed to the next item.
+
+This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and keeps the integrity hook quiet. See `hq:workflow` § Acceptance Execution for the shared rule.
 
 ### After the sweep
 
 - **All `[auto]` items passed** → push the cache and proceed to Phase 6.
 - **Some `[auto]` items failed**, at least one still under the retry cap (§ Settings) → loop back to **Phase 4 (loopback entry)** with the full failure set. Phase 4 will diagnose root causes (often shared across failures) and apply `fix: ...` commits. Then re-enter Phase 5 for the next sweep.
-- **All remaining failures have reached the retry cap** → convert each into **one FB per item** under `.hq/tasks/<branch-dir>/feedbacks/`, **toggle the checkbox to `[x]` anyway** (continue-report — failure is tracked by the FB, not by the checkbox), push the cache, and proceed to Phase 6. Phase 8 Round 2 Drafting will pick these FBs up.
+- **All remaining failures have reached the retry cap** → convert each into **one FB per item** under `.hq/tasks/<branch-dir>/feedbacks/`, **toggle the checkbox to `[x]` anyway** (continue-report — failure is tracked by the FB, not by the checkbox), push the cache, and proceed to Phase 6. These FBs surface later in the PR's `## Known Issues`.
 
 If the retry cap is `0`, the first sweep's failures go straight to FB + `[x]` with no loopback.
 
-Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
+Acceptance failures are treated as **all actionable** (unlike Phase 6 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
 
-Running Acceptance **before** Simplify is intentional: verify the implementation actually works, then let Simplify refactor a known-working baseline. Acceptance failures are easier to diagnose while the Round 1 diff is still unadorned by simplification.
+Running Acceptance **before** Quality Review is intentional: confirm the implementation meets the plan first, then review quality on a known-working baseline.
 
-The `[x]`-anyway rule keeps the Phase 9 Gate ABORT limited to true skips.
+The `[x]`-anyway rule keeps the Phase 7 Gate ABORT limited to true skips.
 
 ### Cache push
 
@@ -216,7 +224,7 @@ The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing 
 
 ## Diff Classification
 
-Phases 6 and 7 branch on the nature of the diff. Compute the classification at the start of Phase 6; Phase 7 recomputes if it is not already available (the `git diff --name-only` check is cheap, so recompute is not an optimization concern).
+Phase 6 branches on the nature of the diff. Compute the classification at the start of Phase 6.
 
 ### Rule
 
@@ -258,87 +266,76 @@ DIFF_KIND=$(git diff --name-only <base>...HEAD | awk '
   }')
 ```
 
-Hold `DIFF_KIND` in conversation state across Phase 6 → Phase 7. If Phase 7 is resumed in a new session and the value is lost, recompute.
+Hold `DIFF_KIND` in conversation state during Phase 6. If Phase 6 is resumed in a new session and the value is lost, recompute.
 
 ### Agent launch matrix
 
-The classification drives which agents / skills run in Phase 6 (Simplify) and Phase 7 (Quality Review):
+The classification drives which agents run in Phase 6 (Quality Review). Each agent has a fixed scope; only presence / absence in the matrix depends on `DIFF_KIND`:
 
-| `DIFF_KIND` | Phase 6 `/simplify` | Phase 7 `code-reviewer` | Phase 7 `security-scanner` | Phase 7 `integrity-checker` |
-|---|---|---|---|---|
-| `code` | ✓ | ✓ | ✓ | ✓ |
-| `doc` | — (skip) | ✓ | — (skip) | ✓ |
-| `mixed` | ✓ | ✓ | ✓ | ✓ |
+| `DIFF_KIND` | `code-reviewer` (quality / load-bearing guard) | `security-scanner` (runtime risk pattern detection) | `integrity-checker` (`## Context` / `**Impact**` ↔ diff reconciliation) |
+|---|---|---|---|
+| `code` | ✓ | ✓ | ✓ |
+| `doc` | ✓ | — (skip) | ✓ |
+| `mixed` | ✓ | ✓ | ✓ |
 
-`integrity-checker` has no skip case by design — its whole purpose is to catch gaps that hide precisely when `security-scanner` is silent (doc diffs, rename-heavy refactors). `/simplify` and `security-scanner` target runtime / security concepts that do not apply to doc-only changes, so running them on `doc` burns tokens without useful output.
+`integrity-checker` has no skip case by design — its whole purpose is to reconcile the `hq:plan` `**Impact**` declarations against the diff, which is equally relevant on doc and code diffs. `security-scanner` targets runtime / credential / injection risk that doc-only changes structurally cannot introduce, so running it on `doc` burns tokens without useful output.
 
-## Phase 6: Simplify
+## Phase 6: Quality Review
 
-1. Compute `DIFF_KIND` per `## Diff Classification` above.
-2. If `DIFF_KIND == doc` → **skip `/simplify` entirely** per the agent launch matrix. No commit, no cache write — proceed to Phase 7.
-3. Otherwise (`code` or `mixed`), run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
-   1. Run `format` and `build`.
-   2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
-   3. **Immediately proceed to Phase 7.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
-
-Phase 7 Quality Review is the safety net for behavior-affecting simplifications: if `/simplify` introduces a functional regression, `code-reviewer` is expected to flag it as an FB. No cache edits in this phase.
-
-## Phase 7: Quality Review
-
-Phase 7 launches the agent subset selected by `DIFF_KIND` per the **Agent launch matrix** in `## Diff Classification` above.
+Phase 6 launches the agent subset selected by `DIFF_KIND` per the **Agent launch matrix** in `## Diff Classification` above.
 
 ### Step 1: Classify the diff
 
-Use `DIFF_KIND` from Phase 6. If it is not in state (resumed session, interrupted run), recompute from `git diff --name-only <base>...HEAD` using the same rule.
+Compute `DIFF_KIND` per `## Diff Classification` above (recompute from `git diff --name-only <base>...HEAD` if not already in conversation state).
 
 ### Step 2: Launch agents per the matrix
 
 Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `## Diff Classification` above. Issue them in a single Agent-tool call batch so they run in parallel; wait for all launched agents to complete before proceeding.
 
-Phase 7 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
+#### `integrity-checker` invocation prompt
+
+`integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
+
+1. Read `.hq/tasks/<branch-dir>/gh/plan.md` (the cached plan body).
+2. Extract the **entire `## Context` section** — `**Problem**`, `**In scope**`, `**Impact**` (all 3 sub-dimensions if present), `**Out of scope**`, `**Constraints**`. Preserve the block structure verbatim.
+3. **Do NOT pass `## Approach`** — the Approach block reflects the root agent's mental model of the solution. Passing it to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**`.
+4. Pass the extracted `## Context` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
+5. If the plan has no `**Impact**` block (backward compatibility with pre-Impact plans), the agent is expected to skip the Impact-reconciliation step and exit cleanly — do NOT fabricate an Impact block or ask the agent to infer one.
+
+Phase 6 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
 
 ### Step 3: Process FBs
 
-**Per-FB handling** — the FB retry cap (§ Settings) is applied **per FB independently**. FB X's failed retries do not consume FB Y's budget. For each FB:
+Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these are the only Phase 6 agents that write FB files). `security-scanner` findings live in its scan report only — the root agent reads the report, decides what is actionable, and either applies a fix inline (same per-FB rules below, but the "re-run" step consults the scan report rather than re-running the agent) or leaves the residual for human judgment at PR review.
+
+**Per-FB independence** — the FB retry cap (§ Settings) is applied **per FB in isolation**. FB X's failed retries do not consume FB Y's budget. **Cross-agent regression is not re-verified** in Phase 6 — only the originating agent is re-run to confirm the FB it raised is gone. Regressions introduced into a sibling agent's scope are accepted as a known trade-off (trading token cost for breadth); the PR review and `/hq:triage` step are the safety net.
+
+For each FB:
 
 1. **Classify the FB** — is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
-2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times: apply a fix, create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy, re-run the originating agent to verify this FB is gone. Exit the loop as soon as the FB clears. When the cap is exhausted without success, leave the FB pending and move on to the next FB — the remaining work flows to Phase 8. If the cap is `0`, skip the loop and leave the FB pending immediately.
-3. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 7. Leave them pending (continue-report per Stop Policy). They flow to Phase 8 for Round 2 Drafting to structure the response.
+2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times:
+   1. Apply a fix.
+   2. Run `format` and `build` (`hq:workflow` § Before Commit).
+   3. Create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy.
+   4. **Re-run the originating agent only** — the single agent that wrote this FB. Do not re-run the full Phase 6 agent set; cross-agent regression is not a Phase 6 concern (see Per-FB independence above).
+   5. If the FB is gone from the re-run output, move the FB file to `feedbacks/done/` and exit the loop.
+   6. Otherwise, continue the loop up to the cap.
+
+   When the cap is exhausted without success, leave the FB pending and move on to the next FB — pending FBs surface later in the PR's `## Known Issues`. If the cap is `0`, skip the loop and leave the FB pending immediately.
+3. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 6. Leave them pending (continue-report per Stop Policy). They flow straight into the PR's `## Known Issues` at Phase 7.
 
 Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
 
 Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends.
 
-## Phase 8: Round 2 Drafting (conditional, Round 1 only)
-
-**Skip this phase entirely if any of the following holds**:
-- The current run is already in Round 2 (the cache contains `## Round 2`) — Round 3 does not exist, remaining FBs will escalate in Phase 9.
-- Zero pending FB files under `.hq/tasks/<branch-dir>/feedbacks/` — nothing to follow up on.
-
-Otherwise, draft a `## Round 2` section on the `hq:plan` cache per `hq:workflow` § Round 2 Retry:
-
-1. **Collect pending FBs** from `.hq/tasks/<branch-dir>/feedbacks/` (not `done/`). For each FB, capture its id, title, failure summary, and the Round 1 information that led to it (Phase 4/5/7 context).
-2. **Draft the section** directly in the cache (`.hq/tasks/<branch-dir>/gh/plan.md`), appended after the Round 1 `## Acceptance`:
-   - `### Follow-ups from Round 1` — one block per FB: root cause, Round 2 approach, which `### Plan (Round 2)` / `### Acceptance (Round 2)` items address it.
-   - `### Plan (Round 2)` — concrete implementation steps (checkboxes).
-   - `### Acceptance (Round 2)` — verification items (checkboxes with `[auto]` / `[manual]` markers).
-3. **Archive Round 1 FBs** — move every Round 1 pending FB file to `feedbacks/done/`. Their content has been absorbed into `### Follow-ups from Round 1`; leaving them pending would double-count them as Known Issues in Phase 9. This move is atomic with step 2 (draft without moving, or move without drafting, is forbidden).
-4. **Push the cache** (checkpoint: Push):
-   ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
-   ```
-5. **Re-enter Phase 4** — the Round 2 section is now the active plan. Phases 4 → 5 → 6 → 7 run again, this time operating on `### Plan (Round 2)` / `### Acceptance (Round 2)`. FBs produced during Round 2 are fresh; on the second arrival at the end of Phase 7, Phase 8 is skipped (Round 3 is not allowed) and the Round 2 pending FBs flow to `## Known Issues` in Phase 9.
-
-The drafting is authored by this root agent — `/hq:draft` is not re-invoked, and the Plan agent is not called. Round 2 item content must follow the `hq:workflow` § Language rule (conversation language for prose, English for markers and structural headings).
-
-## Phase 9: PR Creation
+## Phase 7: PR Creation
 
 ### Gate
 
 Before creating the PR, verify:
 
-- All items in `## Plan` (including `### Plan (Round 2)` if present) are `[x]` — **required**
-- All `[auto]` items in `## Acceptance` (including `### Acceptance (Round 2)` if present) are `[x]` — **required**
+- All items in `## Plan` are `[x]` — **required**
+- All `[auto]` items in `## Acceptance` are `[x]` — **required**
 - Working tree is clean — `git status --short` returns empty
 
 If any of the first two fail, ABORT per Stop Policy. If the working tree is dirty, create a `chore: residual changes prior to PR` commit to absorb the leftovers and continue — this is a safety net for upstream Commit Policy slips, not an invitation to skip commits during earlier phases.
@@ -364,7 +361,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 Delegate to the `pr` skill with the prepared body, title, and — **parented mode only** — milestone / project inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`). In standalone mode, skip milestone / project resolution entirely — there is no `task.json` cache file and no parent `hq:task` to inherit from, so no `--milestone` / `--project` flags are passed. The `pr` skill is the single path to `gh pr create` and applies any `.hq/pr.md` overrides within its own documented scope. Do not call `gh pr create` directly.
 
-## Phase 10: Report
+## Phase 8: Report
 
 Summarize:
 
@@ -372,7 +369,7 @@ Summarize:
 - **hq:plan**: number + title + link
 - **Branch**: name
 - **Key changes**: brief bullet list
-- **Verification**: summaries from every Phase 7 reviewer that ran per `## Diff Classification` (code-reviewer and integrity-checker always; security-scanner on `code` / `mixed` diffs)
+- **Verification**: summaries from every Phase 6 reviewer that ran per `## Diff Classification` (code-reviewer and integrity-checker always; security-scanner on `code` / `mixed` diffs)
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
 - **Known Issues**: count (handle via `/hq:triage <PR>` after review)
@@ -380,10 +377,9 @@ Summarize:
 ## Rules
 
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
-- **Cache-first** — during Phases 4–8, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
-- **Do not skip Phase 5, 6, or 7** — acceptance, simplify, and quality review are mandatory. Phase 8 is skipped only per its own conditions (Round 2 already in progress, or zero pending FBs).
-- **At most Round 2** — the Round 1 → Round 2 retry is capped at two rounds total. There is no Round 3; unresolved FBs at the end of Round 2 escalate to the PR's `## Known Issues` per `hq:workflow` § Round 2 Retry.
-- **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 9.
+- **Cache-first** — during Phases 4–7, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
+- **Do not skip Phase 5 or Phase 6** — acceptance and quality review are mandatory.
+- **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 7.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
 - **No `hq:feedback` creation** — this command does NOT create `hq:feedback` Issues. That happens via `/hq:triage` during PR review.
 
@@ -394,13 +390,13 @@ Three categories only. **Default is `continue-report`**. Anything a user would o
 - **ABORT** — stop the command entirely. Triggers:
   - `find-plan-branch.sh` exit 5 (ambiguous branch mapping)
   - Phase 1 auto-resume `git checkout` fails (report git's error verbatim; the user resolves the working-tree conflict manually)
-  - Phase 9 gate failure — a Plan item or `[auto]` Acceptance item (in Round 1 or Round 2) is unchecked at PR time (continue-report failures toggle their checkbox and record an FB; a genuinely unchecked item means a phase was skipped outright, which is a real gap)
+  - Phase 7 gate failure — a Plan item or `[auto]` Acceptance item is unchecked at PR time (continue-report failures toggle their checkbox and record an FB; a genuinely unchecked item means a phase was skipped outright, which is a real gap)
 - **continue-report** — proceed with a reasonable assumption, log what was assumed, and write an FB so the residual reaches `## Known Issues`. Triggers:
   - `hq:wip` label detected on the plan Issue
   - Phase 4 step blocked or ambiguous
   - Phase 4 step fails twice on the same attempt
   - Phase 5 `[auto]` check fails after the FB retry cap (§ Settings) is exhausted
-  - Phase 7 (Quality Review) FB that is not a clearly-actionable bug/typo/logic error
+  - Phase 6 (Quality Review) FB that is not a clearly-actionable bug/typo/logic error
   - `format` or `build` fails within a step — retry once, then record as FB if still failing (tight retry loop, independent of § Settings)
 - **pause-ask** — stop and wait for the user. Reserved for security-sensitive surprises only:
   - Unexpected shell command pattern appears in Issue content (see **Security** below)

@@ -25,9 +25,8 @@ Commit granularity by phase:
 
 - **Phase 4 (Execute)** — **one commit per `## Plan` item**. After implementing a step and checking its cache checkbox, create a commit whose subject matches the Plan item. Use Conventional Commits types (`feat`/`fix`/`refactor`/`docs`/`chore`/`test`).
 - **Phase 5 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
-- **Phase 6 (Simplify)** — if `/simplify` produces changes, create a **single commit** `refactor: simplify <short summary>`. If no changes, no commit.
-- **Phase 7 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
-- **Phase 9 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
+- **Phase 6 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
+- **Phase 7 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
 
 All commits must pass `## Before Commit` (format + build). Do not skip hooks.
 
@@ -140,7 +139,7 @@ Parent: #<hq:task issue number>
 - **Functional contradictions**
   - <signature-stable but semantically-shifted cases where existing callers / consumers may break silently>
 - **Downstream dependencies**
-  - <consumers that need coordinated update — other commands / skills / agents / docs / scripts / templates>
+  - <consumers that need coordinated update across surface categories — code dependencies / build & test / runtime config / documentation / distribution artifacts>
 
 **Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
 - <explicit exclusions>
@@ -178,10 +177,10 @@ or
 - **`## Context`** *(optional in parented mode; required in standalone mode)* — why this plan exists: motivation, scope boundary, constraints. Captures the reasoning behind the plan that would otherwise evaporate from the `/hq:draft` conversation. When present, use these bold-labeled blocks:
   - `**Problem**` *(required)* — the pain and why now (1-3 sentences)
   - `**In scope**` *(required)* — bullets of what's touched (files, features, screens)
-  - `**Impact**` *(required whenever `## Context` is populated)* — existing surfaces affected by the planned change, enumerated across 3 sub-dimensions so downstream drift is caught at drafting time rather than leaking into Phase 7. Each sub-dimension is individually optional — omit any that is genuinely empty **entirely**, meaning drop the `- **<sub-dimension>**` heading line itself, not just its body. No `_None._`, no placeholder-only body. If all 3 would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead of emitting an empty Impact block.
+  - `**Impact**` *(required whenever `## Context` is populated)* — existing surfaces affected by the planned change, enumerated across 3 sub-dimensions so downstream drift is caught at drafting time rather than leaking into Phase 6. Each sub-dimension is individually optional — omit any that is genuinely empty **entirely**, meaning drop the `- **<sub-dimension>**` heading line itself, not just its body. No `_None._`, no placeholder-only body. If all 3 would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead of emitting an empty Impact block.
     - **Signature changes** — public surfaces that gain / change / lose their contract. Group by direction (`Additions` / `Updates` / `Deletions`). Surfaces include: functions / methods / types, frontmatter fields, command & subcommand names, config keys, rule or section headings, labels, file paths treated as references.
     - **Functional contradictions** — signature-stable but semantically-shifted cases where existing callers / consumers may break silently. Example: a command gains a new mode upstream consumers do not yet understand; a label's meaning narrows; a config key accepts a new set of values.
-    - **Downstream dependencies** — consumers that need coordinated update alongside the in-scope change. Sweep across: other commands, skills, agents, scripts, docs (`README.md`, `plugin/v2/docs/`), `.hq/` templates, the workflow rule.
+    - **Downstream dependencies** — consumers that need coordinated update alongside the in-scope change. Sweep across **surface categories** rather than a fixed list of files: (1) **code dependencies** — other modules / commands / skills / agents that import or reference the changed surfaces; (2) **build & test** — build scripts, CI config, test fixtures that encode the old contract; (3) **runtime config** — env vars, feature flags, `.hq/` templates, project-level override files; (4) **documentation** — `README.md`, architecture docs, published guides, tutorials; (5) **distribution artifacts** — plugin manifests, package descriptors, release notes. Name the specific files / sections per category.
   - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
   - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
 
@@ -240,44 +239,7 @@ Every `hq:plan` must:
 - Define **Plan** (implementation steps) and **Acceptance** (completion criteria)
 - Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English
 - Use the **explicit omission** form (`_Intentionally omitted: <reason>._`) when `## Context` or `## Approach` is left empty (parented mode only — in standalone mode, `## Context` must not be omitted)
-- Before finalizing Acceptance checks, run `/simplify` to eliminate redundant or unnecessary code
-
-### Round 2 Retry
-
-When Round 1 of `/hq:start` (Phases 4 → 7) completes with pending FBs still on disk, `/hq:start` appends a `## Round 2` section to the `hq:plan` body and re-enters Phases 4 → 7 with that section as the new plan. Round 2 is a **one-shot extension** — there is no Round 3. Anything still unresolved after Round 2 flows to the PR's `## Known Issues`.
-
-The `## Round 2` section structure:
-
-```markdown
-## Round 2
-
-### Follow-ups from Round 1
-
-**<FB id>: <FB title>**
-- Root cause: <what went wrong in Round 1>
-- Approach: <what Round 2 will do differently>
-- Addressed by: `### Plan (Round 2)` item N, `### Acceptance (Round 2)` item M
-
-(one block per pending FB)
-
-### Plan (Round 2)
-- [ ] follow-up implementation step 1
-- [ ] follow-up implementation step 2
-
-### Acceptance (Round 2)
-- [ ] [auto] follow-up check 1
-- [ ] [auto] follow-up check 2
-```
-
-Rules:
-
-- `### Follow-ups from Round 1` is the narrative bridge: **one block per pending FB**, each stating what failed, the root cause inferred from Round 1, the Round 2 approach, and which Round 2 items address it.
-- `### Plan (Round 2)` and `### Acceptance (Round 2)` follow the same conventions as the Round 1 counterparts (checkbox, `[auto]`/`[manual]` markers, Commit Policy applies per item).
-- Phase 9 Gate treats Round 2 items identically to Round 1 — all `- [ ]` under both sections must be `[x]` before PR creation.
-- Round 2 drafting is authored by the `/hq:start` root agent (not the Plan agent) from FB contents and Phase 7 review outputs — `/hq:draft` is not re-invoked.
-- **Round 1 FB ownership ends at drafting** — as soon as Round 1 FB content is absorbed into `### Follow-ups from Round 1`, the corresponding FB files MUST be moved to `feedbacks/done/` atomically. Only FBs produced during Round 2 remain pending for the Phase 9 Known Issues section.
-
-If Round 1 produces zero pending FBs, skip Round 2 entirely and proceed to Phase 9 PR Creation.
+- Keep Acceptance checks atomic and verifiable — each `[auto]` item should map to a single concrete signal (pass/fail)
 
 ### Focus
 
@@ -341,7 +303,6 @@ During `/hq:start` execution, **all reads and writes to the plan body go to the 
 | Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
 | Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
 | Push (cache → GitHub) | After Phase 5 (Acceptance) complete | Push Acceptance `[auto]` checkbox updates |
-| Push (cache → GitHub) | After Phase 8 (Round 2 Drafting) complete | Push `## Round 2` section |
 | Push (cache → GitHub) | Before PR creation | Final consistency sync |
 
 ### Helper scripts
@@ -412,18 +373,29 @@ Sweep steps:
    - Shell command, test run, type check, build
    - API / file / directory check
    - Browser automation via `/hq:e2e-web` for navigation, URL assertion, element/text presence, form submit, DOM state
-2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only).
+2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only; 1 tool call = 1 item — see 1-by-1 toggle rule below).
 3. **On fail**: leave the checkbox as `[ ]` and record the failure summary for the caller. Do NOT fix in this step.
+
+### 1-by-1 toggle rule (batch toggle prohibited)
+
+Process each `[auto]` item **sequentially**, one tool call per item. Batch toggling multiple checkboxes in a single `plan-check-item.sh` invocation (or in a single compound bash line) is forbidden — it trips the integrity hook, which treats multi-toggle activity without per-item FB evidence as a state-laundering signal.
+
+Per-item sequence:
+
+1. **Classify** — determine the outcome: `pass` / `retry-possible` / `pre-existing` / `deferred` / `deliberate` / `partial-verification`.
+2. **FB (if applicable)** — for any outcome other than `pass`, write or reference an FB file under `.hq/tasks/<branch-dir>/feedbacks/`. Populate the FB frontmatter `covers_acceptance` field with a unique substring of the acceptance item it covers (see `## Feedback Loop`).
+3. **Toggle** — call `plan-check-item.sh "<unique substring of the item>"` as a **single** tool call. Do not chain multiple items in one call.
+4. Proceed to the next item.
 
 After the sweep, the caller decides what to do with failures (loopback to implementation, record FB, escalate, etc.). The caller's retry cap — for `/hq:start`, see its § Settings — governs how many sweep rounds a single item may go through before being demoted to an FB. When that cap is exhausted, the item is converted to an FB and its checkbox is toggled to `[x]` anyway so the final PR gate is not deadlocked by a tracked failure.
 
 `[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
 
-Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before Simplify and Quality Review run. The order is deliberate: confirm the implementation works first, then refactor a known-working baseline, then review quality. Simplifying before Acceptance risks tangling refactor diffs with functional fixes; reviewing quality before Acceptance wastes effort on code that may not work.
+Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before Quality Review runs. The order is deliberate: confirm the implementation works first, then review quality on a known-working baseline. Reviewing quality before Acceptance wastes effort on code that may not work.
 
 ## Quality Review
 
-Runs after Acceptance is satisfied. Verifies the diff meets the project's quality, security, and end-to-end integrity bar, independent of whether the plan was met.
+Runs after Acceptance is satisfied. Verifies the diff meets the project's quality, security, and plan-alignment bar, independent of whether the plan was met functionally. For `/hq:start` this is Phase 6; other callers may schedule it differently but reuse the same three-agent structure.
 
 ### Step 1: Classify the diff
 
@@ -446,9 +418,9 @@ Doc extensions (case-insensitive):
 
 Anything not in this table (including `.yaml`, `.json`, `.toml`, `.sh`, and other config / scripting formats) is treated as **code**.
 
-### Step 2: Static Analysis (parallel — set depends on kind)
+### Step 2: Launch agent set (parallel)
 
-Launch the agent set selected by kind **simultaneously** via the Agent tool. All launched agents run autonomously and return summaries with report/FB file paths.
+Launch the agent subset selected by `DIFF_KIND` **simultaneously** via the Agent tool. All launched agents run autonomously and return summaries with report / FB file paths.
 
 | Kind | `code-reviewer` | `security-scanner` | `integrity-checker` |
 |---|---|---|---|
@@ -456,15 +428,23 @@ Launch the agent set selected by kind **simultaneously** via the Agent tool. All
 | `doc` | ✓ | — (skip) | ✓ |
 | `mixed` | ✓ | ✓ | ✓ |
 
-- **code-reviewer** — quality review → report + FB files
-- **security-scanner** — security alert detection → report file (skipped on `doc` — doc-only diffs rarely carry injection / credential risk and wall-clock savings are real)
-- **integrity-checker** — downstream reference / scope boundary / end-to-end feature integrity → report + FB files. **Always launched** — its whole purpose is to catch gaps that the other two structurally cannot see, which is most common when `security-scanner` is silent (doc diffs, rename-heavy refactors)
+Each agent has a fixed, non-overlapping scope. The three scopes together cover the review surface without duplication:
+
+- **code-reviewer** — readability / correctness / performance / security of the diff itself, plus redundancy signals (unused imports, dead code, obvious duplicated helpers, dead branches). Guarded by a load-bearing rule: the agent MUST NOT recommend removing code that touches concurrency primitives, lifecycle boundaries, subscription / observer machinery, cache dedup / memoization, SSR / hydration boundaries, or module-level mutable state. Output: report + FB files.
+- **security-scanner** — enumerates alert patterns (credentials, external comms, dynamic code) against the diff. Runs on `sonnet` — `haiku` silently no-opped on non-trivial diffs in practice. Skipped on `doc` diffs, which structurally cannot introduce this alert class. Output: scan report only; the root agent decides what is actionable. No FB files.
+- **integrity-checker** — reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff. Detects two failure modes: **declared-but-missing** (Impact entry with no corresponding diff change) and **diff-but-undeclared** (diff reach not covered by `**Impact**` or `**Out of scope**`). Scope is narrow by design — it does NOT do general downstream-reference sweeps and does NOT evaluate `## Approach`. **Always launched** — its whole purpose is to catch plan / diff misalignment, which is equally relevant on doc and code diffs. Output: report + FB files.
+
+The caller's invocation prompt MUST pass `integrity-checker` the full `## Context` block of the `hq:plan` (Problem / In scope / Impact / Out of scope / Constraints) and MUST NOT pass `## Approach`. `## Approach` reflects the author's mental model of the solution; passing it would contaminate the agent's external lens.
+
+**Backward compatibility** — when an `hq:plan` has no `**Impact**` block (pre-Impact plans), `integrity-checker` skips the Impact-reconciliation step and exits cleanly with zero FB files. A missing `**Impact**` block is NEVER an FB-worthy finding.
 
 Wait for all launched agents to complete before proceeding.
 
 ### Step 3: Fix FB Issues
 
-Read pending FB files from `code-reviewer` and `integrity-checker` — these are the agents that output FB files. `security-scanner` findings appear only in its scan report and require human judgment (no FB files). Fix clearly-actionable FBs, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
+Read pending FB files from `code-reviewer` and `integrity-checker` (the two agents that produce FBs). `security-scanner` findings appear only in its scan report — the root agent reads the report and decides what is actionable.
+
+FB handling is **per-FB independent** — each FB has its own retry budget. **Only the originating agent is re-run** to verify a fix; cross-agent regression is accepted as a trade-off for review token cost and caught later by PR review / `/hq:triage`. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
 
 ### Fallback: Interactive Mode
 
@@ -472,7 +452,7 @@ If you need fine-grained control or mid-scan user interaction, use the skills di
 
 1. `/security-scan` — pauses on credential detection for user confirmation
 2. `/code-review` — warns about uncommitted changes
-3. `/integrity-check` — reports downstream reference / scope boundary / end-to-end integrity gaps
+3. `/integrity-check` — reports plan `## Context` / diff reconciliation gaps
 
 If any step produces unresolved issues, do not skip ahead. Fix or get user confirmation before continuing.
 
@@ -494,11 +474,13 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 
 **Format** — FB files must follow [feedback.md](feedback.md). Read `plan` and `source` values from `.hq/tasks/<branch-dir>/context.md` for the frontmatter fields.
 
+**`covers_acceptance` frontmatter (optional, soft convention)** — FB files MAY include a `covers_acceptance: "<unique substring of an acceptance item>"` frontmatter field linking the FB to the specific `## Acceptance` item it covers. Populate this field in Phase 4/5-origin FBs (where the correspondence is 1:1 with an acceptance item by construction); leave it unset on Phase 6-origin FBs (code-reviewer / integrity-checker findings that do not map 1:1 to an acceptance item). No hook or script enforces this field — it exists to make the audit trail linear for reviewers and to support the Phase 5 1-by-1 toggle rule. See [feedback.md](feedback.md) for the full schema.
+
 ### FB Lifecycle (for the root agent after a skill run)
 
 - Read pending FB files and assess each: fix only those that are clearly actionable (bugs, typos, logic errors). Leave design-level or scope-ambiguous FBs as-is for user judgment.
 - Run `format` and `build` commands after fixes
-- Re-run the originating skill (full review) to verify fixes and catch regressions
+- Re-run the originating agent only to verify the specific FB is gone. Do NOT re-run the full agent set — cross-agent regression is accepted as a trade-off (see `## Quality Review § Step 3`)
 - When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
 - When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
 - The fix → re-verify cycle runs up to the caller's **FB retry cap**, applied **per FB independently** (FB A's failed retries do not consume FB B's budget). `/hq:start` defines its cap in its `## Settings` section (default `2`); other callers MUST supply their own. When the cap is exhausted on a given FB, escalate that FB to the PR body and move its file to `done/`.

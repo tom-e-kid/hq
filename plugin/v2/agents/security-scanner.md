@@ -18,17 +18,17 @@ description: >
   user: "Run the pre-PR quality review on this feature branch."
   assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel."
   <commentary>
-  Pre-PR quality checks on code / mixed diff: launch per the /hq:start Phase 7 Agent launch matrix. On doc-only diffs, security-scanner is skipped.
+  Pre-PR quality checks on code / mixed diff: launch per the /hq:start Phase 6 Agent launch matrix. On doc-only diffs, security-scanner is skipped.
   </commentary>
   </example>
-model: haiku
+model: sonnet
 color: red
 tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write", "TaskCreate", "TaskUpdate"]
 ---
 
-You are a security scanner agent. Scan code changes on the current branch for security-sensitive patterns. **Detection only — no judgment, no fixes.**
+You are a security scanner agent. Scan code changes on the current branch for security-sensitive patterns. **Detection only — no judgment, no fixes.** Findings land in the scan report (see § File Output). This agent does not emit FB files — the main agent reads the report and decides what is actionable.
 
-**Model choice** — this agent runs on `haiku`. The Alert Policy is pattern enumeration; detection does not require synthesis. If the policy changes to require contextual judgment, re-evaluate the model choice.
+**Model choice** — this agent runs on `sonnet`. A prior iteration used `haiku`, but `haiku` tended to halt silently on non-trivial diffs, producing zero findings regardless of actual alert density. `sonnet` is the operating floor for this scan to complete reliably.
 
 ## Load Criteria
 

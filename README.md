@@ -37,20 +37,20 @@ Skills, agents, and commands architecture. Skills define pure analysis criteria,
 | Agent                      | Description                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------ |
 | `code-reviewer`            | Autonomous code review — reads `code-review` skill criteria, outputs report + FB files to `.hq/tasks/` |
-| `security-scanner`         | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` (Haiku model — pattern detection) |
-| `integrity-checker`        | Autonomous integrity check — reads `integrity-check` skill criteria, looks beyond the hunks for downstream / scope-boundary / end-to-end gaps, outputs report + FB files to `.hq/tasks/` |
+| `security-scanner`         | Autonomous security scan — reads `security-scan` skill criteria, outputs report to `.hq/tasks/` (Sonnet model — Haiku silently no-opped on non-trivial diffs) |
+| `integrity-checker`        | Reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff — detects declared-but-missing and diff-but-undeclared misses. Outputs report + FB files to `.hq/tasks/` |
 | `review-comment-analyzer`  | Read-only analysis of a single PR review comment — classifies as Fix/Feedback/Dismiss with evidence. Launched in parallel by `/hq:respond` |
 
 Agents read skill files at runtime for analysis criteria, then handle workflow integration (focus resolution, file output, traceability) independently. They can run **in parallel** and in the **background**.
 
-`/hq:start` Phase 7 (Quality Review) is **diff-kind aware**: `code-reviewer` and `integrity-checker` always run; `security-scanner` and `/simplify` skip on doc-only diffs (the cost of running runtime / security reviewers on markdown is not paid for by their signal). See [plugin/v2/docs/workflow.md](plugin/v2/docs/workflow.md#hqstart) for the agent launch matrix.
+`/hq:start` Phase 6 (Quality Review) is **diff-kind aware**: `code-reviewer` and `integrity-checker` always run; `security-scanner` skips on doc-only diffs (credential / injection patterns structurally cannot appear there). See [plugin/v2/docs/workflow.md](plugin/v2/docs/workflow.md#hqstart) for the agent launch matrix.
 
 **Commands** (user-invoked workflow shortcuts — invoked via `/hq:command-name`):
 
 | Command            | Description                                                                    |
 | ------------------ | ------------------------------------------------------------------------------ |
 | `draft`            | Interactive brainstorm → create an `hq:plan` Issue from an `hq:task`                             |
-| `start`            | Autonomous: branch → execute → acceptance → simplify → quality review → PR from an `hq:plan`     |
+| `start`            | Autonomous: branch → execute → acceptance → quality review → PR from an `hq:plan`                |
 | `triage`           | Triage PR body `## Known Issues` — add to plan / leave / escalate to `hq:feedback`    |
 | `archive`          | Safely close a merged PR's branch — verify + archive task folder + delete local branch           |
 | `respond`          | Respond to external PR review comments (Copilot, reviewers) — fix / escalate / dismiss           |
@@ -84,7 +84,7 @@ Milestone (optional grouping)
 1. Create an `hq:task` Issue describing the requirement (e.g., `feat: add user authentication`)
 2. Run `/hq:draft <hq:task>` — interactive brainstorm (enumerates `Impact on existing features` in 3 sub-dimensions) → the `hq:plan` Issue is created (sub-issue of `hq:task`) with `## Plan` + `## Acceptance` structure
 3. Review / edit the `hq:plan` Issue on GitHub UI (intervention point #1)
-4. Run `/hq:start <hq:plan>` — autonomous: branch → execute → acceptance → simplify → quality review → PR
+4. Run `/hq:start <hq:plan>` — autonomous: branch → execute → acceptance → quality review → PR
 5. Review the PR (intervention point #2). Use `/hq:respond` to handle external review comments, `/hq:triage <PR>` to process the PR body's `## Known Issues` section
 6. After merge, run `/hq:archive` to clean up the local branch and task folder
 
