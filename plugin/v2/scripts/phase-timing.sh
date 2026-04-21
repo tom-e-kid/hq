@@ -23,14 +23,17 @@ EOF
 }
 
 resolve_jsonl() {
-  local branch_raw
+  local root branch_raw
+  root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "error: not inside a git repository" >&2; exit 1
+  }
   branch_raw=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
   if [[ -z "$branch_raw" || "$branch_raw" == "HEAD" ]]; then
     echo "error: not on a named branch (detached HEAD)" >&2
     exit 1
   fi
   local branch_dir=${branch_raw//\//-}
-  echo ".hq/tasks/${branch_dir}/phase-timings.jsonl"
+  echo "${root}/.hq/tasks/${branch_dir}/phase-timings.jsonl"
 }
 
 [[ $# -ge 1 ]] || usage
