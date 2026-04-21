@@ -207,6 +207,8 @@ This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and
 
 If the retry cap is `0`, the first sweep's failures go straight to FB + `[x]` with no loopback.
 
+**`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (`[auto] [primary]`), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 7 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 8 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
+
 Acceptance failures are treated as **all actionable** (unlike Phase 6 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
 
 Running Acceptance **before** Quality Review is intentional: confirm the implementation meets the plan first, then review quality on a known-working baseline.
@@ -272,7 +274,7 @@ Hold `DIFF_KIND` in conversation state during Phase 6. If Phase 6 is resumed in 
 
 The classification drives which agents run in Phase 6 (Quality Review). Each agent has a fixed scope; only presence / absence in the matrix depends on `DIFF_KIND`:
 
-| `DIFF_KIND` | `code-reviewer` (quality / load-bearing guard) | `security-scanner` (runtime risk pattern detection) | `integrity-checker` (`## Context` / `**Impact**` ↔ diff reconciliation) |
+| `DIFF_KIND` | `code-reviewer` (quality / load-bearing guard) | `security-scanner` (runtime risk pattern detection) | `integrity-checker` (`## Plan Sketch` / `**Impact**` ↔ diff reconciliation) |
 |---|---|---|---|
 | `code` | ✓ | ✓ | ✓ |
 | `doc` | ✓ | — (skip) | ✓ |
@@ -294,13 +296,12 @@ Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `##
 
 #### `integrity-checker` invocation prompt
 
-`integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
+`integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Plan Sketch` (especially the `**Impact**` table) against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
 
 1. Read `.hq/tasks/<branch-dir>/gh/plan.md` (the cached plan body).
-2. Extract the **entire `## Context` section** — `**Problem**`, `**In scope**`, `**Impact**` (all 3 sub-dimensions if present), `**Out of scope**`, `**Constraints**`. Preserve the block structure verbatim.
-3. **Do NOT pass `## Approach`** — the Approach block reflects the root agent's mental model of the solution. Passing it to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**`.
-4. Pass the extracted `## Context` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
-5. If the plan has no `**Impact**` block (backward compatibility with pre-Impact plans), the agent is expected to skip the Impact-reconciliation step and exit cleanly — do NOT fabricate an Impact block or ask the agent to infer one.
+2. Extract the **entire `## Plan Sketch` section** — `**Problem**`, `**Editable surface**`, `**Read-only surface**`, the `**Impact**` table, `**Constraints**`. Preserve the block structure verbatim.
+3. Do NOT pass `**Core decision**` or `**Change Map**` — those fields reflect the root agent's mental model of the solution. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**` table.
+4. Pass the extracted `## Plan Sketch` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
 
 Phase 6 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Quality Review — do not re-execute `hq:workflow § Quality Review` Steps 1 and 2 here. Only the common rules from `hq:workflow` (progress reporting, file output, FB conventions per `hq:workflow § Feedback Loop`) apply.
 
