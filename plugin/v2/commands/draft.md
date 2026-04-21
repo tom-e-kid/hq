@@ -251,7 +251,7 @@ Marker rules:
 
 **Rule for choosing `[auto]` vs `[manual]`** — default to `[auto]`. A check is `[manual]` only when one of the four specific conditions above applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically. When unsure, mark as `[auto]`.
 
-**Rule for choosing the `[primary]` item** — it must answer "if this single check passes, is the plan done?" with a concrete, machine-verifiable signal (specific command exit code, grep hit count, file existence, API return code, URL transition, etc.). Generic phrases like "plan works" or "implementation complete" dissolve the primary/secondary distinction and count as a drafting defect. See `.claude/rules/workflow.local.md` § `hq:plan` § `## Acceptance` for the authoritative criteria.
+**Rule for choosing the `[primary]` item** — it must answer "if this single check passes, is the plan done?" with a concrete, machine-verifiable signal (specific command exit code, grep hit count, file existence, API return code, URL transition, etc.). Generic phrases like "plan works" or "implementation complete" dissolve the primary/secondary distinction and count as a drafting defect.
 
 Each Acceptance item should be a single, concrete, verifiable criterion — not a vague goal.
 
