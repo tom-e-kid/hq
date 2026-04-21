@@ -180,11 +180,24 @@ Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in 
 Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution:
 
 1. For each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check. Browser-oriented checks run via `/hq:e2e-web`.
-2. **On pass**: toggle the cache checkbox via `plan-check-item.sh`.
+2. **On pass**: toggle the cache checkbox via `plan-check-item.sh` (1 tool call = 1 item — see 1-by-1 toggle rule below).
 3. **On fail**: leave the checkbox as `[ ]` and record the failure summary in conversation context (no FB yet).
 4. Track a **sweep counter per item** — how many times this item has cycled through the Phase 4 → Phase 5 loop.
 
 `[manual]` items are not executed — they stay `[ ]` and flow to the PR body in Phase 7.
+
+### 1-by-1 toggle rule (batch toggle prohibited)
+
+Phase 5 MUST process each `[auto]` item **sequentially**, one tool call per item. Batch toggling multiple checkboxes in a single `plan-check-item.sh` invocation (or in a single compound bash line) is forbidden — it trips the integrity hook, which treats multi-toggle activity without per-item FB evidence as a state-laundering signal.
+
+The sequence per `[auto]` item:
+
+1. **Classify** — determine the outcome: `pass` / `retry-possible` / `pre-existing` / `deferred` / `deliberate` / `partial-verification`.
+2. **FB (if applicable)** — for any outcome other than `pass`, write or reference an FB file under `.hq/tasks/<branch-dir>/feedbacks/`. Populate the FB frontmatter `covers_acceptance` field with a unique substring of the acceptance item it covers (see `hq:workflow` § Feedback Loop).
+3. **Toggle** — call `plan-check-item.sh "<unique substring of the item>"` as a **single** tool call. Do not chain multiple items in one call.
+4. Proceed to the next item.
+
+This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and keeps the integrity hook quiet. See `hq:workflow` § Acceptance Execution for the shared rule.
 
 ### After the sweep
 
