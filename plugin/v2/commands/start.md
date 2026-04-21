@@ -1,6 +1,6 @@
 ---
 name: start
-description: Autonomous workflow — branch → execute → acceptance → simplify → quality review → PR from an hq:plan
+description: Autonomous workflow — branch → execute → acceptance → quality review → PR from an hq:plan
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), Bash(mkdir:*), Bash(mv:*), Bash(rm:*), Agent, TaskCreate, TaskUpdate
 ---
 
@@ -216,7 +216,7 @@ The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing 
 
 ## Diff Classification
 
-Phases 6 and 7 branch on the nature of the diff. Compute the classification at the start of Phase 6; Phase 7 recomputes if it is not already available (the `git diff --name-only` check is cheap, so recompute is not an optimization concern).
+Phase 7 branches on the nature of the diff. Compute the classification at the start of Phase 7.
 
 ### Rule
 
@@ -258,30 +258,19 @@ DIFF_KIND=$(git diff --name-only <base>...HEAD | awk '
   }')
 ```
 
-Hold `DIFF_KIND` in conversation state across Phase 6 → Phase 7. If Phase 7 is resumed in a new session and the value is lost, recompute.
+Hold `DIFF_KIND` in conversation state during Phase 7. If Phase 7 is resumed in a new session and the value is lost, recompute.
 
 ### Agent launch matrix
 
-The classification drives which agents / skills run in Phase 6 (Simplify) and Phase 7 (Quality Review):
+The classification drives which agents run in Phase 7 (Quality Review):
 
-| `DIFF_KIND` | Phase 6 `/simplify` | Phase 7 `code-reviewer` | Phase 7 `security-scanner` | Phase 7 `integrity-checker` |
-|---|---|---|---|---|
-| `code` | ✓ | ✓ | ✓ | ✓ |
-| `doc` | — (skip) | ✓ | — (skip) | ✓ |
-| `mixed` | ✓ | ✓ | ✓ | ✓ |
+| `DIFF_KIND` | Phase 7 `code-reviewer` | Phase 7 `security-scanner` | Phase 7 `integrity-checker` |
+|---|---|---|---|
+| `code` | ✓ | ✓ | ✓ |
+| `doc` | ✓ | — (skip) | ✓ |
+| `mixed` | ✓ | ✓ | ✓ |
 
-`integrity-checker` has no skip case by design — its whole purpose is to catch gaps that hide precisely when `security-scanner` is silent (doc diffs, rename-heavy refactors). `/simplify` and `security-scanner` target runtime / security concepts that do not apply to doc-only changes, so running them on `doc` burns tokens without useful output.
-
-## Phase 6: Simplify
-
-1. Compute `DIFF_KIND` per `## Diff Classification` above.
-2. If `DIFF_KIND == doc` → **skip `/simplify` entirely** per the agent launch matrix. No commit, no cache write — proceed to Phase 7.
-3. Otherwise (`code` or `mixed`), run the `/simplify` skill on the full Acceptance-verified changeset. When it returns:
-   1. Run `format` and `build`.
-   2. If `/simplify` produced any changes, create a **single commit** per `hq:workflow` § Commit Policy. If no changes, skip the commit.
-   3. **Immediately proceed to Phase 7.** Do not pause to review the simplification diff with the user, and do not ask for approval before committing — `/simplify`'s output is part of the autonomous flow. Concerns that cannot be resolved autonomously become FBs (continue-report per Stop Policy).
-
-Phase 7 Quality Review is the safety net for behavior-affecting simplifications: if `/simplify` introduces a functional regression, `code-reviewer` is expected to flag it as an FB. No cache edits in this phase.
+`integrity-checker` has no skip case by design — its whole purpose is to catch gaps that hide precisely when `security-scanner` is silent (doc diffs, rename-heavy refactors). `security-scanner` targets runtime / credential / injection risk that doc-only changes structurally cannot introduce, so running it on `doc` burns tokens without useful output.
 
 ## Phase 7: Quality Review
 
@@ -289,7 +278,7 @@ Phase 7 launches the agent subset selected by `DIFF_KIND` per the **Agent launch
 
 ### Step 1: Classify the diff
 
-Use `DIFF_KIND` from Phase 6. If it is not in state (resumed session, interrupted run), recompute from `git diff --name-only <base>...HEAD` using the same rule.
+Compute `DIFF_KIND` per `## Diff Classification` above (recompute from `git diff --name-only <base>...HEAD` if not already in conversation state).
 
 ### Step 2: Launch agents per the matrix
 
@@ -382,6 +371,7 @@ Summarize:
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
 - **Cache-first** — during Phases 4–8, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
 - **Do not skip Phase 5, 6, or 7** — acceptance, simplify, and quality review are mandatory. Phase 8 is skipped only per its own conditions (Round 2 already in progress, or zero pending FBs).
+
 - **At most Round 2** — the Round 1 → Round 2 retry is capped at two rounds total. There is no Round 3; unresolved FBs at the end of Round 2 escalate to the PR's `## Known Issues` per `hq:workflow` § Round 2 Retry.
 - **Commit as you go** — follow `hq:workflow` § Commit Policy. The working tree must be clean by Phase 9.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
