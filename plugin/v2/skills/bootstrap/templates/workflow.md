@@ -384,7 +384,7 @@ Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing,
 
 ## Quality Review
 
-Runs after Acceptance is satisfied. Verifies the diff meets the project's quality, security, and end-to-end integrity bar, independent of whether the plan was met.
+Runs after Acceptance is satisfied. Verifies the diff meets the project's quality, security, and plan-alignment bar, independent of whether the plan was met functionally. For `/hq:start` this is Phase 6; other callers may schedule it differently but reuse the same three-agent structure.
 
 ### Step 1: Classify the diff
 
@@ -407,9 +407,9 @@ Doc extensions (case-insensitive):
 
 Anything not in this table (including `.yaml`, `.json`, `.toml`, `.sh`, and other config / scripting formats) is treated as **code**.
 
-### Step 2: Static Analysis (parallel — set depends on kind)
+### Step 2: Launch agent set (parallel)
 
-Launch the agent set selected by kind **simultaneously** via the Agent tool. All launched agents run autonomously and return summaries with report/FB file paths.
+Launch the agent subset selected by `DIFF_KIND` **simultaneously** via the Agent tool. All launched agents run autonomously and return summaries with report / FB file paths.
 
 | Kind | `code-reviewer` | `security-scanner` | `integrity-checker` |
 |---|---|---|---|
@@ -417,15 +417,23 @@ Launch the agent set selected by kind **simultaneously** via the Agent tool. All
 | `doc` | ✓ | — (skip) | ✓ |
 | `mixed` | ✓ | ✓ | ✓ |
 
-- **code-reviewer** — quality review → report + FB files
-- **security-scanner** — security alert detection → report file (skipped on `doc` — doc-only diffs rarely carry injection / credential risk and wall-clock savings are real)
-- **integrity-checker** — downstream reference / scope boundary / end-to-end feature integrity → report + FB files. **Always launched** — its whole purpose is to catch gaps that the other two structurally cannot see, which is most common when `security-scanner` is silent (doc diffs, rename-heavy refactors)
+Each agent has a fixed, non-overlapping scope. The three scopes together cover the review surface without duplication:
+
+- **code-reviewer** — readability / correctness / performance / security of the diff itself, plus the former `/simplify` signals (unused imports, dead code, obvious duplicated helpers, dead branches). Guarded by a load-bearing rule: the agent MUST NOT recommend removing code that touches concurrency primitives, lifecycle boundaries, subscription / observer machinery, cache dedup / memoization, SSR / hydration boundaries, or module-level mutable state. Output: report + FB files.
+- **security-scanner** — enumerates alert patterns (credentials, external comms, dynamic code) against the diff. Runs on `sonnet` — `haiku` silently no-opped on non-trivial diffs in practice. Skipped on `doc` diffs, which structurally cannot introduce this alert class. Output: scan report only; the root agent decides what is actionable. No FB files.
+- **integrity-checker** — reconciles the `hq:plan` `## Context` (especially `**Impact**`) against the diff. Detects two failure modes: **declared-but-missing** (Impact entry with no corresponding diff change) and **diff-but-undeclared** (diff reach not covered by `**Impact**` or `**Out of scope**`). Scope is narrow by design — it does NOT do general downstream-reference sweeps and does NOT evaluate `## Approach`. **Always launched** — its whole purpose is to catch plan / diff misalignment, which is equally relevant on doc and code diffs. Output: report + FB files.
+
+The caller's invocation prompt MUST pass `integrity-checker` the full `## Context` block of the `hq:plan` (Problem / In scope / Impact / Out of scope / Constraints) and MUST NOT pass `## Approach`. `## Approach` reflects the author's mental model of the solution; passing it would contaminate the agent's external lens.
+
+**Backward compatibility** — when an `hq:plan` has no `**Impact**` block (pre-Impact plans), `integrity-checker` skips the Impact-reconciliation step and exits cleanly with zero FB files. A missing `**Impact**` block is NEVER an FB-worthy finding.
 
 Wait for all launched agents to complete before proceeding.
 
 ### Step 3: Fix FB Issues
 
-Read pending FB files from `code-reviewer` and `integrity-checker` — these are the agents that output FB files. `security-scanner` findings appear only in its scan report and require human judgment (no FB files). Fix clearly-actionable FBs, run `format` and `build`, then re-run the originating agent to verify. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
+Read pending FB files from `code-reviewer` and `integrity-checker` (the two agents that produce FBs). `security-scanner` findings appear only in its scan report — the root agent reads the report and decides what is actionable.
+
+FB handling is **per-FB independent** — each FB has its own retry budget. **Only the originating agent is re-run** to verify a fix; cross-agent regression is accepted as a trade-off for review token cost and caught later by PR review / `/hq:triage`. Follow the FB Handling Rules in `## Feedback Loop`, using the caller's FB retry cap (for `/hq:start`, see its § Settings).
 
 ### Fallback: Interactive Mode
 
@@ -433,7 +441,7 @@ If you need fine-grained control or mid-scan user interaction, use the skills di
 
 1. `/security-scan` — pauses on credential detection for user confirmation
 2. `/code-review` — warns about uncommitted changes
-3. `/integrity-check` — reports downstream reference / scope boundary / end-to-end integrity gaps
+3. `/integrity-check` — reports plan `## Context` / diff reconciliation gaps
 
 If any step produces unresolved issues, do not skip ahead. Fix or get user confirmation before continuing.
 
