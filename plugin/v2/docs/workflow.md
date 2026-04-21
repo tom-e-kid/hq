@@ -34,7 +34,7 @@ These two review points are the workflow's center of gravity. Everything downstr
 
 Creation path:
 
-1. **`/hq:draft <hq:task>`** — interactive brainstorm → Plan agent → creates `hq:plan` Issue as a sub-issue of the `hq:task`.
+1. **`/hq:draft <hq:task>`** — interactive brainstorm → orchestrator composes plan body inline → creates `hq:plan` Issue as a sub-issue of the `hq:task`.
    → **User intervention #1**: review / edit the `hq:plan` Issue on GitHub UI.
 2. **`/hq:start <hq:plan>`** — autonomous: branch → execute → acceptance → quality review → PR (labeled `hq:pr`).
    → **User intervention #2**: review the `hq:pr`, then choose how to proceed.
@@ -65,8 +65,8 @@ Phase 2: Brainstorm (interactive — user intervention)
 │  Sketch ## Plan grain (ideal 1-5, upper bound 10)
 │  (wait for user "go")
 │
-Phase 3: Plan Generation (autonomous)
-│  Launch Plan agent → Plan + Acceptance structure
+Phase 3: Compose Plan Body (autonomous)
+│  Orchestrator composes Plan + Acceptance structure inline from the Recap
 │
 Phase 4: Create hq:plan Issue
 │  gh issue create --label hq:plan
@@ -80,7 +80,7 @@ Phase 5: Report
 **Key decisions**:
 
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
-- Plan agent must produce the exact `## Plan Sketch` + `## Plan` + `## Acceptance` structure, with exactly one `[auto] [primary]` item in `## Acceptance`.
+- The orchestrator composes the exact `## Plan Sketch` + `## Plan` + `## Acceptance` structure inline from the Brainstorm Recap, with exactly one `[auto] [primary]` item in `## Acceptance`.
 - Phase 2 enforces `Editable surface` / `Read-only surface` symmetric declaration and the `**Impact**` table (`Direction` column uses a closed set of 5 values). Each populated Impact row is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 6 quality review.
 - `## Plan` granularity: ideal 1-5 items, upper bound 10 — each item is a single meaningful commit unit. 10+ items is a drafting defect, not a ceiling.
 - The handoff is intentional — user reviews / edits the `hq:plan` Issue before `/hq:start` is invoked.
