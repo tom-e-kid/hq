@@ -139,7 +139,7 @@ Parent: #<hq:task issue number>
 - **Functional contradictions**
   - <signature-stable but semantically-shifted cases where existing callers / consumers may break silently>
 - **Downstream dependencies**
-  - <consumers that need coordinated update — other commands / skills / agents / docs / scripts / templates>
+  - <consumers that need coordinated update across surface categories — code dependencies / build & test / runtime config / documentation / distribution artifacts>
 
 **Out of scope** *(optional — include only when scope is ambiguous or at risk of creep)*
 - <explicit exclusions>
@@ -180,7 +180,7 @@ or
   - `**Impact**` *(required whenever `## Context` is populated)* — existing surfaces affected by the planned change, enumerated across 3 sub-dimensions so downstream drift is caught at drafting time rather than leaking into Phase 7. Each sub-dimension is individually optional — omit any that is genuinely empty **entirely**, meaning drop the `- **<sub-dimension>**` heading line itself, not just its body. No `_None._`, no placeholder-only body. If all 3 would be empty, collapse `## Context` itself with `_Intentionally omitted: <reason>._` instead of emitting an empty Impact block.
     - **Signature changes** — public surfaces that gain / change / lose their contract. Group by direction (`Additions` / `Updates` / `Deletions`). Surfaces include: functions / methods / types, frontmatter fields, command & subcommand names, config keys, rule or section headings, labels, file paths treated as references.
     - **Functional contradictions** — signature-stable but semantically-shifted cases where existing callers / consumers may break silently. Example: a command gains a new mode upstream consumers do not yet understand; a label's meaning narrows; a config key accepts a new set of values.
-    - **Downstream dependencies** — consumers that need coordinated update alongside the in-scope change. Sweep across: other commands, skills, agents, scripts, docs (`README.md`, `plugin/v2/docs/`), `.hq/` templates, the workflow rule.
+    - **Downstream dependencies** — consumers that need coordinated update alongside the in-scope change. Sweep across **surface categories** rather than a fixed list of files: (1) **code dependencies** — other modules / commands / skills / agents that import or reference the changed surfaces; (2) **build & test** — build scripts, CI config, test fixtures that encode the old contract; (3) **runtime config** — env vars, feature flags, `.hq/` templates, project-level override files; (4) **documentation** — `README.md`, architecture docs, published guides, tutorials; (5) **distribution artifacts** — plugin manifests, package descriptors, release notes. Name the specific files / sections per category.
   - `**Out of scope**` *(optional)* — bullets of explicit exclusions. Include only when scope is genuinely ambiguous or at real risk of creep; otherwise omit the block entirely
   - `**Constraints**` *(optional)* — hard dependencies, prerequisites, or assumptions
 
