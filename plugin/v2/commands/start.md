@@ -46,8 +46,8 @@ Set each to `in_progress` when starting and `completed` when done. If a phase is
 Tunables for `/hq:start`. Change the value here and every referencing phase follows automatically.
 
 - **FB retry cap** = **`2`** — applied in two places, with the same value:
-  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB. Per item independently.
-  - **Phase 6 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the originating agent) before being left pending. Per FB independently.
+  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB and `[x]`-toggled anyway. Per item independently.
+  - **Phase 6 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the **originating agent only** — no cross-agent regression check) before being left pending and escalated to the PR's `## Known Issues`. Per FB independently.
   - Values: `0` skips retries entirely (NG goes straight to FB); `1` permits one retry; `2` is the current default.
 
 ## Phase 1: Pre-flight Check (non-interactive)
