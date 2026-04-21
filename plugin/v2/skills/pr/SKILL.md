@@ -39,6 +39,8 @@ This skill has two modes. `.hq/pr.md` overrides apply differently in each:
 - **Standalone** (user invokes `/pr` directly): the skill composes the full PR body from git + session context. `.hq/pr.md` overrides apply to the allowed scope above during composition. Invariants are still enforced.
 - **From `/hq:start`** (Phase 7 PR Creation delegation): the caller has already assembled the PR body, including `## Manual Verification` and `## Known Issues` sections and the `Closes/Refs` trailer. The prepared body is treated as **immutable** — `.hq/pr.md` may influence **only** the title line; it MUST NOT rewrite, reformat, or strip any section of the prepared body. The skill's role in this mode is execution (push branch, call `gh pr create` with the right flags), not composition.
 
+**`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this skill starts so the body composer (Standalone mode) and the trailer / label / inheritance Invariants have PR Body Structure, Naming Conventions, Issue Hierarchy, etc. available. From `/hq:start` mode the rule was already loaded by the caller, but a defensive Read is harmless. All `hq:workflow § <name>` citations refer to sections of that file.
+
 ## Context
 
 - Branch: !`git rev-parse --abbrev-ref HEAD`
@@ -103,7 +105,7 @@ Before running any step below, determine invocation mode:
 
    The `Closes #` and `Refs #` lines are mandatory. They link this PR to the `hq:plan` (auto-closed on merge) and the `hq:task` (cross-referenced). Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty.
 
-   **Language**: prose inside `## Summary`, `## Changes`, `## Notes`, and free-form narrative under `## Known Issues` MUST be written in the current conversation language. Markers (`Closes #<plan>`, `Refs #<task>`) and prescribed headings (`## Summary`, `## Changes`, `## Notes`, `## Manual Verification`, `## Known Issues`) MUST stay in English. File paths, identifiers, and code fences stay as-is. See `.claude/rules/workflow.local.md` § Language.
+   **Language**: prose inside `## Summary`, `## Changes`, `## Notes`, and free-form narrative under `## Known Issues` MUST be written in the current conversation language. Markers (`Closes #<plan>`, `Refs #<task>`) and prescribed headings (`## Summary`, `## Changes`, `## Notes`, `## Manual Verification`, `## Known Issues`) MUST stay in English. File paths, identifiers, and code fences stay as-is. See `hq:workflow` § Language.
 
 6. **Resolve milestone and project** — read the cached task data from `.hq/tasks/<branch-dir>/gh/task.json`. Extract the milestone title and project title(s) from `projectItems`. If the cache file does not exist, fall back to `gh issue view <source> --json milestone,projectItems`. If a milestone exists, include `--milestone "<milestone>"` when creating the PR. If project(s) exist, include `--project "<project>"` (repeat for each).
 
@@ -116,7 +118,7 @@ Before running any step below, determine invocation mode:
    )" --label "hq:pr" --milestone "<milestone if exists>" --project "<project if exists>"
    ```
 
-   Always apply the `hq:pr` label. Create it lazily if missing (see workflow.local.md Issue Hierarchy).
+   Always apply the `hq:pr` label. Create it lazily if missing (see `hq:workflow` § Issue Hierarchy).
 
 8. **Move escalated FB files to `done/`** — for each FB file referenced in the `## Known Issues` section of the PR body, move the corresponding file from `feedbacks/` to `feedbacks/done/`. This is atomic with PR creation: if the PR is created successfully with those entries in the body, the files MUST move.
 

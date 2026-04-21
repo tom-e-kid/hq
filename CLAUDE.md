@@ -22,12 +22,7 @@ A development hub for AI-assisted workflows across multiple projects.
 
 This repository develops its own plugin and uses that same plugin (the `hq:*` commands, agents, and skills under `plugin/v2/`) to drive its own development workflow. Changes to the workflow are exercised here first.
 
-The workflow rule lives in two files:
-
-- **`plugin/v2/skills/bootstrap/templates/workflow.md`** — **source of truth**. Distributed by the `hq:bootstrap` skill to consumer projects. **Edit here only.**
-- **`.claude/rules/workflow.local.md`** — a generated copy produced by `hq:bootstrap` running against this repo. **Not a development target** — never edit directly. Treat it as a build artifact.
-
-Workflow-rule PRs touch the template only. The dogfooding copy is refreshed out-of-band by re-running `/hq:bootstrap`; it does not need to be synced per commit, and a diff against the template during active development is expected and acceptable.
+The workflow rule is a single file: **`plugin/v2/rules/workflow.md`**. This is the plugin-internal source of truth — each `/hq:*` command reads it on invocation. There is no copy, no distribution step, and no consumer-side build artifact: editing this file is the change.
 
 ## Language Policy
 

@@ -43,7 +43,8 @@ Set each to `in_progress` when starting and `completed` when done.
 
 - Branch: !`git branch --show-current 2>/dev/null || echo "(detached)"`
 - Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
-- Workflow rule exists: !`test -f .claude/rules/workflow.local.md && echo "yes" || echo "no"`
+
+**`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this command starts so all subsequent phases have the rule available. All `hq:workflow § <name>` citations below refer to sections of that file.
 
 ## Phase 1: Load `hq:task` (optional)
 
@@ -173,7 +174,7 @@ Pass to the agent:
 - `hq:task` issue content (title + body) — parented mode only.
 - Supplementary context from the user — parented mode only.
 - The **Brainstorm Recap** produced at the end of Phase 2 — the agent emits `Problem` / `Editable surface` / `Read-only surface` / `Impact` / `Core decision` / `Constraints` verbatim under `## Plan Sketch`, uses `Primary acceptance (draft)` as the `[auto] [primary]` item, uses `Plan grain (draft)` to size `## Plan`, and treats `Findings` as working material (not surfaced).
-- **Language directive** — plan body content (`## Plan Sketch` prose, Impact table cells, `## Plan` step descriptions, `## Acceptance` conditions) MUST be in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan Sketch`, `## Plan`, `## Acceptance`, `[auto]`, `[manual]`, `[primary]`, field labels like `**Problem**` / `**Editable surface**` / `**Read-only surface**` / `**Impact**` / `**Core decision**` / `**Constraints**`, table column names `Direction` / `Surface` / `Kind` / `Note`, `Direction` values `Add` / `Update` / `Delete` / `Contradict` / `Downstream`) MUST stay in English. See `.claude/rules/workflow.local.md` § Language.
+- **Language directive** — plan body content (`## Plan Sketch` prose, Impact table cells, `## Plan` step descriptions, `## Acceptance` conditions) MUST be in the current conversation language. Workflow markers and prescribed headings (`Parent: #N`, `## Plan Sketch`, `## Plan`, `## Acceptance`, `[auto]`, `[manual]`, `[primary]`, field labels like `**Problem**` / `**Editable surface**` / `**Read-only surface**` / `**Impact**` / `**Core decision**` / `**Constraints**`, table column names `Direction` / `Surface` / `Kind` / `Note`, `Direction` values `Add` / `Update` / `Delete` / `Contradict` / `Downstream`) MUST stay in English. See `hq:workflow` § Language.
 - **Anti-filler directive** — optional subfields (`Constraints`, `Change Map`) are omitted entirely when genuinely empty. No `_None._`, no padded prose. The `**Impact**` table drops rows for unused `Direction` values. If a required subfield (`Problem`, `Editable surface`, `Read-only surface`, `Core decision`, the `[auto] [primary]` item) would be empty, the brainstorm did not converge — return control to Phase 2 rather than emitting a placeholder.
 - **Standalone-mode directive** — when the mode is `standalone`, the agent MUST NOT emit the `Parent: #N` line. `## Plan Sketch` is populated normally with all required subfields; standalone mode does not relax any requirement (the only effect is omitting the `Parent:` line).
 - **`## Plan` granularity rule** — ideal 1-5 items, upper bound 10. Each item is a **single meaningful commit unit** that reads independently in `git log`. If two consecutive items edit the same file in the same editing session, they are one item. If an item would produce a half-working intermediate state, it is split wrong — merge upward. Past 10 items is a drafting defect to fix, not a ceiling to plan up to.
@@ -259,7 +260,7 @@ Each Acceptance item should be a single, concrete, verifiable criterion — not 
 
 Fully autonomous from here. Do not pause for user input unless an error occurs. Issue registration branches on the mode decided in Phase 1 — parented and standalone differ on `Parent:` emission, milestone/project inheritance, and sub-issue registration. The steps below spell out each mode inline.
 
-1. **Compose plan title** following the naming convention in `.claude/rules/workflow.local.md`:
+1. **Compose plan title** following the naming convention in `hq:workflow` § Naming Conventions:
    - Format: `<type>(plan): <implementation approach>`
    - Parented mode: `<type>` is derived from the `hq:task` title type (e.g., if `hq:task` is `feat: ...`, plan is `feat(plan): ...`).
    - Standalone mode: `<type>` is derived from the brainstorm outcome. If none of `feat` / `fix` / `docs` / `refactor` / `chore` / `test` clearly apply, default to `feat`.
@@ -283,7 +284,7 @@ Fully autonomous from here. Do not pause for user input unless an error occurs. 
    ```
    In standalone mode, **skip this step entirely** — there is no parent issue.
 
-4. **Label creation** — create any missing labels lazily (see workflow.local.md Issue Hierarchy section). Applies to both modes.
+4. **Label creation** — create any missing labels lazily (see `hq:workflow` § Issue Hierarchy). Applies to both modes.
 
 ## Phase 5: Report
 

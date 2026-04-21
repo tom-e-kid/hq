@@ -37,9 +37,8 @@ Set each to `in_progress` when starting and `completed` when done. If a phase is
 
 - Branch: !`git branch --show-current 2>/dev/null || echo "(detached)"`
 - Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
-- Workflow rule exists: !`test -f .claude/rules/workflow.local.md && echo "yes" || echo "no"`
 
-**`hq:workflow`** — shorthand for `.claude/rules/workflow.local.md`. Canonical definition in `hq:workflow § Terminology`. All `hq:workflow § <name>` citations below refer to sections of that file.
+**`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Canonical definition in `hq:workflow § Terminology`. All `hq:workflow § <name>` citations below refer to sections of that file. Read it with the Read tool when this command starts (Phase 1) so all subsequent phases have the rule available.
 
 ## Settings
 
@@ -81,7 +80,7 @@ existing_branch=$(bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/find-plan-branch
    - `git checkout <existing_branch>` (let git handle any uncommitted changes in the caller's working tree — if checkout fails, **ABORT** per Stop Policy with git's error verbatim)
    - Run `plan-cache-pull.sh <plan>` to refresh the cache (checkpoint: Pull)
    - If the refreshed body differs from the prior cache, print a short unified-diff summary as an advisory note (do not stop)
-   - **Read `hq:workflow`** (`.claude/rules/workflow.local.md`) — auto-resume skips Phase 3, so load the rule file here to have Feedback Loop, etc. available
+   - **Read `hq:workflow`** (`${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md`) — auto-resume skips Phase 3, so load the rule file here to have Feedback Loop, etc. available
    - Determine which phase to resume from by inspecting the cache (see "Resume Phase Selection" below)
    - Mark skipped progress tracking phases as completed
 
@@ -147,7 +146,7 @@ Keep the plan payload (and, in parented mode, the task payload) in conversation 
    ```
    This writes the canonical working copy to `.hq/tasks/<branch-dir>/gh/plan.md`.
 6. **Save focus to memory** — a project-type memory entry with branch name, plan number, and — **parented mode only** — source number. In standalone mode, omit the source number from the memory entry (there is no parent `hq:task`).
-7. **Read `hq:workflow`** (`.claude/rules/workflow.local.md`) and follow all applicable rules.
+7. **Read `hq:workflow`** (`${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md`) and follow all applicable rules.
 
 ## Phase 4: Execute
 

@@ -134,8 +134,9 @@ The plugin is designed to **leave no trace in the target repository**. All plugi
 
 **Never committed** (gitignored via `**/*.local.*` or `.hq/`):
 - `.claude/settings.local.json` — permissions and attribution config
-- `.claude/rules/workflow.local.md` — workflow rules (auto-loaded by Claude Code as a rule, but not tracked in git)
 - `.hq/` — working directory for tasks, feedbacks, and reports
+
+The workflow rule itself lives at `plugin/v2/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command. Nothing is copied into the consumer project.
 
 #### Bootstrap (`/bootstrap`)
 
@@ -146,8 +147,9 @@ Run once when initializing a new project. Pass `agents.md` as argument to also i
 | `CLAUDE.md` | Create if missing | Fill template with project info |
 | `AGENTS.md` | Create if missing | **Only when `agents.md` argument is given** |
 | `.claude/settings.local.json` | Deep-merge | Add missing keys from template + auto-detected platform permissions |
-| `.claude/rules/workflow.local.md` | Always overwrite | Template is source of truth — updates expected |
 | `.gitignore` | Append if missing | Adds `**/*.local.*` and `.hq/` entries |
+
+> **Migration note**: earlier versions of `/hq:bootstrap` also installed a project-local copy of the workflow rule under `.claude/rules/`. The rule now lives at `plugin/v2/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command, so re-running `/hq:bootstrap` no longer touches the consumer's `.claude/rules/`. If your project has an existing copy under `.claude/rules/` from a prior bootstrap, it is now stale and can be deleted manually — `/hq:*` commands ignore it.
 
 **Platform detection for settings.local.json:**
 
