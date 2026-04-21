@@ -337,38 +337,6 @@ The following structural elements of the PR body are invariants of the HQ workfl
 
 A newly bootstrapped repository should understand these rules from this section alone — `.hq/pr.md` overrides are applied on top, never in place of, the invariants above.
 
-## Acceptance Execution
-
-Verifies the `hq:plan` is complete — that the implementation satisfies every `[auto]` item in the `## Acceptance` section. This is the primary completion gate of an `hq:plan`.
-
-Acceptance is a **sweep-only** step for the caller — it verifies; it does not fix in place. Fixing is the caller's implementation phase. For `/hq:start`, this is the Phase 4 ↔ Phase 5 loopback (see its § Phase 4 and § Phase 5). The separation makes root-cause analysis easier: a batch of failures often points to a shared cause that is obvious only when all failures are visible at once.
-
-Sweep steps:
-
-1. For each unchecked `[auto]` item, execute the check autonomously. Kind depends on the item:
-   - Shell command, test run, type check, build
-   - API / file / directory check
-   - Browser automation via `/hq:e2e-web` for navigation, URL assertion, element/text presence, form submit, DOM state
-2. **On pass**: toggle the checkbox via `plan-check-item.sh` (cache only; 1 tool call = 1 item — see 1-by-1 toggle rule below).
-3. **On fail**: leave the checkbox as `[ ]` and record the failure summary for the caller. Do NOT fix in this step.
-
-### 1-by-1 toggle rule (batch toggle prohibited)
-
-Process each `[auto]` item **sequentially**, one tool call per item. Batch toggling multiple checkboxes in a single `plan-check-item.sh` invocation (or in a single compound bash line) is forbidden — it trips the integrity hook, which treats multi-toggle activity without per-item FB evidence as a state-laundering signal.
-
-Per-item sequence:
-
-1. **Classify** — determine the outcome: `pass` / `retry-possible` / `pre-existing` / `deferred` / `deliberate` / `partial-verification`.
-2. **FB (if applicable)** — for any outcome other than `pass`, write or reference an FB file under `.hq/tasks/<branch-dir>/feedbacks/`. Populate the FB frontmatter `covers_acceptance` field with a unique substring of the acceptance item it covers (see `## Feedback Loop`).
-3. **Toggle** — call `plan-check-item.sh "<unique substring of the item>"` as a **single** tool call. Do not chain multiple items in one call.
-4. Proceed to the next item.
-
-After the sweep, the caller decides what to do with failures (loopback to implementation, record FB, escalate, etc.). The caller's retry cap — for `/hq:start`, see its § Settings — governs how many sweep rounds a single item may go through before being demoted to an FB. When that cap is exhausted, the item is converted to an FB and its checkbox is toggled to `[x]` anyway so the final PR gate is not deadlocked by a tracked failure.
-
-`[manual]` items are NOT executed here — they remain unchecked and flow to the PR body's `## Manual Verification` section.
-
-Acceptance must be satisfied (all `[auto]` items `[x]` — either truly passing, or `[x]` with a pending FB) before Quality Review runs. The order is deliberate: confirm the implementation works first, then review quality on a known-working baseline. Reviewing quality before Acceptance wastes effort on code that may not work.
-
 ## Quality Review
 
 Runs after Acceptance is satisfied. Verifies the diff meets the project's quality, security, and plan-alignment bar, independent of whether the plan was met functionally. For `/hq:start` this is Phase 6; other callers may schedule it differently but reuse the same three-agent structure.

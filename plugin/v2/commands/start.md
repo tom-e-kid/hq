@@ -192,9 +192,9 @@ Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in 
 
 ### Sweep
 
-Run the **Acceptance Execution** defined in `hq:workflow` § Acceptance Execution:
+For each unchecked `[auto]` item in the plan's `## Acceptance`:
 
-1. For each unchecked `[auto]` item in the plan's `## Acceptance`, execute the check. Browser-oriented checks run via `/hq:e2e-web`.
+1. Execute the check. Browser-oriented checks run via `/hq:e2e-web`.
 2. **On pass**: toggle the cache checkbox via `plan-check-item.sh` (1 tool call = 1 item — see 1-by-1 toggle rule below).
 3. **On fail**: leave the checkbox as `[ ]` and record the failure summary in conversation context (no FB yet).
 4. Track a **sweep counter per item** — how many times this item has cycled through the Phase 4 → Phase 5 loop.
@@ -212,7 +212,7 @@ The sequence per `[auto]` item:
 3. **Toggle** — call `plan-check-item.sh "<unique substring of the item>"` as a **single** tool call. Do not chain multiple items in one call.
 4. Proceed to the next item.
 
-This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and keeps the integrity hook quiet. See `hq:workflow` § Acceptance Execution for the shared rule.
+This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and keeps the integrity hook quiet.
 
 ### After the sweep
 
