@@ -39,6 +39,8 @@ This skill has two modes. `.hq/pr.md` overrides apply differently in each:
 - **Standalone** (user invokes `/pr` directly): the skill composes the full PR body from git + session context. `.hq/pr.md` overrides apply to the allowed scope above during composition. Invariants are still enforced.
 - **From `/hq:start`** (Phase 7 PR Creation delegation): the caller has already assembled the PR body, including `## Manual Verification` and `## Known Issues` sections and the `Closes/Refs` trailer. The prepared body is treated as **immutable** — `.hq/pr.md` may influence **only** the title line; it MUST NOT rewrite, reformat, or strip any section of the prepared body. The skill's role in this mode is execution (push branch, call `gh pr create` with the right flags), not composition.
 
+**`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this skill starts so the body composer (Standalone mode) and the trailer / label / inheritance Invariants have PR Body Structure, Naming Conventions, Issue Hierarchy, etc. available. From `/hq:start` mode the rule was already loaded by the caller, but a defensive Read is harmless. All `hq:workflow § <name>` citations refer to sections of that file.
+
 ## Context
 
 - Branch: !`git rev-parse --abbrev-ref HEAD`
