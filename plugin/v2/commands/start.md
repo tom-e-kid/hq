@@ -306,10 +306,22 @@ Phase 6 Steps 1–3 **supersede** the three-step outline in `hq:workflow` § Qua
 
 ### Step 3: Process FBs
 
-**Per-FB handling** — the FB retry cap (§ Settings) is applied **per FB independently**. FB X's failed retries do not consume FB Y's budget. For each FB:
+Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these are the only Phase 6 agents that write FB files). `security-scanner` findings live in its scan report only — the root agent reads the report, decides what is actionable, and either applies a fix inline (same per-FB rules below, but the "re-run" step consults the scan report rather than re-running the agent) or leaves the residual for human judgment at PR review.
+
+**Per-FB independence** — the FB retry cap (§ Settings) is applied **per FB in isolation**. FB X's failed retries do not consume FB Y's budget. **Cross-agent regression is not re-verified** in Phase 6 — only the originating agent is re-run to confirm the FB it raised is gone. Regressions introduced into a sibling agent's scope are accepted as a known trade-off (trading token cost for breadth); the PR review and `/hq:triage` step are the safety net.
+
+For each FB:
 
 1. **Classify the FB** — is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
-2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times: apply a fix, create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy, re-run the originating agent to verify this FB is gone. Exit the loop as soon as the FB clears. When the cap is exhausted without success, leave the FB pending and move on to the next FB — pending FBs surface later in the PR's `## Known Issues`. If the cap is `0`, skip the loop and leave the FB pending immediately.
+2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times:
+   1. Apply a fix.
+   2. Run `format` and `build` (`hq:workflow` § Before Commit).
+   3. Create a `fix: <FB subject>` commit per `hq:workflow` § Commit Policy.
+   4. **Re-run the originating agent only** — the single agent that wrote this FB. Do not re-run the full Phase 6 agent set; cross-agent regression is not a Phase 6 concern (see Per-FB independence above).
+   5. If the FB is gone from the re-run output, move the FB file to `feedbacks/done/` and exit the loop.
+   6. Otherwise, continue the loop up to the cap.
+
+   When the cap is exhausted without success, leave the FB pending and move on to the next FB — pending FBs surface later in the PR's `## Known Issues`. If the cap is `0`, skip the loop and leave the FB pending immediately.
 3. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 6. Leave them pending (continue-report per Stop Policy). They flow straight into the PR's `## Known Issues` at Phase 7.
 
 Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
