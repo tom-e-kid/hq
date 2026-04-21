@@ -57,7 +57,7 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
   - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
 
-This rule applies to every skill and command that generates Issue or PR content — `/hq:draft` (Plan agent output), `/hq:start` (fallback drafting), and the `pr` skill.
+This rule applies to every skill and command that generates Issue or PR content — `/hq:draft`, `/hq:start` (fallback drafting), and the `pr` skill.
 
 ## Issue Hierarchy
 
