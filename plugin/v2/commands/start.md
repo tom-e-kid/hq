@@ -366,7 +366,7 @@ Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these a
 
 1. Read the Settings-resolved default `fix-threshold` (§ Settings). Call this value `DEFAULT`. All comparisons and fallbacks below use `DEFAULT` — do not re-state the literal severity by name, so that changing § Settings automatically propagates here.
 2. Read `.hq/tasks/<branch-dir>/gh/plan.md` and locate the `**Quality review policy**` block inside `## Plan Sketch`. If absent, use `fix-threshold := DEFAULT`.
-3. If present, parse the `- fix-threshold: <value>` bullet. Accept one of `Low` / `Medium` / `High` / `Critical` (case-sensitive match).
+3. If present, parse the `- fix-threshold: <value>` bullet. Accept only one of `Low` / `Medium` / `High` / `Critical` (**case-sensitive exact match**). If the parsed value is **not** one of the four literal strings (typo like `Hight`, wrong case like `medium`, or any other token), print a warning naming the offending value and the source (`## Plan Sketch § **Quality review policy**`), then fall back to `fix-threshold := DEFAULT` and skip step 4. Do not ABORT.
 4. **Reject relaxation** — compare the parsed value against `DEFAULT` using severity ordering `Critical > High > Medium > Low`. If the parsed value is **stricter than or equal to** `DEFAULT`, accept it as `fix-threshold`. If **relaxed** (parsed > `DEFAULT`), print a warning naming the offending value and the source (`## Plan Sketch § **Quality review policy**`), then fall back to `fix-threshold := DEFAULT`. Do not ABORT.
 5. Hold `fix-threshold` in conversation state for the duration of Step 3.
 
