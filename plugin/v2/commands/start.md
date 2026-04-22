@@ -254,6 +254,8 @@ If the retry cap is `0`, the first sweep's failures go straight to FB + `[x]` wi
 
 **`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (`[auto] [primary]`), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 7 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 8 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
 
+**`[primary]` deferred — escape hatch sibling.** When the plan carries a `[manual] [primary]` item (`hq:workflow § #### [manual] [primary] escape hatch`), the Phase 5 sweep does not execute it — same rule as any `[manual]` item, the sweep skips `[manual]`. Do NOT convert it into a failure or an FB; it has not failed, it is **deferred** to reviewer judgment at PR time. Phase 7 gate enforces the compensating controls (`## Primary Verification (manual)` section presence + `hq:manual` label); final pass/fail judgment belongs to the PR reviewer. Phase 8 (Report) MUST surface this item as **`[primary deferred]`** — the sibling notice to `[primary failure]` — so the user sees immediately that the plan's single most important signal is pending reviewer review, not failed.
+
 Acceptance failures are treated as **all actionable** (unlike Phase 6 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
 
 Running Acceptance **before** Quality Review is intentional: confirm the implementation meets the plan first, then review quality on a known-working baseline.
@@ -389,12 +391,15 @@ Before creating the PR, verify:
 - All items in `## Plan` are `[x]` — **required**
 - All `[auto]` items in `## Acceptance` are `[x]` — **required**
 - Working tree is clean — `git status --short` returns empty
+- **`[manual] [primary]` compensating controls** *(required only when the plan has a `[manual] [primary]` item — escape hatch per `hq:workflow § #### [manual] [primary] escape hatch`)*:
+  - The PR body contains a `## Primary Verification (manual)` section populated with the primary item verbatim, an evidence link (screenshot / video), and a reviewer checklist of ≥3 concrete observations. Missing or incomplete → ABORT and surface the gap.
+  - The `pr` skill applies the `hq:manual` label in addition to `hq:pr`.
 
-If any of the first two fail, ABORT per Stop Policy. If the working tree is dirty, create a `chore: residual changes prior to PR` commit to absorb the leftovers and continue — this is a safety net for upstream Commit Policy slips, not an invitation to skip commits during earlier phases.
+If any of the first two fail, ABORT per Stop Policy. If the working tree is dirty, create a `chore: residual changes prior to PR` commit to absorb the leftovers and continue — this is a safety net for upstream Commit Policy slips, not an invitation to skip commits during earlier phases. If the `[manual] [primary]` compensating-controls check fails, ABORT — the escape hatch's rigor rests on these controls; shipping without them silently degrades the primary signal.
 
 ### Assemble PR Body & Escalate FBs
 
-Build the body per `hq:workflow` § PR Body Structure. Copy unchecked `[manual]` items from Acceptance into `## Manual Verification` verbatim. For each pending FB under `.hq/tasks/<branch-dir>/feedbacks/`, list its title + brief description under `## Known Issues` **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Omit empty sections.
+Build the body per `hq:workflow` § PR Body Structure. When the plan carries a `[manual] [primary]` item (escape hatch), assemble `## Primary Verification (manual)`: copy the primary item verbatim, add an evidence link placeholder for screenshot / video (the reviewer fills it in during PR review if the executor could not attach it from the run), and list a reviewer checklist of ≥3 observations decomposing the primary's single observable into concrete verifiable parts. Copy remaining unchecked `[manual]` items (excluding the `[manual] [primary]` item, which lives in `## Primary Verification (manual)`) from Acceptance into `## Manual Verification` verbatim. For each pending FB under `.hq/tasks/<branch-dir>/feedbacks/`, list its title + brief description under `## Known Issues` **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Omit empty sections.
 
 The trailer is mode-dependent (per `hq:workflow` § PR Body Structure § Invariants):
 
@@ -424,6 +429,7 @@ Summarize:
 - **Branch**: name
 - **Key changes**: brief bullet list
 - **Verification**: summaries from every Phase 6 reviewer that ran per `## Diff Classification` (code-reviewer and integrity-checker always; security-scanner on `code` / `mixed` diffs)
+- **Primary (manual, deferred)** *(only when the plan has `[manual] [primary]` — escape hatch)*: the primary item verbatim, flagged as **`[primary deferred]`** — pending reviewer judgment at PR time. Surface this above `Known Issues` so the user sees it immediately.
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
 - **Known Issues**: count (handle via `/hq:triage <PR>` after review)
