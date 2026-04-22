@@ -16,6 +16,9 @@
 
 1. Run `format` command (see Commands table in CLAUDE.md)
 2. Verify `build` command passes
+3. **Blast-radius self-check** — one pass per unit, not a defect-exhaustion loop:
+   - For each **named thing** (symbol / heading / marker / config key / enum case / label / error code) this change introduces, renames, or shifts the semantics of, `grep` the repo and update every stale reference. LSP find-references is an equivalent substitute where available.
+   - For each procedure (gate / pipeline / phased doc / state machine) this change touches, re-read it top-to-bottom once in **flow order** and verify each step's preconditions still hold against the new state.
 
 ## Terminology
 
