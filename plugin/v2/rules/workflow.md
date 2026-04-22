@@ -238,7 +238,7 @@ In **standalone mode** (no parent `hq:task`), skip sub-issue registration entire
 Every `hq:plan` must:
 
 - Be **self-contained** — it survives session clears (it lives on GitHub, not locally).
-- Define **`## Plan`** (implementation steps) and **`## Acceptance`** (completion criteria, including exactly one `[auto] [primary]` item).
+- Define **`## Plan`** (implementation steps) and **`## Acceptance`** (completion criteria, including exactly one `[primary]` item — `[auto] [primary]` by default, `[manual] [primary]` permitted under the escape hatch).
 - Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English.
 - Keep Acceptance checks atomic and verifiable — each `[auto]` item maps to a single concrete signal (pass/fail).
 
