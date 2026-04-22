@@ -77,7 +77,7 @@ If the invocation provides no `## Plan Sketch` block at all (no plan context ava
 
 **Exceptions** — only two `**Impact**` table directions permit `Grep` / `Glob` to reach paths outside the diff:
 
-- **`Delete` direction residuals** — when an `**Impact**` row has `Direction = Delete`, grep the whole repo for the deleted symbol.
+- **`Delete` direction residuals** — when an `**Impact**` row has `Direction = Delete`, grep the whole repo for the deleted symbol, applying the skill's Diff Scope exclusions (`node_modules/`, build artifacts, lock files) to avoid false positives in generated output.
   - This is the declared-but-missing detector for the `Delete` direction; remaining references after the diff mean the removal was incomplete.
 - **`Downstream` direction targeted reads** — when an `**Impact**` row has `Direction = Downstream`, read / grep the specific paths listed in that row's `Surface` column.
   - `Downstream` permission is narrow: listed paths only, never their siblings or ancestors. Do not expand `Downstream` greps beyond the named surface.
