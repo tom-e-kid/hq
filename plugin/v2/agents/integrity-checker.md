@@ -133,7 +133,7 @@ Use TaskCreate and TaskUpdate to report progress so the parent session can track
      - `Update` — existing surface's contract should change in the diff (args / return / emission rule / accepted values).
      - `Delete` — surface should be removed from the diff; remaining references after the diff are FB-worthy.
      - `Contradict` — signature stable but semantics shifted; look for a diff hunk that plausibly shifts the behavior of the named surface.
-     - `Downstream` — a consumer is listed; the diff should include a coordinated update to that consumer.
+     - `Downstream` — a consumer is any referrer of the edited surface listed in this row; the diff should include a coordinated update to that consumer wherever that reference lives.
    - For each **declared Impact row**: grep the diff (and, for `Downstream` rows, the whole repo respecting exclusions) for evidence consistent with the row's `Direction`. If no evidence, emit a "declared-but-missing" FB carrying the row's `Surface` + `Direction`.
    - For each **token extracted from the diff**: check whether it corresponds to some declared Impact row (any `Direction`), or is excused by `**Read-only surface**`. If neither — diff-but-undeclared FB.
    - If the `**Impact**` table is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (the plan omitted the Impact block; reconciliation cannot proceed). This is a drafting defect, not a silent skip.
