@@ -49,7 +49,7 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
 
 - **English (fixed)**:
   - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `[primary]`, `Closes #<plan>`, `Refs #<task>`
-  - Prescribed headings: `## Plan Sketch`, `## Plan`, `## Acceptance`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - Prescribed headings: `## Plan Sketch`, `## Plan`, `## Acceptance`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
   - File paths, identifiers, code fences, shell commands
 - **Conversation language (content)**:
   - `hq:task` body (background / requirements / scope / success criteria)
