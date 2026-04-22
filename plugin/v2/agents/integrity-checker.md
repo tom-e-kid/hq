@@ -69,6 +69,26 @@ If the caller's prompt does not contain a `## Plan Sketch` block (e.g., you are 
 
 If the invocation provides no `## Plan Sketch` block at all (no plan context available), you cannot perform Impact reconciliation. Exit cleanly with a report noting "no plan context — nothing to reconcile against" and zero FB files. Do NOT substitute a broad downstream-reference sweep; the scope of this agent is reconciliation, and without a plan there is nothing in scope.
 
+## Tool Constraints
+
+`Grep` and `Glob` are powerful, but this agent's narrow scope (§ Scope above) forbids wandering the whole repository in search of general quality problems. The hard-constraints below codify scope at the tool level.
+
+**Default**: `Grep` / `Glob` MUST target paths that appear in the diff (`git diff --name-only <base>...HEAD`) — the canonical input surface for reconciliation.
+
+**Exceptions** — only two `**Impact**` table directions permit `Grep` / `Glob` to reach paths outside the diff:
+
+- **`Delete` direction residuals** — when an `**Impact**` row has `Direction = Delete`, grep the whole repo for the deleted symbol, applying the skill's Diff Scope exclusions (`node_modules/`, build artifacts, lock files) to avoid false positives in generated output.
+  - This is the declared-but-missing detector for the `Delete` direction; remaining references after the diff mean the removal was incomplete.
+- **`Downstream` direction targeted reads** — when an `**Impact**` row has `Direction = Downstream`, read / grep the specific paths listed in that row's `Surface` column.
+  - `Downstream` permission is narrow: listed paths only, never their siblings or ancestors. Do not expand `Downstream` greps beyond the named surface.
+
+Any other `Grep` / `Glob` on paths outside the diff is a scope violation — skip it. `Add`, `Update`, and `Contradict` rows reconcile against the diff alone.
+
+**Surface classification dictionary** — `**Editable surface**` and `**Read-only surface**` are NOT just advisory prose; treat them as a classification dictionary when processing diff tokens:
+- A path in `**Editable surface**` is in-scope by declaration — reconcile against Impact rows normally.
+- A path in `**Read-only surface**` is an explicit carve-out — suppress diff-but-undeclared FBs for that path.
+- A path in neither is diff-but-undeclared — emit the FB.
+
 ## Load Criteria
 
 Read the skill file for severity classification and reporting format:
@@ -113,7 +133,7 @@ Use TaskCreate and TaskUpdate to report progress so the parent session can track
      - `Update` — existing surface's contract should change in the diff (args / return / emission rule / accepted values).
      - `Delete` — surface should be removed from the diff; remaining references after the diff are FB-worthy.
      - `Contradict` — signature stable but semantics shifted; look for a diff hunk that plausibly shifts the behavior of the named surface.
-     - `Downstream` — a consumer is listed; the diff should include a coordinated update to that consumer.
+     - `Downstream` — a consumer is any referrer of the edited surface listed in this row; the diff should include a coordinated update to that consumer wherever that reference lives.
    - For each **declared Impact row**: grep the diff (and, for `Downstream` rows, the whole repo respecting exclusions) for evidence consistent with the row's `Direction`. If no evidence, emit a "declared-but-missing" FB carrying the row's `Surface` + `Direction`.
    - For each **token extracted from the diff**: check whether it corresponds to some declared Impact row (any `Direction`), or is excused by `**Read-only surface**`. If neither — diff-but-undeclared FB.
    - If the `**Impact**` table is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (the plan omitted the Impact block; reconciliation cannot proceed). This is a drafting defect, not a silent skip.

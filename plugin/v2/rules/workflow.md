@@ -157,11 +157,13 @@ Parent: #<hq:task issue number>
   - **`Update`** — an existing surface's contract changes (arguments, return shape, emission rules, accepted values).
   - **`Delete`** — an existing surface is removed.
   - **`Contradict`** — the surface's signature is stable but its semantics shift, potentially breaking existing callers silently. These are the highest-risk entries — flag them clearly in the `Note` column.
-  - **`Downstream`** — a consumer of the edited surface needs a coordinated update (docs, tests, other commands / skills / agents, README, templates, distribution artifacts).
+  - **`Downstream`** — a consumer is any referrer of the edited surface, and needs a coordinated update wherever that reference lives: docs, tests, templates, README, distribution artifacts (in this plugin, also other commands / skills / agents).
 
   Omit rows for directions that do not apply. If all 5 directions would be empty, the change is trivial and the `**Impact**` block itself can be skipped.
+
+  **Downstream check directive** — when the `**Impact**` table contains zero `Downstream` rows, the plan MUST include a line `Downstream: none — confirmed by <specific check>` under `**Constraints**`. Forces the author to name the concrete check that confirmed no consumers exist (e.g., `grep -rn "<identifier>" .`, reading the call-site list), so silent omissions become auditable declarations.
 - **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
-- **`**Constraints**`** *(optional)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
+- **`**Constraints**`** *(optional except when required by the Downstream check directive above)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
 
 ### `## Plan`
 

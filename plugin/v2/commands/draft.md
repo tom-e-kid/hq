@@ -88,9 +88,11 @@ Work interactively with the user to shape the plan. This phase is **read-only in
    - **`Update`** — an existing surface's contract changes (arguments / return shape / emission rules / accepted values).
    - **`Delete`** — an existing surface is removed.
    - **`Contradict`** — signature stable but semantics shift, potentially breaking callers silently. High-risk — flag in the `Note` column.
-   - **`Downstream`** — a consumer of the edited surface needs a coordinated update (other commands / skills / agents, docs, tests, README, templates, distribution artifacts).
+   - **`Downstream`** — a consumer is any referrer of the edited surface, and needs a coordinated update wherever that reference lives: docs, tests, templates, README, distribution artifacts (in this plugin, also other commands / skills / agents).
 
    Omit rows for directions that do not apply. Surface missing rows by asking questions, not by enumerating findings unilaterally.
+
+   **Zero-Downstream prompt**: when the `Impact` table ends with zero `Downstream` rows, ask the user how they confirmed no consumers exist — "grep で確認？ call-site list を読んだ？" — and capture the answer as a `**Constraints**` line `Downstream: none — confirmed by <check>`. This is the directive enforced in `hq:workflow § Plan Sketch § **Impact**`; Phase 2 surfaces it in the dialogue so the Constraints line never gets forgotten at Phase 3 composition time.
 
    **Downstream contract with `integrity-checker`**: the finalized `**Impact**` table is the structured input `/hq:start` Quality Review hands to the `integrity-checker` agent — alongside `**Problem**`, `**Editable surface**`, `**Read-only surface**`, and `**Constraints**`. `**Core decision**` and `**Change Map**` are NOT passed. The agent reconciles each declared row against the diff; both "declared-but-missing" and "diff-but-undeclared" become FBs. Under-populating Impact means under-inspection at review time; over-populating with aspirational rows produces false "declared-but-missing" FBs. Honesty over coverage theater.
 
