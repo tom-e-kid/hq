@@ -90,6 +90,7 @@ Standalone mode (no parent hq:task):
   - `gh label create "hq:doc" --description "HQ informational note / research findings (not a direct task)" --color "5319E7" 2>/dev/null || true`
   - `gh label create "hq:pr" --description "HQ PR associated with an hq:plan" --color "8A2BE2" 2>/dev/null || true`
   - `gh label create "hq:wip" --description "HQ work in progress — automation gate / drafting marker" --color "FFA500" 2>/dev/null || true`
+  - `gh label create "hq:manual" --description "HQ PR marker — plan has [manual] [primary] acceptance (manual primary verification required)" --color "FFD700" 2>/dev/null || true`
 
 ## `hq:plan`
 
@@ -177,11 +178,11 @@ Verifiable completion criteria. Each item carries an execution marker (`[auto]` 
 
 - **`[auto]`** — Claude can verify autonomously: unit / integration tests, type checks, builds, shell / CLI commands, API calls, file / directory / content checks, **and browser automation via `/hq:e2e-web` (Playwright)** — navigation, URL assertions, element / text presence, form submit flows, DOM state. Executed during `/hq:start` Acceptance phase.
 - **`[manual]`** — requires human judgment tools cannot provide. Four conditions qualify: (1) **subjective** — aesthetics, UX feel; (2) **physical device or assistive tech** — touch gestures on real devices, screen reader flow; (3) **live production or sensitive credentials**; (4) **multi-session / cross-tab scenarios** Playwright cannot reliably orchestrate. Carried into the PR body and verified by the user during PR review.
-- **`[primary]`** *(role marker, combines with `[auto]` only)* — **exactly one** `## Acceptance` item per plan MUST carry `[primary]` in addition to `[auto]`. It designates the **single pass/fail signal** that tells the plan succeeded — the one check whose outcome the plan is ultimately judged by. All other `[auto]` items are **secondary** (no explicit marker). `[manual] [primary]` is forbidden — primary must be machine-verifiable so Acceptance Execution can evaluate it deterministically.
+- **`[primary]`** *(role marker, combines with `[auto]` by default)* — **exactly one** `## Acceptance` item per plan MUST carry `[primary]`. It designates the **single pass/fail signal** that tells the plan succeeded — the one check whose outcome the plan is ultimately judged by. All other `[auto]` items are **secondary** (no explicit marker). `[manual] [primary]` is **forbidden by default** — primary must be machine-verifiable so Acceptance Execution can evaluate it deterministically. **Exception**: the `#### [manual] [primary] escape hatch` subsection below permits `[manual] [primary]` under strict conditions (iOS / subjective UX where `[auto]` outcome signal is structurally infeasible) with required compensating controls.
 
 **Choosing `[auto]` vs `[manual]`** — default to `[auto]`. A check is `[manual]` only when one of the four conditions above genuinely applies. **"It happens in a browser" alone does NOT justify `[manual]`** — `/hq:e2e-web` drives browser UI deterministically.
 
-**Choosing primary** — the `[primary]` item answers: *"if this single check passes, is the plan done?"* It must be concrete and verifiable (commit count, file existence, specific string presence, API return code, URL transition, etc.) — not an abstract phrase like "plan works" or "implementation complete". Generic phrases dissolve the primary/secondary distinction and count as a drafting defect.
+**Choosing primary** — the `[primary]` item answers: *"if this single check passes, is the plan done?"* It must be concrete and verifiable (commit count, file existence, specific string presence, API return code, URL transition, etc.) — not an abstract phrase like "plan works" or "implementation complete". Generic phrases dissolve the primary/secondary distinction and count as a drafting defect. When no `[auto]` outcome signal is structurally available (native mobile UI, subjective UX targets), consult the `#### [manual] [primary] escape hatch` subsection below — **never substitute a lazy `[auto]` such as "app launches without crash" for a real outcome signal**.
 
 Examples:
 
@@ -194,8 +195,32 @@ Examples:
 | Back button's icon matches app's visual style | `[manual]` | Subjective / visual |
 | Swipe-back gesture feels responsive on iOS Safari | `[manual]` | Physical device |
 | Two browser tabs each show the correct tenant after login | `[manual]` | Multi-session orchestration |
+| Back gesture swipe dismisses modal with native iOS animation on iPhone 16 simulator | `[manual] [primary]` ✓ | Escape hatch: iOS native UI — `[auto]` outcome infeasible. Observable target named. Requires `## Primary Verification (manual)` evidence block |
+| "App works as intended" | `[manual] [primary]` ✗ | Rejected: abstract phrase, no single observable target. Escape hatch does not rescue lazy wording |
 
 Each Acceptance item is a single concrete signal — not a vague goal.
+
+#### `[manual] [primary]` escape hatch
+
+The default rule forbids `[manual] [primary]`. This subsection is the sole exception. Abuse devalues the primary/secondary distinction — use only when **all three** conditions hold.
+
+**Conditions (all must hold)**:
+
+- **(a) `[auto]` outcome measurement is structurally infeasible** — the plan's domain has no `[auto]` signal that measures the feature's intended outcome. Build success, lint, and unit tests cover structural correctness but not the outcome. Canonical cases: native mobile UI behavior (iOS / Android touch interactions, platform-specific animations), subjective UX or visual design targets, multi-session scenarios outside Playwright's reach. **Web features where `/hq:e2e-web` can drive the outcome do NOT qualify** — the default rule stands.
+- **(b) Primary names exactly one observable event with a concrete target** — the `[manual] [primary]` description MUST name one observable target (UI state name, interaction terminus, visual / sound target, named artifact). Abstract phrases ("works correctly", "user is satisfied", "feature is complete", "app launches") are rejected **even under the escape hatch** — they dissolve the primary/secondary distinction as much as a lazy `[auto]` would.
+- **(c) `**Impact**` table is structurally bounded** — the Impact table declares every populated `Direction` row for the change. Under-declared Impact lets an unmeasured primary hide behind unmeasured scope; the escape hatch requires the surface to be tight.
+
+**Compensating controls (required whenever the escape hatch fires)**:
+
+- **Evidence schema** — the PR body MUST carry a `## Primary Verification (manual)` section populated per the template in `## PR Body Structure` below. A screenshot or video link plus a reviewer checklist of ≥3 concrete observations decomposing the primary's observable into verifiable parts. A bare checkbox is not acceptable.
+- **Label + gate** — the PR MUST carry the `hq:manual` label (applied by the `pr` skill at `/hq:start` Phase 7). The Phase 7 gate MUST assert the `## Primary Verification (manual)` section is present and populated; missing evidence blocks PR creation.
+
+**Runtime behavior**:
+
+- `/hq:start` Phase 5 does NOT execute `[manual] [primary]` (same as other `[manual]` items — the Phase 5 sweep ignores `[manual]`). Phase 8 Report surfaces the item as **`[primary deferred]`** — the sibling notice to `[primary failure]`, signalling the single most important signal is pending reviewer judgment rather than failed.
+- Final pass/fail judgment happens at PR review. Reviewer uses the evidence block to verify the observable was actually achieved; merge approval is the explicit ack gate.
+
+**Rollback path**: if `[manual] [primary]` usage drifts beyond the domains above (e.g., selected for web features where `/hq:e2e-web` was available), tighten condition (a) to enumerate permitted domains explicitly. No automated drift monitor is built into this workflow version — PR review is the safety net.
 
 ### Registration
 
@@ -303,6 +328,14 @@ The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 ## Changes
 - <bullet list>
 
+## Primary Verification (manual)
+- **Primary**: <[manual] [primary] item copied verbatim from plan>
+- **Evidence**: <screenshot / video link>
+- **Reviewer checklist** (≥3 concrete observations decomposing the primary into verifiable parts):
+  - [ ] <observation 1>
+  - [ ] <observation 2>
+  - [ ] <observation 3>
+
 ## Manual Verification
 - [ ] [manual] <unchecked [manual] item copied verbatim from plan.md>
 - [ ] [manual] <another [manual] item>
@@ -317,7 +350,8 @@ Refs #<hq:task>
 
 The `Refs #<hq:task>` line is emitted **only in parented mode** — when the `hq:plan` has a parent `hq:task`. In standalone mode, omit the line entirely; the trailer block then contains only `Closes #<hq:plan>`.
 
-- **`## Manual Verification`** — all unchecked `[manual]` items from the Acceptance section, for user verification during PR review.
+- **`## Primary Verification (manual)`** — present **only** when the plan's `## Acceptance` has a `[manual] [primary]` item (escape hatch). Holds the evidence block required for reviewer to verify the escape hatch primary. Omitted entirely when the plan has `[auto] [primary]`.
+- **`## Manual Verification`** — all unchecked `[manual]` items from the Acceptance section (excluding the `[manual] [primary]` item, which lives in its own section above), for user verification during PR review.
 - **`## Known Issues`** — unresolved issues that `/hq:start` could not auto-fix. **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
 - If either section is empty, omit it.
 
@@ -327,7 +361,9 @@ During PR review, use `/hq:triage <PR>` to process the `Known Issues` entries �
 
 The following structural elements of the PR body are invariants of the HQ workflow. A project's `.hq/pr.md` (consumed by the `pr` skill) MAY customize prose style, language, title conventions, and optional sections — but it MUST NOT suppress, rename, reformat, or otherwise alter any item below:
 
-- **`## Manual Verification` section presence** — whenever unchecked `[manual]` items exist in the plan's `## Acceptance` section at PR creation time, they MUST appear verbatim under a section literally named `## Manual Verification`.
+- **`## Primary Verification (manual)` section presence** — whenever a `[manual] [primary]` item exists in the plan's `## Acceptance` section at PR creation time (escape hatch — see `### ## Acceptance` § `#### [manual] [primary] escape hatch`), the PR body MUST contain a section literally named `## Primary Verification (manual)`. The section MUST include: the primary item verbatim, an evidence link (screenshot / video), and a reviewer checklist of ≥3 concrete observations. A bare checkbox without evidence or checklist is insufficient; the `/hq:start` Phase 7 gate blocks PR creation when this block is missing or incomplete.
+- **`hq:manual` label** — whenever a `[manual] [primary]` item exists in the plan's `## Acceptance` section at PR creation time, the PR MUST carry the `hq:manual` label (in addition to `hq:pr`). Applied by the `pr` skill.
+- **`## Manual Verification` section presence** — whenever unchecked `[manual]` items exist in the plan's `## Acceptance` section at PR creation time (excluding the `[manual] [primary]` item, which is covered by `## Primary Verification (manual)` above), they MUST appear verbatim under a section literally named `## Manual Verification`.
 - **`## Known Issues` section presence** — whenever pending FB files exist at PR creation time, their titles + brief descriptions MUST appear under a section literally named `## Known Issues`.
 - **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
 - **`Closes #<hq:plan>` trailer** — every PR body MUST end with this line.
