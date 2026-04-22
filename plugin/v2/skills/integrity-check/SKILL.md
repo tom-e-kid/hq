@@ -57,7 +57,7 @@ When a plan's `## Plan Sketch` with an `**Impact**` table is available, evaluate
 
 If the `**Impact**` table is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (drafting defect) rather than silently skipping — reconciliation cannot proceed without declared reach.
 
-If the `**Impact**` table is present but contains **zero `Downstream` rows** AND the `## Plan Sketch`'s `**Constraints**` block lacks a line carrying the fixed substring `Downstream: none — confirmed by ` (em dash), emit a "missing Downstream declaration" FB at Medium severity. The sentinel is defined in `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a zero-Downstream claim without the `**Constraints**` sentinel means the draft-time audit was skipped, and the plan reached Phase 6 via GitHub direct-edit or an un-answered `/hq:draft` prompt.
+If the `**Impact**` table is present but contains **zero `Downstream` rows** AND the `## Plan Sketch` does not contain a line carrying the fixed substring `Downstream: none — confirmed by ` (em dash), emit a "missing Downstream declaration" FB at Medium severity. An absent `**Constraints**` block counts the same as a present block with no matching line — the sentinel is absent in both cases. The sentinel is defined in `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a zero-Downstream claim without the sentinel means the draft-time audit was skipped, and the plan reached Phase 6 via GitHub direct-edit or an un-answered `/hq:draft` prompt.
 
 ### 2. Downstream reference integrity (fallback)
 
