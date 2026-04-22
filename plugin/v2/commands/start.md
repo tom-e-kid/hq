@@ -391,11 +391,9 @@ Before creating the PR, verify:
 - All items in `## Plan` are `[x]` — **required**
 - All `[auto]` items in `## Acceptance` are `[x]` — **required**
 - Working tree is clean — `git status --short` returns empty
-- **`[manual] [primary]` compensating controls** *(required only when the plan has a `[manual] [primary]` item — escape hatch per `hq:workflow § #### [manual] [primary] escape hatch`)*:
-  - The PR body contains a `## Primary Verification (manual)` section populated with the primary item verbatim, an evidence link (screenshot / video), and a reviewer checklist of ≥3 concrete observations. Missing or incomplete → ABORT and surface the gap.
-  - The `pr` skill applies the `hq:manual` label in addition to `hq:pr`.
+- **Escape hatch flag** — inspect the plan's `## Acceptance` section for a `[manual] [primary]` item. If present, this plan is in escape-hatch mode; the Assemble PR Body step MUST include `## Primary Verification (manual)` and the `pr` skill delegation MUST apply the `hq:manual` label. Post-assembly verification below confirms both.
 
-If any of the first two fail, ABORT per Stop Policy. If the working tree is dirty, create a `chore: residual changes prior to PR` commit to absorb the leftovers and continue — this is a safety net for upstream Commit Policy slips, not an invitation to skip commits during earlier phases. If the `[manual] [primary]` compensating-controls check fails, ABORT — the escape hatch's rigor rests on these controls; shipping without them silently degrades the primary signal.
+If any of the first two fail, ABORT per Stop Policy. If the working tree is dirty, create a `chore: residual changes prior to PR` commit to absorb the leftovers and continue — this is a safety net for upstream Commit Policy slips, not an invitation to skip commits during earlier phases.
 
 ### Assemble PR Body & Escalate FBs
 
@@ -407,6 +405,15 @@ The trailer is mode-dependent (per `hq:workflow` § PR Body Structure § Invaria
 - **Standalone mode** — trailer has only `Closes #<plan>`; omit the `Refs` line entirely (there is no parent `hq:task`).
 
 Title: `<type>: <description>` — plan title with the `(plan)` scope removed.
+
+### Post-assembly verification (escape hatch only)
+
+When the plan carries a `[manual] [primary]` item (flagged by the Gate above), verify the assembled PR body before proceeding:
+
+- `## Primary Verification (manual)` section exists in the body with (a) the primary item verbatim, (b) an evidence link (screenshot / video — a placeholder is acceptable, the reviewer fills it during PR review), and (c) a reviewer checklist of ≥3 concrete observations.
+- The `pr` skill invocation below will include `--label "hq:manual"` in addition to `--label "hq:pr"`.
+
+If either check fails, ABORT — the escape hatch's rigor rests on these controls; shipping without them silently degrades the primary signal. Do not proceed to the Final Sync Checkpoint.
 
 ### Final Sync Checkpoint (Push)
 
