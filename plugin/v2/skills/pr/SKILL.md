@@ -78,7 +78,7 @@ Before running any step below, determine invocation mode:
 
    - **`## Manual Verification`** — extract unchecked `[manual]` items from the plan's `## Acceptance` section, **excluding** the `[manual] [primary]` item (which lives in `## Primary Verification (manual)` above). If any remain, include them verbatim. If none, omit this section.
 
-   - **`## Known Issues`** — check `.hq/tasks/<branch-dir>/feedbacks/` (pending only, not `done/`). For each FB file, include its title and a brief description. If none, omit this section.
+   - **`## Known Issues`** — check `.hq/tasks/<branch-dir>/feedbacks/` (pending only, not `done/`). For each FB file, read the frontmatter `severity:` field (one of `Critical` / `High` / `Medium` / `Low`) and emit an entry of the form `- [<Severity>]: <title> — <brief description>`. Sort the emitted entries in severity **descending** order (`Critical` → `High` → `Medium` → `Low`); within the same severity preserve insertion order (no secondary sort). The severity prefix and sort order are invariant — see `hq:workflow § ## PR Body Structure § Invariants`. If no pending FBs, omit this section.
 
    **FB files that are surfaced in `## Known Issues` MUST be moved to `feedbacks/done/`** as part of PR creation — the PR body becomes the source of truth for residual issues. Do NOT create `hq:feedback` Issues from this skill. Escalation to `hq:feedback` happens later via `/hq:triage` during PR review.
 
@@ -103,7 +103,11 @@ Before running any step below, determine invocation mode:
    <unchecked [manual] items from the plan's Acceptance section (excluding [manual] [primary]) — omit section if none>
 
    ## Known Issues
-   <escalated FB entries — omit section if none>
+   <!-- One line per pending FB, grouped severity-desc. OMIT severity rows with no matching FB — do NOT emit empty placeholder rows. -->
+   - [Critical]: <title> — <description>
+   - [High]: <title> — <description>
+   - [Medium]: <title> — <description>
+   - [Low]: <title> — <description>
 
    ---
    Closes #<hq:plan issue number>

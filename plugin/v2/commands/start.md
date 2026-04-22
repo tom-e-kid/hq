@@ -49,6 +49,8 @@ Tunables for `/hq:start`. Change the value here and every referencing phase foll
   - **Phase 6 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the **originating agent only** — no cross-agent regression check) before being left pending and escalated to the PR's `## Known Issues`. Per FB independently.
   - Values: `0` skips retries entirely (NG goes straight to FB); `1` permits one retry; `2` is the current default.
 
+- **fix-threshold** = **`Medium`** — Phase 6 severity gate. The **minimum severity** at which a clearly-actionable Quality Review FB enters the fix retry loop (§ Phase 6 Step 3). FBs whose `severity` is strictly below the threshold are left pending and escalated straight to the PR's `## Known Issues` — same outcome as design-level / scope-ambiguous FBs. Severity ordering: `Critical > High > Medium > Low`. At the default setting, FBs at or above the threshold are fixed and strictly below are skipped. Plans MAY override this via `## Plan Sketch § **Quality review policy**` (see `hq:workflow § ## Plan Sketch § **Quality review policy**`) — **strictening only**; a relaxation (a value weaker than the default — i.e. fewer severities fall into the fix loop) is rejected at Phase 6 entry with a warning and falls back to the default declared above.
+
 ## Commit Policy
 
 `/hq:start` commits as work progresses, not at the end. Commits are the unit of work — they make `/hq:start` resume-safe, keep the PR reviewable, and ensure the working tree is clean by the time the PR is created.
@@ -360,10 +362,19 @@ Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these a
 
 **Per-FB independence** — the FB retry cap (§ Settings) is applied **per FB in isolation**. FB X's failed retries do not consume FB Y's budget. **Cross-agent regression is not re-verified** in Phase 6 — only the originating agent is re-run to confirm the FB it raised is gone. Regressions introduced into a sibling agent's scope are accepted as a known trade-off (trading token cost for breadth); the PR review and `/hq:triage` step are the safety net.
 
+**Resolve the severity gate** (once, at the start of Step 3):
+
+1. Read the Settings-resolved default `fix-threshold` (§ Settings). Call this value `DEFAULT`. All comparisons and fallbacks below use `DEFAULT` — do not re-state the literal severity by name, so that changing § Settings automatically propagates here.
+2. Read `.hq/tasks/<branch-dir>/gh/plan.md` and locate the `**Quality review policy**` block inside `## Plan Sketch`. If absent, use `fix-threshold := DEFAULT`.
+3. If present, parse the `- fix-threshold: <value>` bullet. Accept only one of `Low` / `Medium` / `High` / `Critical` (**case-sensitive exact match**). If the parsed value is **not** one of the four literal strings (typo like `Hight`, wrong case like `medium`, or any other token), print a warning naming the offending value and the source (`## Plan Sketch § **Quality review policy**`), then fall back to `fix-threshold := DEFAULT` and skip step 4. Do not ABORT.
+4. **Reject relaxation** — compare the parsed value against `DEFAULT` using severity ordering `Critical > High > Medium > Low`. If the parsed value is **stricter than or equal to** `DEFAULT`, accept it as `fix-threshold`. If **relaxed** (parsed > `DEFAULT`), print a warning naming the offending value and the source (`## Plan Sketch § **Quality review policy**`), then fall back to `fix-threshold := DEFAULT`. Do not ABORT.
+5. Hold `fix-threshold` in conversation state for the duration of Step 3.
+
 For each FB:
 
-1. **Classify the FB** — is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
-2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times:
+1. **Severity gate** — read the FB's `severity:` frontmatter field. If `severity < fix-threshold` (using the ordering `Critical > High > Medium > Low`), **short-circuit**: leave the FB pending (it flows to `## Known Issues` at Phase 7) and move to the next FB. This gate is applied before classification so a below-threshold FB is treated the same as a design-level / scope-ambiguous one — continue-report per Stop Policy.
+2. **Classify the FB** — if the gate passed: is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
+3. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times:
    1. Apply a fix.
    2. Follow `hq:workflow` § Before Commit.
    3. Create a `fix: <FB subject>` commit per § Commit Policy.
@@ -372,7 +383,7 @@ For each FB:
    6. Otherwise, continue the loop up to the cap.
 
    When the cap is exhausted without success, leave the FB pending and move on to the next FB — pending FBs surface later in the PR's `## Known Issues`. If the cap is `0`, skip the loop and leave the FB pending immediately.
-3. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 6. Leave them pending (continue-report per Stop Policy). They flow straight into the PR's `## Known Issues` at Phase 7.
+4. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 6. Leave them pending (continue-report per Stop Policy). They flow straight into the PR's `## Known Issues` at Phase 7.
 
 Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
 
@@ -397,7 +408,7 @@ If any of the first two fail, ABORT per Stop Policy. If the working tree is dirt
 
 ### Assemble PR Body & Escalate FBs
 
-Build the body per `hq:workflow` § PR Body Structure. When the plan carries a `[manual] [primary]` item (escape hatch), assemble `## Primary Verification (manual)`: copy the primary item verbatim, add an evidence link placeholder for screenshot / video (the reviewer fills it in during PR review if the executor could not attach it from the run), and list a reviewer checklist of ≥3 observations decomposing the primary's single observable into concrete verifiable parts. Copy remaining unchecked `[manual]` items (excluding the `[manual] [primary]` item, which lives in `## Primary Verification (manual)`) from Acceptance into `## Manual Verification` verbatim. For each pending FB under `.hq/tasks/<branch-dir>/feedbacks/`, list its title + brief description under `## Known Issues` **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Omit empty sections.
+Build the body per `hq:workflow` § PR Body Structure. When the plan carries a `[manual] [primary]` item (escape hatch), assemble `## Primary Verification (manual)`: copy the primary item verbatim, add an evidence link placeholder for screenshot / video (the reviewer fills it in during PR review if the executor could not attach it from the run), and list a reviewer checklist of ≥3 observations decomposing the primary's single observable into concrete verifiable parts. Copy remaining unchecked `[manual]` items (excluding the `[manual] [primary]` item, which lives in `## Primary Verification (manual)`) from Acceptance into `## Manual Verification` verbatim. For each pending FB under `.hq/tasks/<branch-dir>/feedbacks/`, read the FB's frontmatter `severity:` field and emit a line of the form `- [<Severity>]: <title> — <brief description>` under `## Known Issues` **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Sort the emitted entries in severity **descending** order (`Critical` → `High` → `Medium` → `Low`); within the same severity, preserve insertion order. This severity prefix and sort order are invariant — see `hq:workflow § ## PR Body Structure § Invariants`. Omit empty sections.
 
 The trailer is mode-dependent (per `hq:workflow` § PR Body Structure § Invariants):
 

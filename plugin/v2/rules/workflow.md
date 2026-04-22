@@ -135,6 +135,9 @@ Parent: #<hq:task issue number>
 **Constraints** *(optional)*
 - <hard dependency / prerequisite / assumption>
 
+**Quality review policy** *(optional)*
+- fix-threshold: <Low | Medium | High | Critical>
+
 ## Plan
 - [ ] <implementation step — single meaningful commit unit>
 
@@ -164,6 +167,9 @@ Parent: #<hq:task issue number>
   **Downstream check directive** — when the `**Impact**` table contains zero `Downstream` rows, the plan MUST include a line `Downstream: none — confirmed by <specific check>` under `**Constraints**`. Forces the author to name the concrete check that confirmed no consumers exist (e.g., `grep -rn "<identifier>" .`, reading the call-site list), so silent omissions become auditable declarations.
 - **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
 - **`**Constraints**`** *(optional except when required by the Downstream check directive above)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
+- **`**Quality review policy**`** *(optional)* — per-plan override of `/hq:start` Phase 6 Quality Review behavior. Bullet-list syntax, one setting per line (e.g. `- fix-threshold: Low`). Current settings:
+  - `fix-threshold: <Low | Medium | High | Critical>` — the **minimum severity** at which a clearly-actionable Quality Review FB enters the fix retry loop. FBs strictly below this threshold are left pending and escalated to the PR's `## Known Issues` directly (same handling as design-level / scope-ambiguous FBs). The authoritative default is declared in `/hq:start § Settings § fix-threshold`; at that default, findings below the threshold (typically readability / consistency / cosmetic drift — rarely merge blockers) are skipped so the cost of the fix + agent re-run does not outweigh the benefit, with `/hq:triage` available at PR review for anything the plan author wants to pick up.
+  - **Override direction is asymmetric — strictening only, relaxation forbidden.** Lowering the threshold (e.g. `fix-threshold: Low` — fix everything, including nitpicks) is permitted; raising the threshold (a value weaker than the default, i.e. fewer severities fall into the fix loop) is forbidden because borderline findings can mask correctness / security issues, and relaxing the default invites silent quality decay. `/hq:start` Phase 6 parses this block on entry; a relaxation override is rejected with a warning and the default (from `/hq:start § Settings § fix-threshold`) is applied instead. Omit the block entirely to use the default.
 
 ### `## Plan`
 
@@ -346,8 +352,11 @@ The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 - [ ] [manual] <another [manual] item>
 
 ## Known Issues
-- <unresolved FB title and brief description>
-- <another known issue>
+<!-- Emit one line per pending FB, grouped by severity descending. OMIT severity rows with no matching FB — do NOT emit empty placeholder rows. -->
+- [Critical]: <unresolved FB title> — <brief description>
+- [High]: <unresolved FB title> — <brief description>
+- [Medium]: <unresolved FB title> — <brief description>
+- [Low]: <unresolved FB title> — <brief description>
 
 Closes #<hq:plan>
 Refs #<hq:task>
@@ -370,6 +379,7 @@ The following structural elements of the PR body are invariants of the HQ workfl
 - **`hq:manual` label** — whenever a `[manual] [primary]` item exists in the plan's `## Acceptance` section at PR creation time, the PR MUST carry the `hq:manual` label (in addition to `hq:pr`). Applied by the `pr` skill.
 - **`## Manual Verification` section presence** — whenever unchecked `[manual]` items exist in the plan's `## Acceptance` section at PR creation time (excluding the `[manual] [primary]` item, which is covered by `## Primary Verification (manual)` above), they MUST appear verbatim under a section literally named `## Manual Verification`.
 - **`## Known Issues` section presence** — whenever pending FB files exist at PR creation time, their titles + brief descriptions MUST appear under a section literally named `## Known Issues`.
+- **`## Known Issues` severity prefix and sort order** — every entry in `## Known Issues` MUST carry a severity prefix in the literal form `[<Severity>]:` (one of `[Critical]:` / `[High]:` / `[Medium]:` / `[Low]:`, drawn from the FB file's frontmatter `severity:` field). The severity prefix lets the PR reviewer and `/hq:triage` see finding priority at a glance without opening each FB file. Entries MUST be sorted in severity **descending** order (Critical → High → Medium → Low); within the same severity the ordering is insertion order (no secondary sort). `.hq/pr.md` MUST NOT suppress, rename, reformat, or reorder the prefix.
 - **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
 - **`Closes #<hq:plan>` trailer** — every PR body MUST end with this line.
 - **`Refs #<hq:task>` trailer** — required when the `hq:plan` has a parent `hq:task` (parented mode); the `Refs` line MUST follow `Closes`. Omitted entirely when the plan is in standalone mode (no parent) — the PR body then ends with only `Closes #<hq:plan>`.
