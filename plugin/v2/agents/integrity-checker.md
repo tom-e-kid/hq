@@ -69,6 +69,26 @@ If the caller's prompt does not contain a `## Plan Sketch` block (e.g., you are 
 
 If the invocation provides no `## Plan Sketch` block at all (no plan context available), you cannot perform Impact reconciliation. Exit cleanly with a report noting "no plan context — nothing to reconcile against" and zero FB files. Do NOT substitute a broad downstream-reference sweep; the scope of this agent is reconciliation, and without a plan there is nothing in scope.
 
+## Tool Constraints
+
+`Grep` and `Glob` are powerful, but this agent's narrow scope (§ Scope above) forbids wandering the whole repository in search of general quality problems. The hard-constraints below codify scope at the tool level.
+
+**Default**: `Grep` / `Glob` MUST target paths that appear in the diff (`git diff --name-only <base>...HEAD`) — the canonical input surface for reconciliation.
+
+**Exceptions** — only two `**Impact**` table directions permit `Grep` / `Glob` to reach paths outside the diff:
+
+- **`Delete` direction residuals** — when an `**Impact**` row has `Direction = Delete`, grep the whole repo for the deleted symbol.
+  - This is the declared-but-missing detector for the `Delete` direction; remaining references after the diff mean the removal was incomplete.
+- **`Downstream` direction targeted reads** — when an `**Impact**` row has `Direction = Downstream`, read / grep the specific paths listed in that row's `Surface` column.
+  - `Downstream` permission is narrow: listed paths only, never their siblings or ancestors. Do not expand `Downstream` greps beyond the named surface.
+
+Any other `Grep` / `Glob` on paths outside the diff is a scope violation — skip it. `Add`, `Update`, and `Contradict` rows reconcile against the diff alone.
+
+**Surface classification dictionary** — `**Editable surface**` and `**Read-only surface**` are NOT just advisory prose; treat them as a classification dictionary when processing diff tokens:
+- A path in `**Editable surface**` is in-scope by declaration — reconcile against Impact rows normally.
+- A path in `**Read-only surface**` is an explicit carve-out — suppress diff-but-undeclared FBs for that path.
+- A path in neither is diff-but-undeclared — emit the FB.
+
 ## Load Criteria
 
 Read the skill file for severity classification and reporting format:
