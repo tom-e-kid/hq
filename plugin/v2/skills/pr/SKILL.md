@@ -23,7 +23,9 @@ Projects MAY use `.hq/pr.md` to customize:
 
 The following are invariants of the HQ workflow. `.hq/pr.md` MUST NOT suppress, rename, reformat, or otherwise alter these — they must appear in every PR this skill creates whenever their triggering condition is met:
 
-- **`## Manual Verification` section** — when unchecked `[manual]` items exist in the plan's `## Acceptance` section at PR creation time, they MUST be listed verbatim under a section literally named `## Manual Verification`.
+- **`## Primary Verification (manual)` section** — when a `[manual] [primary]` item exists in the plan's `## Acceptance` section at PR creation time (escape hatch per `hq:workflow § #### [manual] [primary] escape hatch`), the PR body MUST contain a section literally named `## Primary Verification (manual)` populated with: the primary item verbatim, an evidence link (screenshot / video — placeholder acceptable), and a reviewer checklist of ≥3 concrete observations.
+- **`hq:manual` label** — when a `[manual] [primary]` item exists in the plan's `## Acceptance` section at PR creation time, the PR MUST carry the `hq:manual` label in addition to `hq:pr`.
+- **`## Manual Verification` section** — when unchecked `[manual]` items exist in the plan's `## Acceptance` section at PR creation time (excluding the `[manual] [primary]` item, which lives in `## Primary Verification (manual)` above), they MUST be listed verbatim under a section literally named `## Manual Verification`.
 - **`## Known Issues` section** — when pending FB files exist at PR creation time, their titles + brief descriptions MUST be listed under a section literally named `## Known Issues`.
 - **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
 - **`Closes #<plan>` / `Refs #<task>` trailer** — every PR body MUST end with these two lines, pointing at the driving `hq:plan` and source `hq:task`.
@@ -72,7 +74,9 @@ Before running any step below, determine invocation mode:
 
 4. **(Standalone mode only)** **Compose PR body sections from local state**:
 
-   - **`## Manual Verification`** — read the plan body from `.hq/tasks/<branch-dir>/gh/plan.md` and extract unchecked `[manual]` items from its `## Acceptance` section. If any exist, include them verbatim. If none, omit this section.
+   - **`## Primary Verification (manual)`** — read the plan body from `.hq/tasks/<branch-dir>/gh/plan.md` and detect whether its `## Acceptance` section contains a `[manual] [primary]` item (escape hatch per `hq:workflow § #### [manual] [primary] escape hatch`). If yes, include a `## Primary Verification (manual)` section with: the primary item verbatim, an evidence link placeholder (reviewer fills it during PR review if executor cannot attach), and a reviewer checklist of ≥3 concrete observations decomposing the primary's single observable into verifiable parts. If no `[manual] [primary]` exists, omit this section entirely.
+
+   - **`## Manual Verification`** — extract unchecked `[manual]` items from the plan's `## Acceptance` section, **excluding** the `[manual] [primary]` item (which lives in `## Primary Verification (manual)` above). If any remain, include them verbatim. If none, omit this section.
 
    - **`## Known Issues`** — check `.hq/tasks/<branch-dir>/feedbacks/` (pending only, not `done/`). For each FB file, include its title and a brief description. If none, omit this section.
 
@@ -92,8 +96,11 @@ Before running any step below, determine invocation mode:
    ## Notes
    <optional: caveats, design decisions, follow-up items>
 
+   ## Primary Verification (manual)
+   <present only when plan has [manual] [primary] — see Step 4>
+
    ## Manual Verification
-   <unchecked [manual] items from the plan's Acceptance section — omit section if none>
+   <unchecked [manual] items from the plan's Acceptance section (excluding [manual] [primary]) — omit section if none>
 
    ## Known Issues
    <escalated FB entries — omit section if none>
@@ -103,9 +110,9 @@ Before running any step below, determine invocation mode:
    Refs #<hq:task issue number>
    ```
 
-   The `Closes #` and `Refs #` lines are mandatory. They link this PR to the `hq:plan` (auto-closed on merge) and the `hq:task` (cross-referenced). Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty.
+   The `Closes #` and `Refs #` lines are mandatory. They link this PR to the `hq:plan` (auto-closed on merge) and the `hq:task` (cross-referenced). Omit optional sections (`## Notes`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`) when empty.
 
-   **Language**: prose inside `## Summary`, `## Changes`, `## Notes`, and free-form narrative under `## Known Issues` MUST be written in the current conversation language. Markers (`Closes #<plan>`, `Refs #<task>`) and prescribed headings (`## Summary`, `## Changes`, `## Notes`, `## Manual Verification`, `## Known Issues`) MUST stay in English. File paths, identifiers, and code fences stay as-is. See `hq:workflow` § Language.
+   **Language**: prose inside `## Summary`, `## Changes`, `## Notes`, and free-form narrative under `## Known Issues` MUST be written in the current conversation language. Markers (`Closes #<plan>`, `Refs #<task>`) and prescribed headings (`## Summary`, `## Changes`, `## Notes`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`) MUST stay in English. File paths, identifiers, and code fences stay as-is. See `hq:workflow` § Language.
 
 6. **Resolve milestone and project** — read the cached task data from `.hq/tasks/<branch-dir>/gh/task.json`. Extract the milestone title and project title(s) from `projectItems`. If the cache file does not exist, fall back to `gh issue view <source> --json milestone,projectItems`. If a milestone exists, include `--milestone "<milestone>"` when creating the PR. If project(s) exist, include `--project "<project>"` (repeat for each).
 
@@ -115,10 +122,10 @@ Before running any step below, determine invocation mode:
    gh pr create --title "<title>" --body "$(cat <<'EOF'
    <body>
    EOF
-   )" --label "hq:pr" --milestone "<milestone if exists>" --project "<project if exists>"
+   )" --label "hq:pr" [--label "hq:manual"] --milestone "<milestone if exists>" --project "<project if exists>"
    ```
 
-   Always apply the `hq:pr` label. Create it lazily if missing (see `hq:workflow` § Issue Hierarchy).
+   Always apply the `hq:pr` label. Additionally apply `--label "hq:manual"` when the plan has a `[manual] [primary]` item in its `## Acceptance` section (escape hatch — detected during Step 4 composition, or signalled by the caller in `/hq:start` mode). Create any missing labels lazily (see `hq:workflow` § Issue Hierarchy) — `hq:manual` has a lazy-create entry there.
 
 8. **Move escalated FB files to `done/`** — for each FB file referenced in the `## Known Issues` section of the PR body, move the corresponding file from `feedbacks/` to `feedbacks/done/`. This is atomic with PR creation: if the PR is created successfully with those entries in the body, the files MUST move.
 
@@ -137,4 +144,4 @@ Before running any step below, determine invocation mode:
 - Keep the summary focused — details go in the Changes section.
 - **No `hq:feedback` creation** — this skill does NOT create `hq:feedback` Issues. Residual problems flow to the PR body's `## Known Issues` section, to be triaged later via `/hq:triage`.
 - **FB escalation is atomic** — if an FB file's content appears in the PR body, the file MUST be moved to `feedbacks/done/`.
-- **Invariants are not overridable** — see `## Project Overrides` § Invariants. `.hq/pr.md` cannot override the `## Manual Verification` or `## Known Issues` sections, the FB atomic move, the `Closes #<plan>` / `Refs #<task>` trailer, the `hq:pr` label, or milestone / project inheritance. In `/hq:start` invocation mode, the prepared body is immutable and overrides apply only to the title line.
+- **Invariants are not overridable** — see `## Project Overrides` § Invariants. `.hq/pr.md` cannot override the `## Primary Verification (manual)` section (when the plan has `[manual] [primary]`), the `hq:manual` label (same trigger), the `## Manual Verification` or `## Known Issues` sections, the FB atomic move, the `Closes #<plan>` / `Refs #<task>` trailer, the `hq:pr` label, or milestone / project inheritance. In `/hq:start` invocation mode, the prepared body is immutable and overrides apply only to the title line.
