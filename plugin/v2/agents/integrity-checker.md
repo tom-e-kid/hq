@@ -137,6 +137,7 @@ Use TaskCreate and TaskUpdate to report progress so the parent session can track
    - For each **declared Impact row**: grep the diff (and, for `Downstream` rows, the whole repo respecting exclusions) for evidence consistent with the row's `Direction`. If no evidence, emit a "declared-but-missing" FB carrying the row's `Surface` + `Direction`.
    - For each **token extracted from the diff**: check whether it corresponds to some declared Impact row (any `Direction`), or is excused by `**Read-only surface**`. If neither — diff-but-undeclared FB.
    - If the `**Impact**` table is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (the plan omitted the Impact block; reconciliation cannot proceed). This is a drafting defect, not a silent skip.
+   - If the `**Impact**` table is present but contains **zero `Downstream` rows** AND the `## Plan Sketch` does not contain a line with the fixed substring `Downstream: none — confirmed by ` (em dash `—`, U+2014), emit a "missing Downstream declaration" FB at Medium severity. An absent `**Constraints**` block counts the same as a present block with no matching line — the sentinel is absent in both cases. This matches `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a plan reaching Phase 6 without either a `Downstream` row or the sentinel has bypassed the draft-time prompt.
 5. **Save**: write report and FB files (see File Output below).
 
 ## Agent-Specific Rules
