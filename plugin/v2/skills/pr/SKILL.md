@@ -103,6 +103,7 @@ Before running any step below, determine invocation mode:
    <unchecked [manual] items from the plan's Acceptance section (excluding [manual] [primary]) — omit section if none>
 
    ## Known Issues
+   <!-- One line per pending FB, grouped severity-desc. OMIT severity rows with no matching FB — do NOT emit empty placeholder rows. -->
    - [Critical]: <title> — <description>
    - [High]: <title> — <description>
    - [Medium]: <title> — <description>

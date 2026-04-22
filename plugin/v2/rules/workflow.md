@@ -352,6 +352,7 @@ The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 - [ ] [manual] <another [manual] item>
 
 ## Known Issues
+<!-- Emit one line per pending FB, grouped by severity descending. OMIT severity rows with no matching FB — do NOT emit empty placeholder rows. -->
 - [Critical]: <unresolved FB title> — <brief description>
 - [High]: <unresolved FB title> — <brief description>
 - [Medium]: <unresolved FB title> — <brief description>
