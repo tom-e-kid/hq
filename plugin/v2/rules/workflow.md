@@ -163,7 +163,7 @@ Parent: #<hq:task issue number>
 
   **Downstream check directive** — when the `**Impact**` table contains zero `Downstream` rows, the plan MUST include a line `Downstream: none — confirmed by <specific check>` under `**Constraints**`. Forces the author to name the concrete check that confirmed no consumers exist (e.g., `grep -rn "<identifier>" .`, reading the call-site list), so silent omissions become auditable declarations.
 - **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
-- **`**Constraints**`** *(optional)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
+- **`**Constraints**`** *(optional except when required by the Downstream check directive above)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
 
 ### `## Plan`
 
