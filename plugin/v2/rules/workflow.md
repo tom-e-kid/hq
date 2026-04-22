@@ -16,6 +16,9 @@
 
 1. Run `format` command (see Commands table in CLAUDE.md)
 2. Verify `build` command passes
+3. **Blast-radius self-check** — one pass per unit, not a defect-exhaustion loop:
+   - For each **named thing** (symbol / heading / marker / config key / enum case / label / error code) this change introduces, renames, or shifts the semantics of, `grep` the repo and update every stale reference. LSP find-references is an equivalent substitute where available.
+   - For each procedure (gate / pipeline / phased doc / state machine) this change touches, re-read it top-to-bottom once in **flow order** and verify each step's preconditions still hold against the new state.
 
 ## Terminology
 
@@ -396,7 +399,7 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 ### FB Lifecycle (for the root agent after a skill run)
 
 - Read pending FB files and assess each: fix only those that are clearly actionable (bugs, typos, logic errors). Leave design-level or scope-ambiguous FBs as-is for user judgment.
-- Run `format` and `build` commands after fixes
+- Run hq:workflow § Before Commit after fixes
 - Re-run the originating agent only to verify the specific FB is gone. Do NOT re-run the full agent set — cross-agent regression is accepted as a trade-off for review token cost
 - When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
 - When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)

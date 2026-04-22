@@ -109,7 +109,7 @@ Phase 3: Execution Prep (fresh start only)
 │  Save focus to memory
 │
 Phase 4: Execute
-│  Fresh entry: implement each Plan item (format + build + check + commit)
+│  Fresh entry: implement each Plan item (§ Before Commit + check + commit)
 │  Loopback entry (from Phase 5 fails): diagnose + fix across all failures,
 │    `fix: ...` commits, no Plan checkbox changes
 │  End (fresh): plan-cache-push.sh <plan>        [Sync: Push]
