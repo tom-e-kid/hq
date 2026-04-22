@@ -60,7 +60,7 @@ Commit granularity by phase:
 - **Phase 6 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
 - **Phase 7 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
 
-All commits must pass `hq:workflow` § Before Commit (format + build). Do not skip hooks.
+All commits must pass `hq:workflow` § Before Commit (format + build + blast-radius self-check). Do not skip hooks.
 
 If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix:` commit over `--amend` to keep history linear and resume-safe.
 
@@ -187,7 +187,7 @@ Phase 4 runs in two modes depending on how it was entered:
 Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-dir>/gh/plan.md`. For **each** item:
 
 1. Implement the step.
-2. Run `format` and `build` (`hq:workflow` § Before Commit).
+2. Follow `hq:workflow` § Before Commit.
 3. Toggle the checkbox in the cache:
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring of the item>"
@@ -206,7 +206,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 Phase 5 has just recorded one or more failing `[auto]` items and handed them back. For each failing item:
 
 1. Analyze across **all** failing items first — shared root causes (common helper bug, missing migration, etc.) are common. Group them where possible.
-2. Apply the fix(es). Run `format` and `build`.
+2. Apply the fix(es). Follow `hq:workflow` § Before Commit.
 3. Commit per group or per fix with a `fix: ...` subject (Commit Policy).
 4. Do NOT toggle Plan checkboxes — they are already `[x]`. The Phase 5 `[auto]` checkboxes will be toggled by Phase 5 when it re-sweeps.
 
@@ -365,7 +365,7 @@ For each FB:
 1. **Classify the FB** — is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
 2. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times:
    1. Apply a fix.
-   2. Run `format` and `build` (`hq:workflow` § Before Commit).
+   2. Follow `hq:workflow` § Before Commit.
    3. Create a `fix: <FB subject>` commit per § Commit Policy.
    4. **Re-run the originating agent only** — the single agent that wrote this FB. Do not re-run the full Phase 6 agent set; cross-agent regression is not a Phase 6 concern (see Per-FB independence above).
    5. If the FB is gone from the re-run output, move the FB file to `feedbacks/done/` and exit the loop.
