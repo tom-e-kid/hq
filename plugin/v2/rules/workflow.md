@@ -32,6 +32,37 @@
 
 These are plugin-specific terms. Always use the `hq:` prefix to distinguish from general "task", "plan", or "feedback".
 
+## Project Overrides
+
+Every hq command, skill, and agent MAY consult a project-local override file under `.hq/` and layer its content on top of the defaults defined in this rule file. Overrides **augment**, never **replace**, the workflow contract — a consumer's own Invariants (phases, gates, required outputs, structural invariants of generated artifacts such as the PR body) remain in force.
+
+### Override files
+
+| Override file | Consumed by | Typical content |
+|---|---|---|
+| `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. always prefer `[manual]` primary on iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
+| `.hq/start.md` | `/hq:start` | Project-specific execution nuance (commit / build / test notes that the command's phases should layer in) |
+| `.hq/triage.md` | `/hq:triage` | Default disposition guidance per Known-Issue category |
+| `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |
+| `.hq/pr.md` | `pr` skill | PR body prose style, title conventions — scope-limited by the `pr` skill's own Invariants |
+| `.hq/code-review.md` | `code-reviewer` agent | Project-specific review axes |
+| `.hq/security-scan.md` | `security-scanner` agent | Project-specific security patterns |
+| `.hq/integrity-check.md` | `integrity-checker` agent | Project-specific plan / diff reconciliation hints |
+| `.hq/xcodebuild-config.md` | `xcodebuild-config` skill | Xcode build / run commands — managed by the skill itself (not hand-authored) |
+
+Override files are optional. Absence means "apply defaults"; missing files are never errors. Each consumer resolves its override file by a literal `cat .hq/<name>.md` (or equivalent Read) at load time.
+
+### Scope rules
+
+- **Overrides augment, Invariants govern.** A consumer's Invariants are NOT overridable. If override content appears to contradict an Invariant, the Invariant wins; the consumer SHOULD flag the conflict to the user after execution so the override file can be corrected.
+- **Local to the consuming command / skill / agent.** An override file affects only its own consumer. It cannot introduce new phases, gates, or mandatory checks that alter another command's behavior. Cross-command behavior changes go through this rule file, not through overrides.
+- **Per-clone by default.** `.hq/` is included in `.gitignore` by `hq:bootstrap` Task 4, so override files are **per-clone / per-worktree** and NOT team-shared out of the box. Teams that want shared policy either (a) un-ignore specific override files and commit them, or (b) upstream the policy into this rule file. The former is experimental and risks per-member drift; the latter is the canonical path for team-wide rules.
+- **Worktree propagation.** `plugin/v2/skills/worktree-setup/scripts/worktree-setup.sh` copies existing override files into a newly created worktree so the worktree inherits the same behavior without re-setup. New override file names introduced here MUST be added to that script's copy list.
+
+### Language
+
+Override content is free-form prose in the project's working language (typically the user's conversation language). No structural markers are required — the consumer reads the file body as guidance.
+
 ## Naming Conventions
 
 Titles follow **Conventional Commits** style. Recognized `<type>` values: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`.
