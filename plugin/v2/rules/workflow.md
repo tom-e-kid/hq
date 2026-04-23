@@ -122,13 +122,16 @@ Parent: #<hq:task issue number>
 
 **Impact**
 
-| Direction | Surface | Kind | Note |
-|---|---|---|---|
-| Add | <new surface> | <field / marker / section / command / ...> | <short note> |
-| Update | <changed surface> | <...> | <what changes> |
-| Delete | <removed surface> | <...> | <...> |
-| Contradict | <semantically-shifted surface> | <...> | <how existing callers may break silently> |
-| Downstream | <consumer needing coordinated update> | <file / section> | <...> |
+- **Add** — <purpose, or `none`>
+  - `<new surface>` — <short note>
+- **Update** — <purpose, or `none`>
+  - `<changed surface>` — <what changes>
+- **Delete** — <purpose, or `none`>
+  - `<removed surface>` — <note>
+- **Contradict** — <purpose, or `none`>
+  - `<semantically-shifted surface>` — <how existing callers may break silently>
+- **Downstream** — <purpose, or `none — confirmed by <specific check>`>
+  - `<consumer needing coordinated update in this diff>` — <coordinated update>
 
 **Core decision** — <1-2 sentences: the key architectural choice>
 
@@ -155,21 +158,21 @@ Parent: #<hq:task issue number>
 - **`**Change Map**`** *(optional)* — a Mermaid or ASCII figure showing the before/after shape, included only when the structure of the change reads better as a figure than as prose. GitHub renders Mermaid natively in issue bodies. Omit when a figure would be forced.
 - **`**Editable surface**`** *(required)* — files or symbols this plan MAY modify. Declared explicitly so the implementation phase has an unambiguous "may touch" list.
 - **`**Read-only surface**`** *(required)* — files or symbols this plan MUST NOT modify. The symmetric counterpart to `**Editable surface**` — together they close the set of "what's in play" vs "what stays put". Include adjacent surfaces a reader might assume are in scope but are not.
-- **`**Impact**`** *(required whenever any non-trivial surface is touched)* — a 4-column table: `Direction` / `Surface` / `Kind` / `Note`. The `Direction` column uses a closed set of 5 values:
-  - **`Add`** — a new surface is introduced (new function / field / command / config key / section / label / file path).
-  - **`Update`** — an existing surface's contract changes (arguments, return shape, emission rules, accepted values).
+- **`**Impact**`** *(required whenever any non-trivial surface is touched)* — a Direction-keyed sub-list block. Each of the 5 Directions gets its own bullet line; under each, zero or more sub-bullets enumerate the affected surfaces with a short note. The 5 Directions are a **closed set** and every Direction MUST appear — empty Directions are written as `- **<Direction>** — none` so "deliberately empty" is structurally distinguishable from "forgotten". The 5 values:
+  - **`Add`** — a new surface is introduced (new function / field / command / config key / section / label / file path). Boundary: a new section added inside an existing file is `Add` (the *section* is the new surface), not `Update`.
+  - **`Update`** — an existing surface's contract changes (arguments, return shape, emission rules, accepted values). Boundary: rewording a directive without altering accepted inputs / outputs is `Update` only when the rewording carries a semantic load callers might rely on; pure prose polish without semantic shift is not Impact-worthy.
   - **`Delete`** — an existing surface is removed.
-  - **`Contradict`** — the surface's signature is stable but its semantics shift, potentially breaking existing callers silently. These are the highest-risk entries — flag them clearly in the `Note` column.
-  - **`Downstream`** — a consumer is any referrer of the edited surface, and needs a coordinated update wherever that reference lives: docs, tests, templates, README, distribution artifacts (in this plugin, also other commands / skills / agents).
+  - **`Contradict`** — the surface's signature is stable but its semantics shift, potentially breaking existing callers silently. These are the highest-risk entries — flag the breakage mechanism explicitly in the note. Boundary vs `Update`: an `Update` row's signature changes call sites have to *react* to (compile / lint / runtime error if ignored); a `Contradict` row's signature is unchanged so call sites *cannot* react — they continue to compile and run, returning subtly different results. Default to `Contradict` when in doubt; the worst case for `Update` is verbose, the worst case for `Contradict` is silent breakage.
+  - **`Downstream`** — a consumer that requires a **coordinated update *within this diff*** — docs, tests, templates, README, distribution artifacts (in this plugin, also other commands / skills / agents). Strict scope: a consumer that was *investigated* but deliberately not modified does NOT belong here; it belongs in `**Read-only surface**`. The `Downstream coverage hard rule` (below) ties every populated `Downstream` row to a `## Plan` item, so an entry without a matching Plan item is a defect — not a status note about "things I checked".
 
-  Omit rows for directions that do not apply. If all 5 directions would be empty, the change is trivial and the `**Impact**` block itself can be skipped.
+  Empty Directions are written `- **<Direction>** — none`. `Downstream` has a stricter empty form: `- **Downstream** — none — confirmed by <specific check>` (e.g., `confirmed by grep -rn "<identifier>" .` or `confirmed by reading all call sites`). This **Downstream check directive** is structural — the sentinel `Downstream — none — confirmed by ` (em dash `—`, U+2014) lives inside the Impact block itself, not under `**Constraints**`, so reconciliation tools can locate it deterministically.
 
-  **Downstream check directive** — when the `**Impact**` table contains zero `Downstream` rows, the plan MUST include a line `Downstream: none — confirmed by <specific check>` under `**Constraints**`. Forces the author to name the concrete check that confirmed no consumers exist (e.g., `grep -rn "<identifier>" .`, reading the call-site list), so silent omissions become auditable declarations.
+  If every Direction would be `none` (no `confirmed by` check needed for `Downstream` because there is nothing else to declare either), the change is trivial and the `**Impact**` block itself can be skipped.
 
-  **Downstream coverage hard rule** — every populated `Downstream` row in the `**Impact**` table MUST be covered by at least one corresponding `## Plan` item that performs the coordinated update on the named consumer. This is enforced as a **pre-emit check** by `/hq:draft` Phase 4: if a Downstream row has no covering Plan item, the plan is not emitted — either the row is aspirational (remove it) or the Plan is incomplete (return to brainstorm). `/hq:start` Phase 6 `integrity-checker` reconciles declared-but-missing against the diff as a second net.
+  **Downstream coverage hard rule** — every populated `Downstream` sub-bullet in the `**Impact**` block MUST be covered by at least one corresponding `## Plan` item that performs the coordinated update on the named consumer. This is enforced as a **pre-emit check** by `/hq:draft` Phase 4: if a Downstream sub-bullet has no covering Plan item, the plan is not emitted — either the sub-bullet is aspirational / merely-investigated (move it to `**Read-only surface**`) or the Plan is incomplete (return to brainstorm). `/hq:start` Phase 6 `integrity-checker` reconciles declared-but-missing against the diff as a second net.
 
 - **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
-- **`**Constraints**`** *(optional except when required by the Downstream check directive above)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
+- **`**Constraints**`** *(optional)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty. Note: the `Downstream check directive` no longer routes through `**Constraints**` — it lives in the `**Impact**` block itself (see above).
 - **`**Quality review policy**`** *(optional)* — per-plan override of `/hq:start` Phase 6 Quality Review behavior. Bullet-list syntax, one setting per line (e.g. `- fix-threshold: Low`). Current settings:
   - `fix-threshold: <Low | Medium | High | Critical>` — the **minimum severity** at which a clearly-actionable Quality Review FB enters the fix retry loop. FBs strictly below this threshold are left pending and escalated to the PR's `## Known Issues` directly (same handling as design-level / scope-ambiguous FBs). The authoritative default is declared in `/hq:start § Settings § fix-threshold`; at that default, findings below the threshold (typically readability / consistency / cosmetic drift — rarely merge blockers) are skipped so the cost of the fix + agent re-run does not outweigh the benefit, with `/hq:triage` available at PR review for anything the plan author wants to pick up.
   - **Override direction is asymmetric — strictening only, relaxation forbidden.** Lowering the threshold (e.g. `fix-threshold: Low` — fix everything, including nitpicks) is permitted; raising the threshold (a value weaker than the default, i.e. fewer severities fall into the fix loop) is forbidden because borderline findings can mask correctness / security issues, and relaxing the default invites silent quality decay. `/hq:start` Phase 6 parses this block on entry; a relaxation override is rejected with a warning and the default (from `/hq:start § Settings § fix-threshold`) is applied instead. Omit the block entirely to use the default.
