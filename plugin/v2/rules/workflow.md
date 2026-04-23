@@ -65,7 +65,7 @@ This rule applies to every skill and command that generates Issue or PR content 
 ## Issue Hierarchy
 
 ```
-Parented mode:
+With a parent hq:task:
   Milestone (GitHub built-in, optional)
     └── hq:task Issue  — requirement ("what")
           └── hq:plan Issue  — implementation plan ("how")
@@ -73,7 +73,7 @@ Parented mode:
                 │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
                 └── (or escalated during PR review via /hq:triage)
 
-Standalone mode (no parent hq:task):
+Without a parent hq:task:
   hq:plan Issue  — implementation plan ("how"); top-level, requirement captured in ## Plan Sketch / **Problem**
     ├── ← Closes → PR  (no Refs trailer)
     │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
@@ -81,11 +81,11 @@ Standalone mode (no parent hq:task):
 ```
 
 - `hq:task` and `hq:plan` are separate issues (separation of concerns)
-- **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` via `/hq:draft` **standalone mode**. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. In standalone mode, the plan's `## Plan Sketch` / `**Problem**` becomes the sole source of truth for the requirement.
-- `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API) — **parented mode only**. Standalone-mode plans are top-level Issues with no parent.
+- **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` by invoking `/hq:draft` with no issue number. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. When no parent exists, the plan's `## Plan Sketch` / `**Problem**` becomes the sole source of truth for the requirement.
+- `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API) only when a parent `hq:task` exists. Plans without a parent are top-level Issues.
 - PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
-- PR uses `Refs #<hq:task>` to maintain a link to the requirement — **parented mode only**; omitted when the plan has no parent `hq:task`
-- **Traceability inheritance** — if the source `hq:task` has a milestone or project(s), all generated items (`hq:plan`, PR, `hq:feedback`) must inherit them via `--milestone` / `--project` flags. Exception: `hq:feedback` issues do NOT inherit milestones. In standalone mode there is no `hq:task` to inherit from, so milestone / project are left unset.
+- PR uses `Refs #<hq:task>` to maintain a link to the requirement — only when the plan has a parent `hq:task`; omitted when absent
+- **Traceability inheritance** — if the source `hq:task` has a milestone or project(s), all generated items (`hq:plan`, PR, `hq:feedback`) must inherit them via `--milestone` / `--project` flags. Exception: `hq:feedback` issues do NOT inherit milestones. When no parent `hq:task` exists, there is nothing to inherit from, so milestone / project are left unset.
 - Labels are created lazily at first use:
   - `gh label create "hq:task" --description "HQ requirement (what to do)" --color "39FF14" 2>/dev/null || true`
   - `gh label create "hq:plan" --description "HQ implementation plan (how to do it)" --color "00D4FF" 2>/dev/null || true`
@@ -102,7 +102,7 @@ An `hq:plan` issue is the implementation plan that drives work on a branch. The 
 The `hq:plan` body follows a 3-section structure: `## Plan Sketch` + `## Plan` + `## Acceptance`. Emission rules:
 
 - Angle-bracket `<placeholder>` tokens are substituted with real content.
-- The `Parent:` line is emitted only in **parented mode** (when the plan has a parent `hq:task`); omit it entirely in **standalone mode**.
+- The `Parent:` line is emitted only when the plan has a parent `hq:task`; omit it entirely otherwise.
 - Optional fields with no substantive content are **omitted entirely** — no label, no placeholder line. Never write `_None._` / `Not applicable` / padded prose as filler.
 
 ```markdown
@@ -165,6 +165,9 @@ Parent: #<hq:task issue number>
   Omit rows for directions that do not apply. If all 5 directions would be empty, the change is trivial and the `**Impact**` block itself can be skipped.
 
   **Downstream check directive** — when the `**Impact**` table contains zero `Downstream` rows, the plan MUST include a line `Downstream: none — confirmed by <specific check>` under `**Constraints**`. Forces the author to name the concrete check that confirmed no consumers exist (e.g., `grep -rn "<identifier>" .`, reading the call-site list), so silent omissions become auditable declarations.
+
+  **Downstream coverage hard rule** — every populated `Downstream` row in the `**Impact**` table MUST be covered by at least one corresponding `## Plan` item that performs the coordinated update on the named consumer. This is enforced as a **pre-emit check** by `/hq:draft` Phase 4: if a Downstream row has no covering Plan item, the plan is not emitted — either the row is aspirational (remove it) or the Plan is incomplete (return to brainstorm). `/hq:start` Phase 6 `integrity-checker` reconciles declared-but-missing against the diff as a second net.
+
 - **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
 - **`**Constraints**`** *(optional except when required by the Downstream check directive above)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
 - **`**Quality review policy**`** *(optional)* — per-plan override of `/hq:start` Phase 6 Quality Review behavior. Bullet-list syntax, one setting per line (e.g. `- fix-threshold: Low`). Current settings:
@@ -175,13 +178,12 @@ Parent: #<hq:task issue number>
 
 Implementation steps as a checkbox list. Every item must be `[x]` before PR creation.
 
-**Granularity — ideal 1-5 items, upper bound 10.** Each item is a **single meaningful commit unit** — something that reads as one independent change in `git log` afterward:
+**Granularity — single meaningful commit unit.** Each item is something that reads as one independent change in `git log` afterward:
 
 - If two consecutive items would edit the same file in the same editing session, they are **one item**, not two.
 - If an item would produce a half-working intermediate state, it is split wrong — merge upward with its neighbor.
 - 1-item plans are valid (atomic change).
-- 6-10 items is acceptable when the change genuinely spans that many independent concerns.
-- Past 10 items is a drafting defect to fix, not a ceiling to plan up to. 10+ items signals the plan is being written as a step-by-step instruction manual rather than a commit-grain list.
+- No numeric cap on item count. Motive-driven bloat — adding items because "while we're at it" rather than because the change genuinely needs them — is not bounded by a count ceiling; it is challenged by `/hq:draft` Phase 2 Simplicity gatekeeper before the plan is composed. When a brainstorm produces a naturally broad scope, `/hq:draft` Phase 2 raises the question of whether it should split into multiple plans rather than being padded as one.
 
 ### `## Acceptance`
 
@@ -235,14 +237,14 @@ The default rule forbids `[manual] [primary]`. This subsection is the sole excep
 
 ### Registration
 
-After creating an `hq:plan` issue **in parented mode**, register it as a sub-issue of the parent `hq:task`:
+When the `hq:plan` has a parent `hq:task`, register the newly created plan as a sub-issue of that task:
 
 ```bash
 PLAN_ID=$(gh api /repos/{owner}/{repo}/issues/<plan> --jq '.id')
 gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_issue_id="$PLAN_ID"
 ```
 
-In **standalone mode** (no parent `hq:task`), skip sub-issue registration entirely.
+When the plan has no parent `hq:task`, skip sub-issue registration entirely.
 
 ### Self-contained invariant
 
@@ -260,7 +262,7 @@ Every `hq:plan` must:
 1. **`.hq/tasks/<branch-dir>/context.md`** — deterministic file (branch name: `/` → `-`). Agents and skills resolve focus from this file.
 2. **Memory** — a project-type memory entry for cross-session awareness. Lets new sessions know what was in progress.
 
-**context.md format** (frontmatter YAML — no free-text body). In parented mode all keys below are present; `source` and `gh.task` are **omitted entirely in standalone mode** (see field descriptions).
+**context.md format** (frontmatter YAML — no free-text body). When the plan has a parent `hq:task`, all keys below are present; `source` and `gh.task` are **omitted entirely when no parent exists** (see field descriptions).
 
 ```yaml
 ---
@@ -274,13 +276,13 @@ gh:
 ```
 
 - `plan` — **MUST**. The `hq:plan` issue number driving current work.
-- `source` — **optional**. The `hq:task` issue number this plan implements. Present in parented mode (the normal case); **omitted in standalone mode** (plans created via `/hq:draft` without an `hq:task` argument).
+- `source` — **optional**. The `hq:task` issue number this plan implements. Present when the plan has a parent `hq:task` (the normal case); **omitted when no parent exists** (plans created via `/hq:draft` without an `hq:task` argument).
 - `branch` — **MUST**. The original git branch name (with slashes). Lets tooling check out the correct branch given a plan number (the directory name has `/` → `-` transformation which is not reliably invertible).
-- `gh` — paths to the local GitHub issue cache (see Cache-First Principle below). `gh.plan` is always present; `gh.task` is present only when `source` is set (parented mode).
+- `gh` — paths to the local GitHub issue cache (see Cache-First Principle below). `gh.plan` is always present; `gh.task` is present only when `source` is set (i.e. the plan has a parent `hq:task`).
 
 **Lifecycle**:
 
-- **On start** (`/hq:start`): write `.hq/tasks/<branch-dir>/context.md`. Save focus info to your memory (project type) — include the branch name, plan number, and source number (omit source when the plan has no parent `hq:task`).
+- **On start** (`/hq:start`): write `.hq/tasks/<branch-dir>/context.md`. Save focus info to your memory (project type) — include the branch name and plan number, and the source number when the plan has a parent `hq:task` (omit source otherwise).
 - **On status query**: read `.hq/tasks/<branch-dir>/context.md` → read the plan body from `.hq/tasks/<branch-dir>/gh/plan.md`. If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
 - **On completion**: when a PR is created and all Plan items + Acceptance `[auto]` items are checked, update your memory to indicate no active task. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` file is left in place — it travels with the task folder until `/hq:archive` moves it.
 
@@ -296,6 +298,22 @@ When the user gives a **vague instruction** (e.g., "the auth task", "issue 42"),
 If exactly one match: set focus automatically. If multiple matches: show candidates and ask the user to choose. If no match: ask the user to specify the issue number.
 
 **NOTE**: `/hq:start <plan>` does **NOT** use this resolution order. It takes a plan number directly and resolves the work branch via `.hq/tasks/*/context.md` (see `find-plan-branch.sh`), ignoring the current branch and memory.
+
+## Simplicity Criterion
+
+An `hq:plan` must survive a benefit/complexity tradeoff check before it is composed. The canonical formulation, from `autoresearch/program.md` and referenced in `hq:doc #40`:
+
+> All else being equal, simpler is better. A small improvement that adds ugly complexity is not worth it. A 0.001 val_bpb improvement that adds 20 lines of hacky code? Probably not worth it. An improvement of ~0 but much simpler code? Keep.
+
+`hq:doc #40` frames this as a **limit of formal plan constraints**: rules like the `**Impact**` table, granularity guidance, or a hypothetical `## Plan` item count cap stop the *result* of motive-driven bloat (many small "while-we're-at-it" additions) but not the *motive* itself. The motive has to be challenged during drafting, where a proposal is still malleable.
+
+This limit is **mitigated** by `/hq:draft` **Phase 2** Simplicity gatekeeper, which challenges reuse vs new-build, minimum-solution comparison, and spread cost before the plan is composed. Pushback is one-round (Claude raises the concern, the user decides, the tradeoff — if accepted — is recorded in `**Core decision**`). Plans reaching `/hq:start` have already passed this gate.
+
+Consequences for plan structure:
+
+- `## Plan` has **no numeric item cap**. Formal caps target the result (how many items) rather than the motive (why each was added); they were deprecated once the gatekeeper role was introduced. The quality rules on `## Plan` (single meaningful commit unit, same-file consecutive items merge, no half-working intermediate state) remain because they are about the *grain* of each item, not its *necessity*.
+- Naturally broad scopes should be split into multiple `hq:plan`s at the gatekeeper stage rather than padded into one. `/hq:draft` Phase 2 raises this split decision explicitly when the brainstorm produces a large scope.
+- The `**Impact**` table and `[auto] [primary]` 1-per-plan rule are retained as formal constraints; they pass the Simplicity criterion test by being low-burden and tightly targeted at specific gaming patterns (undeclared surface change, success-signal dissolution).
 
 ## Cache-First Principle
 
@@ -362,7 +380,7 @@ Closes #<hq:plan>
 Refs #<hq:task>
 ```
 
-The `Refs #<hq:task>` line is emitted **only in parented mode** — when the `hq:plan` has a parent `hq:task`. In standalone mode, omit the line entirely; the trailer block then contains only `Closes #<hq:plan>`.
+The `Refs #<hq:task>` line is emitted **only when the `hq:plan` has a parent `hq:task`**. When absent, omit the line entirely; the trailer block then contains only `Closes #<hq:plan>`.
 
 - **`## Primary Verification (manual)`** — present **only** when the plan's `## Acceptance` has a `[manual] [primary]` item (escape hatch). Holds the evidence block required for reviewer to verify the escape hatch primary. Omitted entirely when the plan has `[auto] [primary]`.
 - **`## Manual Verification`** — all unchecked `[manual]` items from the Acceptance section (excluding the `[manual] [primary]` item, which lives in its own section above), for user verification during PR review.
@@ -382,9 +400,9 @@ The following structural elements of the PR body are invariants of the HQ workfl
 - **`## Known Issues` severity prefix and sort order** — every entry in `## Known Issues` MUST carry a severity prefix in the literal form `[<Severity>]:` (one of `[Critical]:` / `[High]:` / `[Medium]:` / `[Low]:`, drawn from the FB file's frontmatter `severity:` field). The severity prefix lets the PR reviewer and `/hq:triage` see finding priority at a glance without opening each FB file. Entries MUST be sorted in severity **descending** order (Critical → High → Medium → Low); within the same severity the ordering is insertion order (no secondary sort). `.hq/pr.md` MUST NOT suppress, rename, reformat, or reorder the prefix.
 - **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
 - **`Closes #<hq:plan>` trailer** — every PR body MUST end with this line.
-- **`Refs #<hq:task>` trailer** — required when the `hq:plan` has a parent `hq:task` (parented mode); the `Refs` line MUST follow `Closes`. Omitted entirely when the plan is in standalone mode (no parent) — the PR body then ends with only `Closes #<hq:plan>`.
+- **`Refs #<hq:task>` trailer** — required when the `hq:plan` has a parent `hq:task`; the `Refs` line MUST follow `Closes`. Omitted entirely when no parent exists — the PR body then ends with only `Closes #<hq:plan>`.
 - **`hq:pr` label** — every PR created by the `pr` skill (in either invocation mode — Standalone or via `/hq:start`) MUST carry the `hq:pr` label.
-- **Milestone / project inheritance** *(parented mode only)* — if the source `hq:task` has a milestone or project(s), the PR MUST inherit them via `--milestone` / `--project` flags. In standalone mode (no parent `hq:task`), omit these flags entirely — there is nothing to inherit from.
+- **Milestone / project inheritance** *(only when the plan has a parent `hq:task`)* — if the source `hq:task` has a milestone or project(s), the PR MUST inherit them via `--milestone` / `--project` flags. When no parent exists, omit these flags entirely — there is nothing to inherit from.
 
 A newly bootstrapped repository should understand these rules from this section alone — `.hq/pr.md` overrides are applied on top, never in place of, the invariants above.
 

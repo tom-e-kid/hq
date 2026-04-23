@@ -50,39 +50,44 @@ Response tools (invoked between intervention #2 and merge, at the user's discret
 
 ### `/hq:draft`
 
-Input: `hq:task` Issue number (+ optional supplementary context).
+Input: optional `hq:task` Issue number (+ optional supplementary context). When omitted, the plan is created top-level and the requirement is captured in `## Plan Sketch § **Problem**`.
 
 ```
-Phase 1: Load hq:task
-│  Fetch issue (verify hq:task label, warn on hq:wip)
+Phase 1: Intake (hq:task + pre-session context)
+│  Fetch hq:task when provided (verify label, warn on hq:wip)
+│  Carry pre-session conversation context forward as brainstorm material
 │
-Phase 2: Brainstorm (interactive — user intervention)
-│  Review task, investigate code, align scope
-│  Enumerate Editable / Read-only surface (symmetric declaration)
-│  Fill the Impact table (Direction ∈ {Add, Update, Delete, Contradict, Downstream})
-│  Identify the single [auto] [primary] Acceptance signal
-│  Identify further [auto] vs [manual] Acceptance opportunities
-│  Sketch ## Plan grain (ideal 1-5, upper bound 10)
-│  (wait for user "go")
+Phase 2: Brainstorm + Simplicity gatekeeper (interactive — user intervention)
+│  Exploration-led dialogue; internal checklist tracks required fields
+│  Simplicity gate: reuse vs new-build / minimum-solution / spread cost / marker domain judgment
+│  Plan split judgment (one plan vs several)
+│  Convergence: Problem / Core decision / surfaces / primary w/marker committable
 │
-Phase 3: Compose Plan Body (autonomous)
-│  Orchestrator composes Plan + Acceptance structure inline from the Recap
+Phase 3: Point-check (Claude's decisive recommendation — user intervention)
+│  3-block position presented once:
+│    確実に触る / 調査で当たった隣接範囲 / Primary acceptance (with marker)
+│  User endorses "go" → Phase 4, or raises 違和感 → Phase 2
 │
-Phase 4: Create hq:plan Issue
+Phase 4: Compose plan body + Downstream pre-emit check (autonomous)
+│  Compose body from Phase 2 state + Phase 3 point-check
+│  Pre-emit check: every Impact Downstream row has a covering ## Plan item
+│
+Phase 5: Create hq:plan Issue
 │  gh issue create --label hq:plan
-│  Register as sub-issue of hq:task
-│  Inherit milestone + projects from hq:task
+│  Register as sub-issue, inherit milestone + projects (when a parent hq:task exists)
 │
-Phase 5: Report
+Phase 6: Report
    Issue URL → "edit on GitHub, then /hq:start <plan>"
 ```
 
 **Key decisions**:
 
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
-- The orchestrator composes the exact `## Plan Sketch` + `## Plan` + `## Acceptance` structure inline from the Brainstorm Recap, with exactly one `[auto] [primary]` item in `## Acceptance`.
-- Phase 2 enforces `Editable surface` / `Read-only surface` symmetric declaration and the `**Impact**` table (`Direction` column uses a closed set of 5 values). Each populated Impact row is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 6 quality review.
-- `## Plan` granularity: ideal 1-5 items, upper bound 10 — each item is a single meaningful commit unit. 10+ items is a drafting defect, not a ceiling.
+- The orchestrator composes the exact `## Plan Sketch` + `## Plan` + `## Acceptance` structure inline from Phase 2 conversation state and the Phase 3 point-check, with exactly one `[auto] [primary]` item in `## Acceptance` (or `[manual] [primary]` under the escape hatch).
+- Phase 2 enforces `Editable surface` / `Read-only surface` symmetric declaration and the `**Impact**` table (`Direction` column uses a closed set of 5 values). Each populated Impact row is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 6 quality review. The `Downstream` row → `## Plan` item binding is enforced as a hard pre-emit check in Phase 4 (see `hq:workflow § ## Plan Sketch § **Impact** § Downstream coverage hard rule`).
+- Phase 2 is the mitigation checkpoint for `hq:workflow § Simplicity Criterion` — it challenges benefit/complexity tradeoffs before the plan is composed rather than after.
+- `## Plan` granularity: each item is a single meaningful commit unit. No numeric cap — motive-driven bloat is challenged by the Phase 2 Simplicity gatekeeper, not by a count ceiling.
+- Review surface is the **GitHub Issue** only. The Phase 3 point-check is a one-shot commitment checkpoint, not a Recap review; full plan-body review happens on the Issue after Phase 5.
 - The handoff is intentional — user reviews / edits the `hq:plan` Issue before `/hq:start` is invoked.
 
 ### `/hq:start`
@@ -322,7 +327,7 @@ Parent: #<hq:task issue number>
 Highlights:
 
 - **`## Plan Sketch`** — one scannable section replacing the old `Context` + `Approach` split. `**Editable surface**` / `**Read-only surface**` are both required and symmetric. The `**Impact**` table's `Direction` column is a closed set of 5 values (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`); rows are omitted for directions that do not apply. `**Change Map**` (Mermaid / ASCII figure) and `**Constraints**` are optional — omit entirely when empty.
-- **`## Plan`** — implementation steps. **Ideal 1-5 items, upper bound 10.** Each item is a single meaningful commit unit; adjacent edits to the same file collapse into one item. All must be checked before PR creation.
+- **`## Plan`** — implementation steps. Each item is a single meaningful commit unit; adjacent edits to the same file collapse into one item. No numeric cap — broad scopes are challenged at `/hq:draft` Phase 2 (Simplicity gatekeeper) and typically split into multiple `hq:plan`s rather than packed into one. All must be checked before PR creation.
 - **`## Acceptance`** — completion criteria tagged by execution mode and role:
   - `[auto]` — Claude executes and toggles (unit tests, API calls, file checks, Playwright). Prefer `[auto]`.
   - `[manual]` — flows to PR body for user verification.
@@ -404,4 +409,4 @@ Closes #<hq:plan>
 Refs #<hq:task>
 ```
 
-Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` is mandatory. `Refs` is mandatory **only in parented mode** — in standalone mode (no parent `hq:task`), omit the `Refs` line entirely.
+Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` is mandatory. `Refs` is mandatory **only when the plan has a parent `hq:task`** — when no parent exists, omit the `Refs` line entirely.
