@@ -88,7 +88,7 @@ These are the fields that must be committable before Phase 3. Track them as you 
 
 - `**Problem**` — 1–3 sentences naming the pain and why now.
 - `**Editable surface**` — files / symbols that will definitely be touched.
-- Adjacent surface discovered by investigation — files / symbols investigation surfaces as potentially impacted, for Phase 3's "調査で当たった隣接範囲" block and the final `**Impact**` table's `Downstream` rows.
+- Adjacent surface discovered by investigation — files / symbols investigation surfaces as potentially impacted, for Phase 3's "調査で当たった隣接範囲" block and (after Phase 4 classification) either the final `**Impact**` block's `Downstream` sub-bullets (when the consumer requires a coordinated update in this diff) or `**Read-only surface**` (when it was only investigated).
 - `**Core decision**` — 1–2 sentences on the key architectural choice. Record here any tradeoff accepted after Simplicity gatekeeper pushback.
 - `**Primary acceptance**` with marker (`[auto]` or `[manual]`) — see Primary acceptance convergence below.
 - Plan scope size estimate — is this one plan or better split into several?
@@ -102,7 +102,7 @@ These are the fields that must be committable before Phase 3. Track them as you 
 - **Spread cost** — estimate how many other commands / skills / rules / doc pages a proposal will require conditionals in. High spread count → high Simplicity bar.
 - **`[auto]` / `[manual]` marker — domain judgment by Claude.** The marker on the primary acceptance is a **domain** decision, not a user choice. Pick it based on the plan's domain: web feature drivable by `/hq:e2e-web` → `[auto]`; native iOS / subjective UX / physical device → `[manual]` escape hatch (`hq:workflow § #### [manual] [primary] escape hatch`); doc / config / rule-text → `[auto]` via grep / file-existence. Do not present the marker as a question to the user; commit to it in Phase 3.
 
-  **Before committing `[manual]`, verify all three escape hatch conditions hold** (`hq:workflow § #### [manual] [primary] escape hatch`): (a) `[auto]` outcome measurement is structurally infeasible in this domain — not merely inconvenient; web features that `/hq:e2e-web` can drive do **not** qualify, (b) the primary names exactly one concrete observable target (UI state name, interaction terminus, visual / sound target, named artifact) — abstract phrases are rejected under the escape hatch just as they are under the default, (c) the `**Impact**` table is fully declared (every populated `Direction` row present). If any condition fails, revert to `[auto]`; if `[auto]` is genuinely infeasible but the primary is abstract, continue Phase 2 until condition (b) holds.
+  **Before committing `[manual]`, verify all three escape hatch conditions hold** (`hq:workflow § #### [manual] [primary] escape hatch`): (a) `[auto]` outcome measurement is structurally infeasible in this domain — not merely inconvenient; web features that `/hq:e2e-web` can drive do **not** qualify, (b) the primary names exactly one concrete observable target (UI state name, interaction terminus, visual / sound target, named artifact) — abstract phrases are rejected under the escape hatch just as they are under the default, (c) the `**Impact**` block is fully declared (every Direction line present, populated rows enumerate every affected surface). If any condition fails, revert to `[auto]`; if `[auto]` is genuinely infeasible but the primary is abstract, continue Phase 2 until condition (b) holds.
 - **Plan split judgment** — when the scope emerging from the brainstorm is naturally broad, ask whether it should become **multiple `hq:plan`s** rather than one. No numeric cap — the question is whether the concerns are genuinely independent commit grains.
 
 **Pushback protocol** — raise each gate concern **at most once** per concern. Name the issue, state the tradeoff, let the user decide. Do not keep re-arguing after the user has made the call. Tradeoffs the user accepts after pushback are recorded verbatim in `**Core decision**` (e.g., "A を採用 — B の複雑性を引き受ける、理由: C") so PR reviewers can see the decision was deliberate, not accidental.
@@ -167,38 +167,38 @@ Autonomous from here. Compose the `hq:plan` body directly from Phase 2 conversat
 
 ### Composition rules
 
-- **Language** — plan body prose stays in the **conversation language** (`**Problem**` prose, Impact table cells, `## Plan` step descriptions, `## Acceptance` conditions). Workflow markers and prescribed headings stay in **English** — see `hq:workflow § Language`.
-- **Anti-filler** — optional subfields (`**Change Map**`, `**Constraints**`, unused `Direction` rows) are omitted entirely when genuinely empty. No `_None._`, no padded prose. If a required subfield would be empty, Phase 2 did not converge — return control to Phase 2.
+- **Language** — plan body prose stays in the **conversation language** (`**Problem**` prose, Impact notes, `## Plan` step descriptions, `## Acceptance` conditions). Workflow markers and prescribed headings stay in **English** — see `hq:workflow § Language`.
+- **Anti-filler** — optional subfields (`**Change Map**`, `**Constraints**`) are omitted entirely when genuinely empty. The `**Impact**` block's 5 Direction lines are NOT optional — empty Directions are written `- **<Direction>** — none` (or `- **Downstream** — none — confirmed by <check>`) so "deliberately empty" is structurally distinct from "forgotten". No `_None._`, no padded prose. If a required subfield would be empty, Phase 2 did not converge — return control to Phase 2.
 - **Classify adjacent surface** — for each entry in the Phase 2 "調査で当たった隣接範囲" list (the raw investigation output shown in the Phase 3 point-check), decide one of two outcomes:
-  - **This plan will actively update the consumer** → record as a `Downstream` row in the `**Impact**` table. A covering `## Plan` item is required (the Downstream coverage hard rule below enforces this).
-  - **This plan will deliberately NOT modify the consumer** → record the consumer in `**Read-only surface**`. No Plan item is required; the row is explicitly out of scope.
-  Every adjacent surface row reaches exactly one of these two destinations. A row that lands in neither is a misclassification — do not silently drop findings.
+  - **This plan will actively update the consumer** → record as a `Downstream` sub-bullet in the `**Impact**` block. A covering `## Plan` item is required (the Downstream coverage hard rule below enforces this).
+  - **This plan will deliberately NOT modify the consumer** → record the consumer in `**Read-only surface**`. No Plan item is required; the entry is explicitly out of scope.
+  Every adjacent surface entry reaches exactly one of these two destinations. An entry that lands in neither is a misclassification — do not silently drop findings.
 - **`Parent: #N` line** — emit only when a parent `hq:task` is present; omit the line entirely otherwise.
 - **`## Plan` granularity** — each item is a single meaningful commit unit (`hq:workflow § ## Plan`). No numeric cap. Adjacent edits to the same file in one session collapse into one item; half-working intermediate states are a split defect.
 - **`[primary]` rule** — exactly one `[primary]` item in `## Acceptance`. Default combination is `[auto] [primary]`; `[manual] [primary]` is permitted only when the `hq:workflow § #### [manual] [primary] escape hatch` conditions all hold (structurally infeasible `[auto]` outcome, single named observable target, fully declared `**Impact**`). The marker was chosen by Claude in Phase 2 by domain.
-- **Impact → Plan / Acceptance derivation**:
-  - `Add` row → a `## Plan` item wiring the new surface into every caller, plus a `## Acceptance` item asserting the new surface is reachable (grep / integration-level check).
-  - `Update` row → a `## Plan` item adjusting callers to the new contract, plus a `## Acceptance` item asserting the caller observes the expected behavior (named success state for backward-compat, named error / rejection for intentional breaks).
-  - `Delete` row → a `## Plan` item sweeping downstream references, plus a `## Acceptance` item asserting zero residual mentions.
-  - `Contradict` row → a `## Acceptance` item exercising the existing caller path and asserting the regression-check passes under the new semantics.
-  - `Downstream` row → a `## Plan` item performing the coordinated update on the named consumer, plus a `## Acceptance` item asserting the consumer reflects the new reality.
+- **Impact → Plan / Acceptance derivation** (per populated Direction sub-bullet):
+  - `Add` → a `## Plan` item wiring the new surface into every caller, plus a `## Acceptance` item asserting the new surface is reachable (grep / integration-level check).
+  - `Update` → a `## Plan` item adjusting callers to the new contract, plus a `## Acceptance` item asserting the caller observes the expected behavior (named success state for backward-compat, named error / rejection for intentional breaks).
+  - `Delete` → a `## Plan` item sweeping downstream references, plus a `## Acceptance` item asserting zero residual mentions.
+  - `Contradict` → a `## Acceptance` item exercising the existing caller path and asserting the regression-check passes under the new semantics.
+  - `Downstream` → a `## Plan` item performing the coordinated update on the named consumer, plus a `## Acceptance` item asserting the consumer reflects the new reality.
 
 ### Downstream pre-emit check (hard rule)
 
 Before emitting the Issue, run the hard rule from `hq:workflow § Simplicity Criterion → Downstream coverage hard rule`:
 
-- Enumerate every populated `Downstream` row in the `**Impact**` table.
-- For each row, locate at least one `## Plan` item that performs the coordinated update on the named consumer. Pattern-match on the consumer identifier (file path, symbol name, section header).
-- If a `Downstream` row has no covering `## Plan` item, **do not emit**. Three paths out:
-  1. The row is aspirational (you speculated about a consumer but will not actually touch it) → delete the row.
+- Enumerate every populated `Downstream` sub-bullet in the `**Impact**` block.
+- For each sub-bullet, locate at least one `## Plan` item that performs the coordinated update on the named consumer. Pattern-match on the consumer identifier (file path, symbol name, section header).
+- If a `Downstream` sub-bullet has no covering `## Plan` item, **do not emit**. Three paths out:
+  1. The sub-bullet is aspirational (you speculated about a consumer but will not actually touch it) → delete the sub-bullet.
   2. The Plan is genuinely incomplete → **reset** "Present point-check" from `completed` back to `in_progress` and "Brainstorm + Simplicity gatekeeper" to `in_progress` (both via `TaskUpdate`), return to Phase 2, brainstorm the missing Plan item, then **re-present the Phase 3 point-check with the updated state**, await a fresh "go", and re-enter Phase 4. The reset keeps Progress Tracking consistent with Phase 3's own lifecycle rule for 違和感 loopbacks — without it the UI would show "Present point-check" as `completed` while the phase is actively re-running.
-  3. The row belongs in `**Read-only surface**` (it was investigated and deliberately not modified) → move it there and — when the intent is to record the verification rationale — add a matching `**Constraints**` line.
+  3. The sub-bullet belongs in `**Read-only surface**` (it was investigated and deliberately not modified — the canonical case for the new strict `Downstream` definition) → move it there and — when the intent is to record the verification rationale — add a matching `**Constraints**` line.
 
 Paths 1 and 3 are mechanical reclassifications that do not add new work or new commitments, so they do not require a Phase 3 re-run. Path 2 materially changes the brainstormed plan and therefore always triggers a new Phase 3 point-check per the `Any Phase 2 loopback re-runs Phase 3` rule in `## Rules`.
 
-Only when every `Downstream` row has a covering `## Plan` item may Phase 4 emit.
+Only when every `Downstream` sub-bullet has a covering `## Plan` item may Phase 4 emit.
 
-**Zero-Downstream case (symmetric)** — when the `**Impact**` table contains **zero** `Downstream` rows (after the classification step above), the `**Constraints**` block MUST contain a line of the form `Downstream: none — confirmed by <specific check>` (e.g., `Downstream: none — confirmed by grep -rn "<identifier>" .` or `Downstream: none — confirmed by reading all call sites`). This is the `hq:workflow § ## Plan Sketch § **Impact** § Downstream check directive` — it forces auditable declaration rather than silent omission. If this Constraints line is absent, return to Phase 2, establish the check, then re-present the Phase 3 point-check before re-entering Phase 4.
+**Zero-Downstream case (symmetric)** — when the `**Impact**` block contains **zero** populated `Downstream` sub-bullets (after the classification step above), the `Downstream` Direction line itself MUST take the form `- **Downstream** — none — confirmed by <specific check>` (e.g., `none — confirmed by grep -rn "<identifier>" .` or `none — confirmed by reading all call sites`). This is the `hq:workflow § ## Plan Sketch § **Impact**` Downstream check directive — the sentinel lives inside the Impact block itself (not under `**Constraints**`), so the directive is co-located with the rest of the Direction lines and reconciliation tools can locate it deterministically. If this sentinel is absent, return to Phase 2, establish the check, then re-present the Phase 3 point-check before re-entering Phase 4.
 
 ### Required plan body shape
 
@@ -219,13 +219,16 @@ Parent: #<hq:task issue number>
 
 **Impact**
 
-| Direction | Surface | Kind | Note |
-|---|---|---|---|
-| Add | <new surface> | <kind> | <note> |
-| Update | <changed surface> | <kind> | <what changes> |
-| Delete | <removed surface> | <kind> | <note> |
-| Contradict | <semantically-shifted surface> | <kind> | <how callers may break> |
-| Downstream | <consumer> | <file / section> | <note> |
+- **Add** — <purpose, or `none`>
+  - `<new surface>` — <note>
+- **Update** — <purpose, or `none`>
+  - `<changed surface>` — <what changes>
+- **Delete** — <purpose, or `none`>
+  - `<removed surface>` — <note>
+- **Contradict** — <purpose, or `none`>
+  - `<semantically-shifted surface>` — <how callers may break>
+- **Downstream** — <purpose, or `none — confirmed by <specific check>`>
+  - `<consumer needing coordinated update in this diff>` — <coordinated update>
 
 **Core decision** — <1-2 sentences: key architectural choice + any tradeoff accepted after Simplicity gatekeeper pushback>
 
@@ -246,8 +249,8 @@ Conditional emission:
 
 - `Parent: #<N>` — emit only when a parent `hq:task` exists; otherwise omit.
 - `**Change Map**` — optional; emit only when a figure clarifies more than prose.
-- `**Impact**` rows — drop `Direction` values that do not apply. When every row is empty, the change is trivial and the block can be skipped entirely.
-- `**Constraints**` — optional unless the zero-Downstream directive applies (`hq:workflow § ## Plan Sketch § **Impact**`).
+- `**Impact**` Directions — all 5 lines are emitted; empty Directions write `- **<Direction>** — none` (or, for `Downstream`, `- **Downstream** — none — confirmed by <check>`). When every Direction would be `none` and `Downstream` has nothing else to declare, the change is trivial and the block can be skipped entirely.
+- `**Constraints**` — optional. The zero-Downstream sentinel lives inside the `**Impact**` block now, not here.
 
 Marker rules (default path):
 
