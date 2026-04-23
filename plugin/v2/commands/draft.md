@@ -191,7 +191,7 @@ Before emitting the Issue, run the hard rule from `hq:workflow § Simplicity Cri
 - For each row, locate at least one `## Plan` item that performs the coordinated update on the named consumer. Pattern-match on the consumer identifier (file path, symbol name, section header).
 - If a `Downstream` row has no covering `## Plan` item, **do not emit**. Three paths out:
   1. The row is aspirational (you speculated about a consumer but will not actually touch it) → delete the row.
-  2. The Plan is genuinely incomplete → return to Phase 2, brainstorm the missing Plan item, then **re-present the Phase 3 point-check with the updated state**, await a fresh "go", and re-enter Phase 4.
+  2. The Plan is genuinely incomplete → **reset** "Present point-check" from `completed` back to `in_progress` and "Brainstorm + Simplicity gatekeeper" to `in_progress` (both via `TaskUpdate`), return to Phase 2, brainstorm the missing Plan item, then **re-present the Phase 3 point-check with the updated state**, await a fresh "go", and re-enter Phase 4. The reset keeps Progress Tracking consistent with Phase 3's own lifecycle rule for 違和感 loopbacks — without it the UI would show "Present point-check" as `completed` while the phase is actively re-running.
   3. The row belongs in `**Read-only surface**` (it was investigated and deliberately not modified) → move it there and — when the intent is to record the verification rationale — add a matching `**Constraints**` line.
 
 Paths 1 and 3 are mechanical reclassifications that do not add new work or new commitments, so they do not require a Phase 3 re-run. Path 2 materially changes the brainstormed plan and therefore always triggers a new Phase 3 point-check per the `Any Phase 2 loopback re-runs Phase 3` rule in `## Rules`.
