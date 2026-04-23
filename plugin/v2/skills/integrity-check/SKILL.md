@@ -46,18 +46,18 @@ From the diff, extract every item that can be referenced from elsewhere. For eac
 
 ## Review Criteria
 
-The baseline criteria below capture the skill's historical three-class model. The `integrity-checker` agent overrides these at runtime with a narrower scope: reconciliation of the `hq:plan` `## Plan Sketch` (especially the `**Impact**` table) against the diff (declared-but-missing / diff-but-undeclared). When invoked interactively via `/integrity-check` without an active plan context, fall back to the three-class model below.
+The baseline criteria below capture the skill's historical three-class model. The `integrity-checker` agent overrides these at runtime with a narrower scope: reconciliation of the `hq:plan` `## Plan Sketch` (especially the `**Impact**` block) against the diff (declared-but-missing / diff-but-undeclared). When invoked interactively via `/integrity-check` without an active plan context, fall back to the three-class model below.
 
 ### 1. Plan / diff reconciliation (primary — agent override)
 
-When a plan's `## Plan Sketch` with an `**Impact**` table is available, evaluate these two failure modes:
+When a plan's `## Plan Sketch` with an `**Impact**` block is available, evaluate these two failure modes:
 
-- **Declared-but-missing** — an `**Impact**` table row lists a surface / consumer / contradiction (`Direction` ∈ {`Add`, `Update`, `Delete`, `Contradict`, `Downstream`}), but the diff shows no corresponding change. Either the diff is incomplete or the Impact row was aspirational.
-- **Diff-but-undeclared** — the diff reaches a surface or consumer that the `**Impact**` table does not list, and no `**Read-only surface**` carve-out excuses it. Scope creep hiding in the implementation.
+- **Declared-but-missing** — an `**Impact**` sub-bullet under one of the 5 Direction lines (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`) lists a surface / consumer / contradiction, but the diff shows no corresponding change. Either the diff is incomplete or the sub-bullet was aspirational.
+- **Diff-but-undeclared** — the diff reaches a surface or consumer that the `**Impact**` block does not list, and no `**Read-only surface**` carve-out excuses it. Scope creep hiding in the implementation.
 
-If the `**Impact**` table is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (drafting defect) rather than silently skipping — reconciliation cannot proceed without declared reach.
+If the `**Impact**` block is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (drafting defect) rather than silently skipping — reconciliation cannot proceed without declared reach.
 
-If the `**Impact**` table is present but contains **zero `Downstream` rows** AND the `## Plan Sketch` does not contain a line carrying the fixed substring `Downstream: none — confirmed by ` (em dash `—`, U+2014), emit a "missing Downstream declaration" FB at Medium severity. An absent `**Constraints**` block counts the same as a present block with no matching line — the sentinel is absent in both cases. The sentinel is defined in `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a zero-Downstream claim without the sentinel means the draft-time audit was skipped, and the plan reached Phase 6 via GitHub direct-edit or an un-answered `/hq:draft` prompt.
+If the `**Impact**` block is present but the `Downstream` Direction has **zero populated sub-bullets** AND its Direction line does not carry the fixed substring `Downstream** — none — confirmed by ` (em dash `—`, U+2014), emit a "missing Downstream declaration" FB at Medium severity. The sentinel now lives inside the Impact block on the `Downstream` Direction line itself (not under `**Constraints**`). The sentinel is defined in `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a zero-Downstream claim without the inline sentinel means the draft-time audit was skipped, and the plan reached Phase 6 via GitHub direct-edit or an un-answered `/hq:draft` prompt.
 
 ### 2. Downstream reference integrity (fallback)
 
