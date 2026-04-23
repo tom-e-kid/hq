@@ -349,11 +349,11 @@ Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `##
 
 #### `integrity-checker` invocation prompt
 
-`integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Plan Sketch` (especially the `**Impact**` table) against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
+`integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Plan Sketch` (especially the `**Impact**` block) against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
 
 1. Read `.hq/tasks/<branch-dir>/gh/plan.md` (the cached plan body).
-2. Extract the **entire `## Plan Sketch` section** — `**Problem**`, `**Editable surface**`, `**Read-only surface**`, the `**Impact**` table, `**Constraints**`. Preserve the block structure verbatim.
-3. Do NOT pass `**Core decision**` or `**Change Map**` — those fields reflect the root agent's mental model of the solution. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**` table.
+2. Extract the **entire `## Plan Sketch` section** — `**Problem**`, `**Editable surface**`, `**Read-only surface**`, the `**Impact**` block, `**Constraints**`. Preserve the block structure verbatim.
+3. Do NOT pass `**Core decision**` or `**Change Map**` — those fields reflect the root agent's mental model of the solution. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the stated `**Impact**` block.
 4. Pass the extracted `## Plan Sketch` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
 
 ### Step 3: Process FBs

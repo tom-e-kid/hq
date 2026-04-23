@@ -84,7 +84,7 @@ Phase 6: Report
 
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
 - The orchestrator composes the exact `## Plan Sketch` + `## Plan` + `## Acceptance` structure inline from Phase 2 conversation state and the Phase 3 point-check, with exactly one `[auto] [primary]` item in `## Acceptance` (or `[manual] [primary]` under the escape hatch).
-- Phase 2 enforces `Editable surface` / `Read-only surface` symmetric declaration and the `**Impact**` table (`Direction` column uses a closed set of 5 values). Each populated Impact row is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 6 quality review. The `Downstream` row → `## Plan` item binding is enforced as a hard pre-emit check in Phase 4 (see `hq:workflow § ## Plan Sketch § **Impact** § Downstream coverage hard rule`).
+- Phase 2 enforces `Editable surface` / `Read-only surface` symmetric declaration and the `**Impact**` block (5 Directions as a closed set, each Direction emitted as its own bullet line — empty Directions written `- **<Direction>** — none` so "deliberately empty" is structurally distinct from "forgotten"). Each populated Impact sub-bullet is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 6 quality review. The `Downstream` sub-bullet → `## Plan` item binding is enforced as a hard pre-emit check in Phase 4 (see `hq:workflow § ## Plan Sketch § **Impact** § Downstream coverage hard rule`).
 - Phase 2 is the mitigation checkpoint for `hq:workflow § Simplicity Criterion` — it challenges benefit/complexity tradeoffs before the plan is composed rather than after.
 - `## Plan` granularity: each item is a single meaningful commit unit. No numeric cap — motive-driven bloat is challenged by the Phase 2 Simplicity gatekeeper, not by a count ceiling.
 - Review surface is the **GitHub Issue** only. The Phase 3 point-check is a one-shot commitment checkpoint, not a Recap review; full plan-body review happens on the Issue after Phase 5.
@@ -142,7 +142,7 @@ Phase 6: Quality Review (diff-kind aware)
 │    └────────┬────────╨──────────┬───────────┘
 │             ▼                   ▼
 │  integrity-checker prompt carries plan ## Plan Sketch (Problem / Editable
-│  surface / Read-only surface / Impact table / Constraints) —
+│  surface / Read-only surface / Impact block / Constraints) —
 │  NOT Core decision, NOT Change Map
 │  Fix clearly-actionable FBs (per-FB, retry cap capped by § Settings;
 │  re-run the originating agent only, no cross-agent regression check)
@@ -169,7 +169,7 @@ Phase 8: Report
 - **Commit as you go** — each Plan item and fix lands as its own commit. Working tree is clean by Phase 7.
 - **Acceptance → Quality Review** — Phase 5 confirms the implementation works first (sweep only, looping back to Phase 4 to fix), Phase 6 then reviews quality on a known-working baseline. Reviewing quality before Acceptance would waste effort on code that may not work.
 - **Diff-kind aware Phase 6** — Phase 6 classifies the diff into `code` / `doc` / `mixed`. `security-scanner` skips on `doc`-only diffs (credential / injection patterns structurally cannot appear there). `code-reviewer` and `integrity-checker` always run.
-- **Three-agent Phase 6 with non-overlapping scopes** — `code-reviewer` covers quality / correctness / `/simplify`-era signals with a load-bearing guard against redundant-looking concurrency / lifecycle / subscription / cache / SSR / module-level-mutable-state code. `security-scanner` enumerates alert patterns (runs on `sonnet`). `integrity-checker` reconciles the plan's `## Plan Sketch` / `**Impact**` table against the diff — its invocation prompt carries the full `## Plan Sketch` block (minus `**Core decision**` and `**Change Map**`), to keep its external lens uncontaminated by the author's solution framing.
+- **Three-agent Phase 6 with non-overlapping scopes** — `code-reviewer` covers quality / correctness / `/simplify`-era signals with a load-bearing guard against redundant-looking concurrency / lifecycle / subscription / cache / SSR / module-level-mutable-state code. `security-scanner` enumerates alert patterns (runs on `sonnet`). `integrity-checker` reconciles the plan's `## Plan Sketch` / `**Impact**` block against the diff — its invocation prompt carries the full `## Plan Sketch` block (minus `**Core decision**` and `**Change Map**`), to keep its external lens uncontaminated by the author's solution framing.
 - **Phase 4 ↔ Phase 5 mini-loop** — Phase 5 is a pure sweep; fixes live in Phase 4 (loopback entry). Capped by § Settings FB retry cap per item. This batch-fix model surfaces shared root causes across multiple failing items.
 - **Phase 5 1-by-1 toggle** — per failing `[auto]` item, write the FB (with `covers_acceptance` pointing back to the item) and toggle the checkbox in a single `plan-check-item.sh` tool call. Batch toggles are prohibited.
 - **Phase 6 per-FB independence** — each FB has its own retry budget, and only the originating agent is re-run to verify a fix. Cross-agent regression is accepted as a trade-off for token cost; PR review / `/hq:triage` are the safety net.
@@ -305,13 +305,16 @@ Parent: #<hq:task issue number>
 
 **Impact**
 
-| Direction | Surface | Kind | Note |
-|---|---|---|---|
-| Add | <new surface> | <kind> | <note> |
-| Update | <changed surface> | <kind> | <what changes> |
-| Delete | <removed surface> | <kind> | <note> |
-| Contradict | <semantically-shifted surface> | <kind> | <how callers may break> |
-| Downstream | <consumer> | <file / section> | <note> |
+- **Add** — <purpose, or `none`>
+  - `<new surface>` — <note>
+- **Update** — <purpose, or `none`>
+  - `<changed surface>` — <what changes>
+- **Delete** — <purpose, or `none`>
+  - `<removed surface>` — <note>
+- **Contradict** — <purpose, or `none`>
+  - `<semantically-shifted surface>` — <how callers may break>
+- **Downstream** — <purpose, or `none — confirmed by <specific check>`>
+  - `<consumer needing coordinated update in this diff>` — <coordinated update>
 
 **Core decision** — <key architectural choice>
 
@@ -326,7 +329,7 @@ Parent: #<hq:task issue number>
 
 Highlights:
 
-- **`## Plan Sketch`** — one scannable section replacing the old `Context` + `Approach` split. `**Editable surface**` / `**Read-only surface**` are both required and symmetric. The `**Impact**` table's `Direction` column is a closed set of 5 values (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`); rows are omitted for directions that do not apply. `**Change Map**` (Mermaid / ASCII figure) and `**Constraints**` are optional — omit entirely when empty.
+- **`## Plan Sketch`** — one scannable section replacing the old `Context` + `Approach` split. `**Editable surface**` / `**Read-only surface**` are both required and symmetric. The `**Impact**` block keys 5 Directions as a closed set (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`) — every Direction emits its own bullet line; empty Directions are written `- **<Direction>** — none` (or `- **Downstream** — none — confirmed by <check>`) so deliberate emptiness is structurally distinct from omission. `**Change Map**` (Mermaid / ASCII figure) and `**Constraints**` are optional — omit entirely when empty.
 - **`## Plan`** — implementation steps. Each item is a single meaningful commit unit; adjacent edits to the same file collapse into one item. No numeric cap — broad scopes are challenged at `/hq:draft` Phase 2 (Simplicity gatekeeper) and typically split into multiple `hq:plan`s rather than packed into one. All must be checked before PR creation.
 - **`## Acceptance`** — completion criteria tagged by execution mode and role:
   - `[auto]` — Claude executes and toggles (unit tests, API calls, file checks, Playwright). Prefer `[auto]`.

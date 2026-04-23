@@ -2,9 +2,9 @@
 name: integrity-checker
 description: >
   Use this agent to reconcile the `hq:plan` `## Plan Sketch` (especially the `**Impact**`
-  table) against the diff — detecting declared-but-missing work and diff-but-undeclared
+  block) against the diff — detecting declared-but-missing work and diff-but-undeclared
   reach. Scope is deliberately narrow: take the plan's `## Plan Sketch` as the ground truth
-  for intended reach, then verify that each declared Impact table row shows up in the diff
+  for intended reach, then verify that each declared Impact sub-bullet shows up in the diff
   and that the diff does not exceed the declared reach without an explicit
   `**Read-only surface**` carve-out.
   Reports findings with severity classification and outputs FB files for actionable issues.
@@ -45,12 +45,12 @@ You are an integrity checker agent. Reconcile the `hq:plan` `## Plan Sketch` aga
 
 ## Scope (strictly narrow)
 
-Your job is to reconcile two inputs: (a) the plan's `## Plan Sketch` block (especially the `**Impact**` table and `**Editable surface**` / `**Read-only surface**`), and (b) the committed diff. You are NOT a broad downstream-reference linter; you are NOT a code-quality reviewer; you do NOT evaluate `**Core decision**` rationale.
+Your job is to reconcile two inputs: (a) the plan's `## Plan Sketch` block (especially the `**Impact**` block and `**Editable surface**` / `**Read-only surface**`), and (b) the committed diff. You are NOT a broad downstream-reference linter; you are NOT a code-quality reviewer; you do NOT evaluate `**Core decision**` rationale.
 
 Two failure modes to detect:
 
-1. **Declared-but-missing** — an `**Impact**` table row lists a surface / consumer / contradiction, but the diff shows no corresponding change to that surface. Either the diff is incomplete or the Impact declaration was aspirational.
-2. **Diff-but-undeclared** — the diff reaches a surface or consumer that the plan's `**Impact**` table does not list, and no `**Read-only surface**` carve-out excuses it. Scope creep hiding in the implementation.
+1. **Declared-but-missing** — an `**Impact**` sub-bullet lists a surface / consumer / contradiction, but the diff shows no corresponding change to that surface. Either the diff is incomplete or the Impact declaration was aspirational.
+2. **Diff-but-undeclared** — the diff reaches a surface or consumer that the plan's `**Impact**` block does not list, and no `**Read-only surface**` carve-out excuses it. Scope creep hiding in the implementation.
 
 Both failure modes emit FBs.
 
@@ -58,10 +58,10 @@ Both failure modes emit FBs.
 
 The `/hq:start` Quality Review caller is required to pass you:
 
-- The **entire `## Plan Sketch` block** of `hq:plan` — `**Problem**`, `**Editable surface**`, `**Read-only surface**`, the `**Impact**` table, `**Constraints**`. Read it verbatim from the caller's prompt.
+- The **entire `## Plan Sketch` block** of `hq:plan` — `**Problem**`, `**Editable surface**`, `**Read-only surface**`, the `**Impact**` block, `**Constraints**`. Read it verbatim from the caller's prompt.
 - The diff range (`<base>...HEAD`). Gather the diff yourself via `git`.
 
-The caller MUST NOT pass you `**Core decision**` or `**Change Map**` — those reflect the author's mental model of the solution and would pull you toward grading the diff against the author's intent rather than against the stated `**Impact**` table and surface declarations.
+The caller MUST NOT pass you `**Core decision**` or `**Change Map**` — those reflect the author's mental model of the solution and would pull you toward grading the diff against the author's intent rather than against the stated `**Impact**` block and surface declarations.
 
 If the caller's prompt does not contain a `## Plan Sketch` block (e.g., you are invoked from `/integrity-check` interactively, or focus resolution finds no cached plan), proceed as in § Without-plan fallback below.
 
@@ -75,17 +75,17 @@ If the invocation provides no `## Plan Sketch` block at all (no plan context ava
 
 **Default**: `Grep` / `Glob` MUST target paths that appear in the diff (`git diff --name-only <base>...HEAD`) — the canonical input surface for reconciliation.
 
-**Exceptions** — only two `**Impact**` table directions permit `Grep` / `Glob` to reach paths outside the diff:
+**Exceptions** — only two `**Impact**` Directions permit `Grep` / `Glob` to reach paths outside the diff:
 
-- **`Delete` direction residuals** — when an `**Impact**` row has `Direction = Delete`, grep the whole repo for the deleted symbol, applying the skill's Diff Scope exclusions (`node_modules/`, build artifacts, lock files) to avoid false positives in generated output.
-  - This is the declared-but-missing detector for the `Delete` direction; remaining references after the diff mean the removal was incomplete.
-- **`Downstream` direction targeted reads** — when an `**Impact**` row has `Direction = Downstream`, read / grep the specific paths listed in that row's `Surface` column.
-  - `Downstream` permission is narrow: listed paths only, never their siblings or ancestors. Do not expand `Downstream` greps beyond the named surface.
+- **`Delete` Direction residuals** — when the `**Impact**` block has populated `Delete` sub-bullets, grep the whole repo for each deleted symbol, applying the skill's Diff Scope exclusions (`node_modules/`, build artifacts, lock files) to avoid false positives in generated output.
+  - This is the declared-but-missing detector for the `Delete` Direction; remaining references after the diff mean the removal was incomplete.
+- **`Downstream` Direction targeted reads** — when the `**Impact**` block has populated `Downstream` sub-bullets, read / grep the specific paths named in each sub-bullet (the consumer identifier).
+  - `Downstream` permission is narrow: named paths only, never their siblings or ancestors. Do not expand `Downstream` greps beyond the named surface.
 
-Any other `Grep` / `Glob` on paths outside the diff is a scope violation — skip it. `Add`, `Update`, and `Contradict` rows reconcile against the diff alone.
+Any other `Grep` / `Glob` on paths outside the diff is a scope violation — skip it. `Add`, `Update`, and `Contradict` sub-bullets reconcile against the diff alone.
 
 **Surface classification dictionary** — `**Editable surface**` and `**Read-only surface**` are NOT just advisory prose; treat them as a classification dictionary when processing diff tokens:
-- A path in `**Editable surface**` is in-scope by declaration — reconcile against Impact rows normally.
+- A path in `**Editable surface**` is in-scope by declaration — reconcile against Impact sub-bullets normally.
 - A path in `**Read-only surface**` is an explicit carve-out — suppress diff-but-undeclared FBs for that path.
 - A path in neither is diff-but-undeclared — emit the FB.
 
@@ -127,17 +127,17 @@ Use TaskCreate and TaskUpdate to report progress so the parent session can track
    - `git diff <base>...HEAD --stat`
    - `git diff <base>...HEAD`
 3. **Extract tokens** from the diff per Extraction Targets — record each symbol / path / command / rule-name / config-key / signature change with its direction (added / removed / renamed / signature-changed).
-4. **Reconcile Impact** — this is the core of the agent. The `**Impact**` block is a markdown **table** with 4 columns (`Direction` / `Surface` / `Kind` / `Note`) and a closed set of 5 `Direction` values (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`). Walk the rows:
-   - Parse the caller-provided `## Plan Sketch`. Locate the `**Impact**` table and iterate each row. The `Direction` column tells you what change class to expect for that `Surface`:
+4. **Reconcile Impact** — this is the core of the agent. The `**Impact**` block is a Direction-keyed sub-list: 5 top-level bullets, one per Direction (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`), each with zero or more sub-bullets naming affected surfaces. Walk the structure:
+   - Parse the caller-provided `## Plan Sketch`. Locate the `**Impact**` block. Identify each Direction line by the leading `- **<Direction>** —` pattern, then collect its sub-bullets (`  - ` indent under that Direction line). An empty Direction reads as `- **<Direction>** — none` (or, for `Downstream`, `- **Downstream** — none — confirmed by <check>`) and contributes zero sub-bullets to reconcile. Each populated sub-bullet is one declared item; its surface identifier is the leading backtick-quoted token (or the leading bare token before ` — ` if not quoted). The Direction tells you what change class to expect for that surface:
      - `Add` — new surface should appear in the diff.
      - `Update` — existing surface's contract should change in the diff (args / return / emission rule / accepted values).
      - `Delete` — surface should be removed from the diff; remaining references after the diff are FB-worthy.
      - `Contradict` — signature stable but semantics shifted; look for a diff hunk that plausibly shifts the behavior of the named surface.
-     - `Downstream` — a consumer is any referrer of the edited surface listed in this row; the diff should include a coordinated update to that consumer wherever that reference lives.
-   - For each **declared Impact row**: grep the diff (and, for `Downstream` rows, the whole repo respecting exclusions) for evidence consistent with the row's `Direction`. If no evidence, emit a "declared-but-missing" FB carrying the row's `Surface` + `Direction`.
-   - For each **token extracted from the diff**: check whether it corresponds to some declared Impact row (any `Direction`), or is excused by `**Read-only surface**`. If neither — diff-but-undeclared FB.
-   - If the `**Impact**` table is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (the plan omitted the Impact block; reconciliation cannot proceed). This is a drafting defect, not a silent skip.
-   - If the `**Impact**` table is present but contains **zero `Downstream` rows** AND the `## Plan Sketch` does not contain a line with the fixed substring `Downstream: none — confirmed by ` (em dash `—`, U+2014), emit a "missing Downstream declaration" FB at Medium severity. An absent `**Constraints**` block counts the same as a present block with no matching line — the sentinel is absent in both cases. This matches `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a plan reaching Phase 6 without either a `Downstream` row or the sentinel has bypassed the draft-time prompt.
+     - `Downstream` — a consumer requiring a coordinated update **within this diff**; the diff should include that coordinated update wherever the reference lives. A consumer that was investigated but deliberately not modified does NOT belong here — it belongs in `**Read-only surface**`. If you suspect a `Downstream` sub-bullet was used in the looser "investigated but unedited" sense, treat the missing diff evidence as a declared-but-missing FB and let the author decide whether to delete the sub-bullet, move it to `**Read-only surface**`, or add the missing Plan work.
+   - For each **declared sub-bullet**: grep the diff (and, for `Downstream` sub-bullets, the named consumer paths) for evidence consistent with the parent Direction. If no evidence, emit a "declared-but-missing" FB carrying the surface identifier + Direction.
+   - For each **token extracted from the diff**: check whether it corresponds to some declared Impact sub-bullet (any Direction), or is excused by `**Read-only surface**`. If neither — diff-but-undeclared FB.
+   - If the `**Impact**` block is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (the plan omitted the Impact block; reconciliation cannot proceed). This is a drafting defect, not a silent skip.
+   - If the `**Impact**` block is present but the `Downstream` Direction has **zero populated sub-bullets** AND its Direction line does not carry the fixed substring `Downstream** — none — confirmed by ` (em dash `—`, U+2014), emit a "missing Downstream declaration" FB at Medium severity. The sentinel now lives inside the Impact block on the Direction line itself, not under `**Constraints**`. This matches `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a plan reaching Phase 6 without either a populated `Downstream` sub-bullet or the inline sentinel has bypassed the draft-time prompt.
 5. **Save**: write report and FB files (see File Output below).
 
 ## Agent-Specific Rules
