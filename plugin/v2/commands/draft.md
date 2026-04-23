@@ -158,8 +158,8 @@ Shape rules:
 
 ### User response handling
 
-- **"go"** (or equivalent endorsement: "OK", "LGTM", "進めて") → proceed to Phase 4.
-- **違和感** pointed out → return to Phase 2; resume the dialogue from the specific block the user questioned. Do not re-present a revised point-check as a counter-offer; continue the brainstorm until convergence, then re-present once.
+- **"go"** (or equivalent endorsement: "OK", "LGTM", "進めて") → mark the "Present point-check" task as `completed` (via `TaskUpdate`) before starting Phase 4, then proceed to Phase 4. This closes the task cleanly whether the point-check was presented once (go on first attempt) or re-presented after a prior 違和感 loopback.
+- **違和感** pointed out → keep the "Present point-check" task `in_progress`, return to Phase 2 (marking "Brainstorm + Simplicity gatekeeper" `in_progress` again); resume the dialogue from the specific block the user questioned. Do not re-present a revised point-check as a counter-offer; continue the brainstorm until convergence, then re-present once.
 
 ## Phase 4: Compose plan body + Downstream pre-emit check
 
