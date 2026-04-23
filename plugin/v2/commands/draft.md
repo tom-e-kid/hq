@@ -148,7 +148,7 @@ Present exactly this structure. Section headings (`## Point-check`, `### Editabl
 - `<path>` — **Read-only**: <why deliberately out of scope>
 
 ### Primary acceptance
-- **Signal** `[auto]`: `<the single concrete check>`
+- **Signal** `[auto]`: `<the single concrete check>`   *(escape hatch form: `- **Signal** \`[manual]\`: <the single observable target>`)*
 - **Rationale**: <why this signal — comparison with other candidates>
 - **Coverage**: <what this catches, what deliberately stays secondary>
 
