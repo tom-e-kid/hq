@@ -120,8 +120,8 @@ Phase 2 exits when **all** of the following are committable — each one, Claude
 - `**Problem**` — a crisp 1–3 sentence statement.
 - `**Core decision**` — a crisp 1–2 sentence statement.
 - The `**Editable surface**` set (files / symbols definitely in play).
-- The `**Read-only surface**` set (adjacent files / symbols explicitly declared out of scope — see `hq:workflow § ## Plan Sketch`; the set is populated in Phase 4 by splitting the adjacent-surface list into `Downstream` sub-bullets vs `**Read-only surface**` entries, but Phase 2 must have a committable view of what is deliberately **not** in scope before the point-check).
-- The adjacent / `Downstream`-candidate surface set (raw investigation output, classified in Phase 4).
+- The `**Read-only surface**` set (adjacent files / symbols explicitly declared out of scope — see `hq:workflow § ## Plan Sketch`). Phase 2 must have a committable view of what is deliberately **not** in scope before the point-check.
+- The adjacent surface set (raw investigation output), with each entry **already classified** as `Downstream` or `Read-only` — the Phase 3 point-check presents these labels inline, so classification is a Phase 2 convergence requirement, not a Phase 4 task. Phase 4 only confirms the label and routes the entry to the final plan body.
 - `**Primary acceptance**` with marker, committed as a single concrete signal.
 - Plan split judgment (one plan vs several).
 
