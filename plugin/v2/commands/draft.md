@@ -88,7 +88,7 @@ These are the fields that must be committable before Phase 3. Track them as you 
 
 - `**Problem**` — 1–3 sentences naming the pain and why now.
 - `**Editable surface**` — files / symbols that will definitely be touched.
-- Adjacent surface discovered by investigation — files / symbols investigation surfaces as potentially impacted, for Phase 3's "調査で当たった隣接範囲" block and (after Phase 4 classification) either the final `**Impact**` block's `Downstream` sub-bullets (when the consumer requires a coordinated update in this diff) or `**Read-only surface**` (when it was only investigated).
+- Adjacent surface discovered by investigation — files / symbols investigation surfaces as potentially impacted, for Phase 3's `### Adjacent surface` block and (after Phase 4 classification) either the final `**Impact**` block's `Downstream` sub-bullets (when the consumer requires a coordinated update in this diff) or `**Read-only surface**` (when it was only investigated).
 - `**Core decision**` — 1–2 sentences on the key architectural choice. Record here any tradeoff accepted after Simplicity gatekeeper pushback.
 - `**Primary acceptance**` with marker (`[auto]` or `[manual]`) — see Primary acceptance convergence below.
 - Plan scope size estimate — is this one plan or better split into several?
@@ -131,30 +131,40 @@ If any of these is fuzzy, Phase 2 is not converged — continue the dialogue. Ha
 
 Phase 3 is a single in-chat checkpoint: three blocks of committed recommendations presented once; user response is a binary — **endorse ("go")** or **raise a 違和感 and return to Phase 2**. There is no schema-draft approval gate, and no hedging qualifier on any block — every block is a position Claude stands by. Full-body plan review happens on the GitHub Issue after Phase 5, not here.
 
-Present exactly this structure (adapt block content to the conversation language; keep block labels as shown):
+Present exactly this structure. Section headings (`## Point-check`, `### Editable surface`, `### Adjacent surface`, `### Primary acceptance`) and inline labels (`**Downstream**`, `**Read-only**`, `**Signal**`, `**Rationale**`, `**Coverage**`) are **English fixed** per `hq:workflow § Language`; content within each section is in the conversation language.
 
 ```markdown
-## 見立て
+## Point-check
 
-**確実に触る**
-- <file / symbol>
+### Editable surface
+- `<path>`
+  - <purpose 1: what will be done on this file>
+  - <purpose 2: different purpose on the same file>
+- `<other path>`
+  - <purpose>
 
-**調査で当たった隣接範囲**（影響可能性あり、Plan で追随する想定）
-- <file / symbol> — <なぜ関係しそうか>
+### Adjacent surface
+- `<path>` — **Downstream**: <coordinated update required in this diff>
+- `<path>` — **Read-only**: <why deliberately out of scope>
 
-**Primary acceptance**
-- <single concrete signal with marker [auto] or [manual]>
+### Primary acceptance
+- **Signal** `[auto]`: `<the single concrete check>`
+- **Rationale**: <why this signal — comparison with other candidates>
+- **Coverage**: <what this catches, what deliberately stays secondary>
 
+---
 方向性このままで Issue 化してよい？ 違和感あれば続ける。
 ```
 
 Shape rules:
 
 - **Every block is Claude's position, not a menu** — the user chooses to endorse or push back, not to select between options Claude offers. If you are inclined to hedge with a tentative-qualifier / "候補" / "one possibility is…", Phase 2 did not converge — go back, do not hedge here.
-- **"確実に触る"** is drawn from `**Editable surface**`. Short, concrete, file- / symbol-level.
-- **"調査で当たった隣接範囲"** is the raw investigation output, kept as a **list of findings for the user's sanity check**, not a checklist the user is asked to tick. The user reads it for direction alignment; Phase 4 decides per entry whether it becomes an `**Impact**` `Downstream` sub-bullet or goes to `**Read-only surface**`.
-- **"Primary acceptance"** is one concrete signal with its marker, fully committed. `[auto]` and `[manual]` markers are chosen by Claude from the domain (Phase 2 Simplicity gate), not presented as the user's pick.
-- When the `[manual] [primary]` escape hatch applies, the marker is already `[manual]` — no separate note needed in the point-check.
+- **`### Editable surface`** — drawn from `**Editable surface**` in Phase 2 state. **Per-file grouping is mandatory**: write each file path once as a top-level bullet, and list one sub-bullet per distinct purpose on that file. Splitting a single file across multiple top-level bullets (by section / symbol) is forbidden — the repeated file name dissolves visual grouping; section / symbol information is absorbed into the purpose sub-bullet instead. If the purpose on one file is genuinely singular, a single sub-bullet is acceptable — do not pad.
+- **`### Adjacent surface`** — the raw investigation output, a **single list** where every entry carries an inline `**Downstream**` or `**Read-only**` label classifying its final Phase 4 destination. Split-by-block presentation is forbidden — "what got classified where" must be visible at a glance so review of a missed finding is linear. Empty case follows the **Downstream sentinel rule** (symmetric with the `**Impact**` block's `Downstream` line): write `- none — confirmed by <specific check>` (e.g., `- none — confirmed by grep -rn "<identifier>" .`), not a bare `- none`. The entry is a list of findings for the user's sanity check, not a checklist the user is asked to tick.
+- **`### Primary acceptance`** — **three fixed sub-bullets**: `**Signal**`, `**Rationale**`, `**Coverage**`. All three are required; none may be omitted.
+  - **`**Signal**`** carries the marker **inline before the colon**: `- **Signal** \`[auto]\`: <check>` or `- **Signal** \`[manual]\`: <target>`. The marker is chosen by Claude from the domain (Phase 2 Simplicity gate) — not presented as the user's pick. When the `[manual] [primary]` escape hatch applies, the marker is already `[manual]` — no separate note needed.
+  - **`**Rationale**`** states *why* this signal was chosen — a 1–2 line comparison against at least one rejected candidate signal. "Because it's the only check" is not a rationale; at least one alternative must be named and dismissed.
+  - **`**Coverage**`** is free-form prose stating what this signal catches and what deliberately stays secondary. Fixed length was considered and rejected — the captured / uncaptured boundary has no universal shape across plans.
 
 ### User response handling
 
@@ -169,7 +179,7 @@ Autonomous from here. Compose the `hq:plan` body directly from Phase 2 conversat
 
 - **Language** — plan body prose stays in the **conversation language** (`**Problem**` prose, Impact notes, `## Plan` step descriptions, `## Acceptance` conditions). Workflow markers and prescribed headings stay in **English** — see `hq:workflow § Language`.
 - **Anti-filler** — optional subfields (`**Change Map**`, `**Constraints**`) are omitted entirely when genuinely empty. The `**Impact**` block's 5 Direction lines are NOT optional — empty Directions are written `- **<Direction>** — none` (or `- **Downstream** — none — confirmed by <check>`) so "deliberately empty" is structurally distinct from "forgotten". No `_None._`, no padded prose. If a required subfield would be empty, Phase 2 did not converge — return control to Phase 2.
-- **Classify adjacent surface** — for each entry in the Phase 2 "調査で当たった隣接範囲" list (the raw investigation output shown in the Phase 3 point-check), decide one of two outcomes:
+- **Classify adjacent surface** — for each entry in the Phase 2 `### Adjacent surface` list (the raw investigation output shown in the Phase 3 point-check), confirm its inline label (`**Downstream**` / `**Read-only**`) and route accordingly:
   - **This plan will actively update the consumer** → record as a `Downstream` sub-bullet in the `**Impact**` block. A covering `## Plan` item is required (the Downstream coverage hard rule below enforces this).
   - **This plan will deliberately NOT modify the consumer** → record the consumer in `**Read-only surface**`. No Plan item is required; the entry is explicitly out of scope.
   Every adjacent surface entry reaches exactly one of these two destinations. An entry that lands in neither is a misclassification — do not silently drop findings.
