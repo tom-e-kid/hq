@@ -230,7 +230,7 @@ Parent: #<hq:task issue number>
 **Core decision** — <1-2 sentences: key architectural choice + any tradeoff accepted after Simplicity gatekeeper pushback>
 
 **Constraints** *(optional)*
-- <hard dependency / prerequisite>
+- <hard dependency / prerequisite / assumption>
 
 ## Plan
 - [ ] <implementation step — single meaningful commit unit, in conversation language>
