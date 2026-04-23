@@ -56,7 +56,7 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
   - File paths, identifiers, code fences, shell commands
 - **Conversation language (content)**:
   - `hq:task` body (background / requirements / scope / success criteria)
-  - `hq:plan` body content — `## Plan Sketch` prose (Problem / Editable surface / Read-only surface / Impact table cells / Core decision / Constraints), each `## Plan` step description, each `## Acceptance` condition
+  - `hq:plan` body content — `## Plan Sketch` prose (Problem / Editable surface / Read-only surface / Impact Direction notes / Core decision / Constraints), each `## Plan` step description, each `## Acceptance` condition
   - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
 
@@ -165,7 +165,7 @@ Parent: #<hq:task issue number>
   - **`Contradict`** — the surface's signature is stable but its semantics shift, potentially breaking existing callers silently. These are the highest-risk entries — flag the breakage mechanism explicitly in the note. Boundary vs `Update`: an `Update` row's signature changes call sites have to *react* to (compile / lint / runtime error if ignored); a `Contradict` row's signature is unchanged so call sites *cannot* react — they continue to compile and run, returning subtly different results. Default to `Contradict` when in doubt; the worst case for `Update` is verbose, the worst case for `Contradict` is silent breakage.
   - **`Downstream`** — a consumer that requires a **coordinated update *within this diff*** — docs, tests, templates, README, distribution artifacts (in this plugin, also other commands / skills / agents). Strict scope: a consumer that was *investigated* but deliberately not modified does NOT belong here; it belongs in `**Read-only surface**`. The `Downstream coverage hard rule` (below) ties every populated `Downstream` row to a `## Plan` item, so an entry without a matching Plan item is a defect — not a status note about "things I checked".
 
-  Empty Directions are written `- **<Direction>** — none`. `Downstream` has a stricter empty form: `- **Downstream** — none — confirmed by <specific check>` (e.g., `confirmed by grep -rn "<identifier>" .` or `confirmed by reading all call sites`). This **Downstream check directive** is structural — the sentinel `Downstream — none — confirmed by ` (em dash `—`, U+2014) lives inside the Impact block itself, not under `**Constraints**`, so reconciliation tools can locate it deterministically.
+  Empty Directions are written `- **<Direction>** — none`. `Downstream` has a stricter empty form: `- **Downstream** — none — confirmed by <specific check>` (e.g., `confirmed by grep -rn "<identifier>" .` or `confirmed by reading all call sites`). This **Downstream check directive** is structural — the sentinel `Downstream** — none — confirmed by ` (em dash `—`, U+2014; the trailing `**` closes the bold marker on the actual Direction line) lives inside the Impact block itself, not under `**Constraints**`, so reconciliation tools can locate it deterministically.
 
   If every Direction would be `none` (no `confirmed by` check needed for `Downstream` because there is nothing else to declare either), the change is trivial and the `**Impact**` block itself can be skipped.
 
@@ -224,7 +224,7 @@ The default rule forbids `[manual] [primary]`. This subsection is the sole excep
 
 - **(a) `[auto]` outcome measurement is structurally infeasible** — the plan's domain has no `[auto]` signal that measures the feature's intended outcome. Build success, lint, and unit tests cover structural correctness but not the outcome. Canonical cases: native mobile UI behavior (iOS / Android touch interactions, platform-specific animations), subjective UX or visual design targets, multi-session scenarios outside Playwright's reach. **Web features where `/hq:e2e-web` can drive the outcome do NOT qualify** — the default rule stands.
 - **(b) Primary names exactly one observable event with a concrete target** — the `[manual] [primary]` description MUST name one observable target (UI state name, interaction terminus, visual / sound target, named artifact). Abstract phrases ("works correctly", "user is satisfied", "feature is complete", "app launches") are rejected **even under the escape hatch** — they dissolve the primary/secondary distinction as much as a lazy `[auto]` would.
-- **(c) `**Impact**` table is structurally bounded** — the Impact table declares every populated `Direction` row for the change. Under-declared Impact lets an unmeasured primary hide behind unmeasured scope; the escape hatch requires the surface to be tight.
+- **(c) `**Impact**` block is structurally bounded** — the `**Impact**` block is fully declared (every Direction line present, populated sub-bullets enumerate every affected surface). Under-declared Impact lets an unmeasured primary hide behind unmeasured scope; the escape hatch requires the surface to be tight.
 
 **Compensating controls (required whenever the escape hatch fires)**:
 
@@ -308,7 +308,7 @@ An `hq:plan` must survive a benefit/complexity tradeoff check before it is compo
 
 > All else being equal, simpler is better. A small improvement that adds ugly complexity is not worth it. A 0.001 val_bpb improvement that adds 20 lines of hacky code? Probably not worth it. An improvement of ~0 but much simpler code? Keep.
 
-`hq:doc #40` frames this as a **limit of formal plan constraints**: rules like the `**Impact**` table, granularity guidance, or a hypothetical `## Plan` item count cap stop the *result* of motive-driven bloat (many small "while-we're-at-it" additions) but not the *motive* itself. The motive has to be challenged during drafting, where a proposal is still malleable.
+`hq:doc #40` frames this as a **limit of formal plan constraints**: rules like the `**Impact**` block, granularity guidance, or a hypothetical `## Plan` item count cap stop the *result* of motive-driven bloat (many small "while-we're-at-it" additions) but not the *motive* itself. The motive has to be challenged during drafting, where a proposal is still malleable.
 
 This limit is **mitigated** by `/hq:draft` **Phase 2** Simplicity gatekeeper, which challenges reuse vs new-build, minimum-solution comparison, and spread cost before the plan is composed. Pushback is one-round (Claude raises the concern, the user decides, the tradeoff — if accepted — is recorded in `**Core decision**`). Plans reaching `/hq:start` have already passed this gate.
 
@@ -316,7 +316,7 @@ Consequences for plan structure:
 
 - `## Plan` has **no numeric item cap**. Formal caps target the result (how many items) rather than the motive (why each was added); they were deprecated once the gatekeeper role was introduced. The quality rules on `## Plan` (single meaningful commit unit, same-file consecutive items merge, no half-working intermediate state) remain because they are about the *grain* of each item, not its *necessity*.
 - Naturally broad scopes should be split into multiple `hq:plan`s at the gatekeeper stage rather than padded into one. `/hq:draft` Phase 2 raises this split decision explicitly when the brainstorm produces a large scope.
-- The `**Impact**` table and `[auto] [primary]` 1-per-plan rule are retained as formal constraints; they pass the Simplicity criterion test by being low-burden and tightly targeted at specific gaming patterns (undeclared surface change, success-signal dissolution).
+- The `**Impact**` block and `[auto] [primary]` 1-per-plan rule are retained as formal constraints; they pass the Simplicity criterion test by being low-burden and tightly targeted at specific gaming patterns (undeclared surface change, success-signal dissolution).
 
 ## Cache-First Principle
 

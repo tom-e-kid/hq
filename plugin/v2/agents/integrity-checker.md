@@ -85,7 +85,7 @@ If the invocation provides no `## Plan Sketch` block at all (no plan context ava
 Any other `Grep` / `Glob` on paths outside the diff is a scope violation — skip it. `Add`, `Update`, and `Contradict` sub-bullets reconcile against the diff alone.
 
 **Surface classification dictionary** — `**Editable surface**` and `**Read-only surface**` are NOT just advisory prose; treat them as a classification dictionary when processing diff tokens:
-- A path in `**Editable surface**` is in-scope by declaration — reconcile against Impact rows normally.
+- A path in `**Editable surface**` is in-scope by declaration — reconcile against Impact sub-bullets normally.
 - A path in `**Read-only surface**` is an explicit carve-out — suppress diff-but-undeclared FBs for that path.
 - A path in neither is diff-but-undeclared — emit the FB.
 
