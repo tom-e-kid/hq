@@ -101,6 +101,8 @@ These are the fields that must be committable before Phase 3. Track them as you 
 - **Minimum-solution comparison** — what does "do nothing" or "a small hack" look like, and does it cover the critical case? If the minimum solution already covers the real need, flag the delta to the permanent solution.
 - **Spread cost** — estimate how many other commands / skills / rules / doc pages a proposal will require conditionals in. High spread count → high Simplicity bar.
 - **`[auto]` / `[manual]` marker — domain judgment by Claude.** The marker on the primary acceptance is a **domain** decision, not a user choice. Pick it based on the plan's domain: web feature drivable by `/hq:e2e-web` → `[auto]`; native iOS / subjective UX / physical device → `[manual]` escape hatch (`hq:workflow § #### [manual] [primary] escape hatch`); doc / config / rule-text → `[auto]` via grep / file-existence. Do not present the marker as a question to the user; commit to it in Phase 3.
+
+  **Before committing `[manual]`, verify all three escape hatch conditions hold** (`hq:workflow § #### [manual] [primary] escape hatch`): (a) `[auto]` outcome measurement is structurally infeasible in this domain — not merely inconvenient; web features that `/hq:e2e-web` can drive do **not** qualify, (b) the primary names exactly one concrete observable target (UI state name, interaction terminus, visual / sound target, named artifact) — abstract phrases are rejected under the escape hatch just as they are under the default, (c) the `**Impact**` table is fully declared (every populated `Direction` row present). If any condition fails, revert to `[auto]`; if `[auto]` is genuinely infeasible but the primary is abstract, continue Phase 2 until condition (b) holds.
 - **Plan split judgment** — when the scope emerging from the brainstorm is naturally broad, ask whether it should become **multiple `hq:plan`s** rather than one. No numeric cap — the question is whether the concerns are genuinely independent commit grains.
 
 **Pushback protocol** — raise each gate concern **at most once** per concern. Name the issue, state the tradeoff, let the user decide. Do not keep re-arguing after the user has made the call. Tradeoffs the user accepts after pushback are recorded verbatim in `**Core decision**` (e.g., "A を採用 — B の複雑性を引き受ける、理由: C") so PR reviewers can see the decision was deliberate, not accidental.
@@ -118,7 +120,8 @@ Phase 2 exits when **all** of the following are committable — each one, Claude
 - `**Problem**` — a crisp 1–3 sentence statement.
 - `**Core decision**` — a crisp 1–2 sentence statement.
 - The `**Editable surface**` set (files / symbols definitely in play).
-- The adjacent / `Downstream`-candidate surface set.
+- The `**Read-only surface**` set (adjacent files / symbols explicitly declared out of scope — see `hq:workflow § ## Plan Sketch`; the set is populated in Phase 4 by splitting the adjacent-surface list into `Downstream` rows vs `**Read-only surface**` entries, but Phase 2 must have a committable view of what is deliberately **not** in scope before the point-check).
+- The adjacent / `Downstream`-candidate surface set (raw investigation output, classified in Phase 4).
 - `**Primary acceptance**` with marker, committed as a single concrete signal.
 - Plan split judgment (one plan vs several).
 
@@ -166,6 +169,10 @@ Autonomous from here. Compose the `hq:plan` body directly from Phase 2 conversat
 
 - **Language** — plan body prose stays in the **conversation language** (`**Problem**` prose, Impact table cells, `## Plan` step descriptions, `## Acceptance` conditions). Workflow markers and prescribed headings stay in **English** — see `hq:workflow § Language`.
 - **Anti-filler** — optional subfields (`**Change Map**`, `**Constraints**`, unused `Direction` rows) are omitted entirely when genuinely empty. No `_None._`, no padded prose. If a required subfield would be empty, Phase 2 did not converge — return control to Phase 2.
+- **Classify adjacent surface** — for each entry in the Phase 2 "調査で当たった隣接範囲" list (the raw investigation output shown in the Phase 3 point-check), decide one of two outcomes:
+  - **This plan will actively update the consumer** → record as a `Downstream` row in the `**Impact**` table. A covering `## Plan` item is required (the Downstream coverage hard rule below enforces this).
+  - **This plan will deliberately NOT modify the consumer** → record the consumer in `**Read-only surface**`. No Plan item is required; the row is explicitly out of scope.
+  Every adjacent surface row reaches exactly one of these two destinations. A row that lands in neither is a misclassification — do not silently drop findings.
 - **`Parent: #N` line** — emit only when a parent `hq:task` is present; omit the line entirely otherwise.
 - **`## Plan` granularity** — each item is a single meaningful commit unit (`hq:workflow § ## Plan`). No numeric cap. Adjacent edits to the same file in one session collapse into one item; half-working intermediate states are a split defect.
 - **`[primary]` rule** — exactly one `[primary]` item in `## Acceptance`. Default combination is `[auto] [primary]`; `[manual] [primary]` is permitted only when the `hq:workflow § #### [manual] [primary] escape hatch` conditions all hold (structurally infeasible `[auto]` outcome, single named observable target, fully declared `**Impact**`). The marker was chosen by Claude in Phase 2 by domain.
@@ -184,10 +191,14 @@ Before emitting the Issue, run the hard rule from `hq:workflow § Simplicity Cri
 - For each row, locate at least one `## Plan` item that performs the coordinated update on the named consumer. Pattern-match on the consumer identifier (file path, symbol name, section header).
 - If a `Downstream` row has no covering `## Plan` item, **do not emit**. Three paths out:
   1. The row is aspirational (you speculated about a consumer but will not actually touch it) → delete the row.
-  2. The Plan is genuinely incomplete → return to Phase 2, brainstorm the missing Plan item, then re-enter Phase 4.
-  3. The row belongs in `**Read-only surface**` (it was investigated and deliberately not modified) → move it.
+  2. The Plan is genuinely incomplete → return to Phase 2, brainstorm the missing Plan item, then **re-present the Phase 3 point-check with the updated state**, await a fresh "go", and re-enter Phase 4.
+  3. The row belongs in `**Read-only surface**` (it was investigated and deliberately not modified) → move it there and — when the intent is to record the verification rationale — add a matching `**Constraints**` line.
+
+Paths 1 and 3 are mechanical reclassifications that do not add new work or new commitments, so they do not require a Phase 3 re-run. Path 2 materially changes the brainstormed plan and therefore always triggers a new Phase 3 point-check per the `Any Phase 2 loopback re-runs Phase 3` rule in `## Rules`.
 
 Only when every `Downstream` row has a covering `## Plan` item may Phase 4 emit.
+
+**Zero-Downstream case (symmetric)** — when the `**Impact**` table contains **zero** `Downstream` rows (after the classification step above), the `**Constraints**` block MUST contain a line of the form `Downstream: none — confirmed by <specific check>` (e.g., `Downstream: none — confirmed by grep -rn "<identifier>" .` or `Downstream: none — confirmed by reading all call sites`). This is the `hq:workflow § ## Plan Sketch § **Impact** § Downstream check directive` — it forces auditable declaration rather than silent omission. If this Constraints line is absent, return to Phase 2, establish the check, then re-present the Phase 3 point-check before re-entering Phase 4.
 
 ### Required plan body shape
 
@@ -294,7 +305,9 @@ The handoff boundary is intentional — the user reviews and edits the `hq:plan`
 
 - **No code writing** — planning-only. Redirect implementation requests to `/hq:start <plan>` after Issue creation.
 - **No branch creation** — `/hq:start` owns branch creation.
-- **Phase 2 convergence is a commitment** — all fields listed under *Exit condition* must be committable (Problem, Core decision, Editable / adjacent surfaces, primary with marker, plan split judgment). Handing a hedging-qualifier-attached field to Phase 3 is forbidden — the point-check is a position, not a menu.
+- **Phase 2 convergence is a commitment** — all fields listed under *Exit condition* must be committable (Problem, Core decision, Editable / Read-only / adjacent surfaces, primary with marker, plan split judgment). Handing a hedging-qualifier-attached field to Phase 3 is forbidden — the point-check is a position, not a menu.
+- **Phase 3 point-check requires explicit "go"** — Phase 4 does not start until the user endorses the point-check with "go", "OK", "LGTM", or equivalent. Proceeding to Phase 4 without this signal — including under auto mode (see the Auto-mode note at the top) — violates this command's contract. This is the single sanctioned user intervention between brainstorm and autonomous composition, successor to the old Recap-approval gate.
+- **Any Phase 2 loopback re-runs Phase 3** — when Phase 4 (or any subsequent step) returns to Phase 2 for further brainstorm, the next forward motion MUST re-present the Phase 3 point-check and await a fresh "go" before Phase 4 re-enters. The user's prior endorsement covers only the state of the brainstorm at the time of that point-check.
 - **Simplicity gatekeeper is active** — Phase 2 raises reuse / minimum-solution / spread-cost concerns once per concern and records accepted tradeoffs in `**Core decision**`. Silent transcription of the user's proposal without the gate is out of scope.
 - **Downstream pre-emit check is a hard rule** — Phase 4 does not emit an Issue with uncovered `Downstream` rows (`hq:workflow § Downstream coverage hard rule`).
 - **Marker choice is Claude's domain judgment** — `[auto]` vs `[manual]` for the primary is not asked of the user; Claude decides from the domain in Phase 2.
