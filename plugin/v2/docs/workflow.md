@@ -65,7 +65,7 @@ Phase 2: Brainstorm + Simplicity gatekeeper (interactive — user intervention)
 │
 Phase 3: Point-check (Claude's decisive recommendation — user intervention)
 │  3-block position presented once:
-│    確実に触る / 調査で当たった隣接範囲 / Primary acceptance (with marker)
+│    Editable surface / Adjacent surface / Primary acceptance (with marker)
 │  User endorses "go" → Phase 4, or raises 違和感 → Phase 2
 │
 Phase 4: Compose plan body + Downstream pre-emit check (autonomous)
