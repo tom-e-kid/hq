@@ -167,6 +167,7 @@ Parent: #<hq:task issue number>
   **Downstream check directive** — when the `**Impact**` table contains zero `Downstream` rows, the plan MUST include a line `Downstream: none — confirmed by <specific check>` under `**Constraints**`. Forces the author to name the concrete check that confirmed no consumers exist (e.g., `grep -rn "<identifier>" .`, reading the call-site list), so silent omissions become auditable declarations.
 
   **Downstream coverage hard rule** — every populated `Downstream` row in the `**Impact**` table MUST be covered by at least one corresponding `## Plan` item that performs the coordinated update on the named consumer. This is enforced as a **pre-emit check** by `/hq:draft` Phase 4: if a Downstream row has no covering Plan item, the plan is not emitted — either the row is aspirational (remove it) or the Plan is incomplete (return to brainstorm). `/hq:start` Phase 6 `integrity-checker` reconciles declared-but-missing against the diff as a second net.
+
 - **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
 - **`**Constraints**`** *(optional except when required by the Downstream check directive above)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty.
 - **`**Quality review policy**`** *(optional)* — per-plan override of `/hq:start` Phase 6 Quality Review behavior. Bullet-list syntax, one setting per line (e.g. `- fix-threshold: Low`). Current settings:
