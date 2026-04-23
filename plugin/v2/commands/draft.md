@@ -131,7 +131,7 @@ If any of these is fuzzy, Phase 2 is not converged — continue the dialogue. Ha
 
 Phase 3 is a single in-chat checkpoint: three blocks of committed recommendations presented once; user response is a binary — **endorse ("go")** or **raise a 違和感 and return to Phase 2**. There is no schema-draft approval gate, and no hedging qualifier on any block — every block is a position Claude stands by. Full-body plan review happens on the GitHub Issue after Phase 5, not here.
 
-Present exactly this structure. Section headings (`## Point-check`, `### Editable surface`, `### Adjacent surface`, `### Primary acceptance`) and inline labels (`**Downstream**`, `**Read-only**`, `**Signal**`, `**Rationale**`, `**Coverage**`) are **English fixed** per `hq:workflow § Language`; content within each section is in the conversation language.
+Present exactly this structure. Section headings (`## Point-check`, `### Editable surface`, `### Adjacent surface`, `### Primary acceptance`) and inline labels (`**Downstream**`, `**Read-only**`, `**Signal**`, `**Rationale**`, `**Coverage**`) are **English fixed** — they are structural markers this command owns. Content within each section is in the conversation language.
 
 ```markdown
 ## Point-check
