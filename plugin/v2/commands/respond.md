@@ -34,6 +34,9 @@ Set each to `in_progress` when starting and `completed` when done. Update the su
 - PR: !`gh pr view --json number,url,title,state --jq '"#" + (.number|tostring) + " " + .title + " (" + .state + ") " + .url' 2>/dev/null || echo "none"`
 - Repo: !`gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || echo "unknown"`
 - Git user: !`git config user.name`
+- Project Overrides (`.hq/respond.md`): !`cat .hq/respond.md 2>/dev/null || echo "none"`
+
+If `Project Overrides` is not `none`, apply the content as project-specific guidance layered on top of this command's phases. Overrides augment — they cannot replace the three-category classification (Fix / Feedback / Dismiss), the regression gate, or the evidence-based reply rule. See `hq:workflow § Project Overrides` for the canonical convention.
 
 ## Phase 1: Preconditions
 

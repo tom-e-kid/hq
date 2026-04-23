@@ -413,3 +413,11 @@ Refs #<hq:task>
 ```
 
 Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` is mandatory. `Refs` is mandatory **only when the plan has a parent `hq:task`** — when no parent exists, omit the `Refs` line entirely.
+
+### Project Overrides
+
+Every hq command / skill / agent may consult a project-local override file under `.hq/` (e.g. `.hq/draft.md`, `.hq/start.md`, `.hq/triage.md`, `.hq/respond.md`, `.hq/pr.md`, `.hq/code-review.md`, `.hq/security-scan.md`, `.hq/integrity-check.md`, `.hq/xcodebuild-config.md`). Override content is free-form guidance that augments the consumer's default behavior; it cannot replace phases, gates, or other Invariants the consumer defines for itself.
+
+`.hq/` is gitignored by `hq:bootstrap` Task 4, so overrides are per-clone by default. Teams that want shared policy either un-ignore specific files and commit them, or upstream the policy into `plugin/v2/rules/workflow.md`. The latter is the canonical path.
+
+See `hq:workflow § Project Overrides` for the authoritative table of override files, scope rules, and worktree propagation behavior.

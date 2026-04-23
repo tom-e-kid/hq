@@ -36,6 +36,9 @@ Set each to `in_progress` when starting and `completed` when done. Update the "T
 
 - Branch: !`git branch --show-current 2>/dev/null || echo "(detached)"`
 - Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
+- Project Overrides (`.hq/triage.md`): !`cat .hq/triage.md 2>/dev/null || echo "none"`
+
+If `Project Overrides` is not `none`, apply the content as project-specific guidance layered on top of this command's phases. Overrides augment — they cannot replace the three-disposition triage contract (add to `hq:plan` / leave / escalate to `hq:feedback`) or the atomic PR body edit rule. See `hq:workflow § Project Overrides` for the canonical convention.
 
 ## Phase 1: Load PR
 

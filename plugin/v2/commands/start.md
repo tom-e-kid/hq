@@ -37,6 +37,9 @@ Set each to `in_progress` when starting and `completed` when done. If a phase is
 
 - Branch: !`git branch --show-current 2>/dev/null || echo "(detached)"`
 - Focus: !`bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/read-context.sh"`
+- Project Overrides (`.hq/start.md`): !`cat .hq/start.md 2>/dev/null || echo "none"`
+
+If `Project Overrides` is not `none`, apply the content as project-specific guidance layered on top of this command's phases and gates. Overrides augment — they cannot replace the phase structure, the Commit Policy, the Phase 5 sweep contract, the Phase 6 Quality Review agent matrix, or the Phase 7 PR creation gate. See `hq:workflow § Project Overrides` for the canonical convention.
 
 **`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Canonical definition in `hq:workflow § Terminology`. All `hq:workflow § <name>` citations below refer to sections of that file. Read it with the Read tool when this command starts (Phase 1) so all subsequent phases have the rule available.
 
