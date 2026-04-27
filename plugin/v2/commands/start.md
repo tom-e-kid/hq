@@ -418,7 +418,7 @@ If the cap is `0`, the round loop runs zero rounds and the initial classified se
 
 **Resolved FBs** are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved (non-Low residual) ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
 
-**Phase 6 termination event.** Once Phase 6's residual handling is complete (whether the loop exited naturally with `fix_set` emptied by partition, via all-Low skip, or via cap-exit), record exactly **one** terminated event with the reason:
+**Phase 6 termination event.** Record exactly **one** terminated event before Phase 6 ends, regardless of how the round loop terminated. This includes the case where the **initial classification produced no clearly-actionable FBs** and the loop never entered — `fix_set_empty` MUST still be recorded so the `Termination:` section appears in the Phase 8 summary. Other paths: the loop exited naturally with `fix_set` emptied by partition (`fix_set_empty`), via all-Low skip (`all_low_skip`), or via cap-exit (`cap_exhausted` / `cap_exit_low_fix`). Use:
 
 ```bash
 bash plugin/v2/scripts/quality-review.sh record terminated reason=<fix_set_empty|all_low_skip|cap_exhausted|cap_exit_low_fix>
