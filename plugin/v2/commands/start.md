@@ -381,10 +381,10 @@ Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these a
 2. **Re-launch decision** — inspect `fix_set`'s severities:
    - **all-Low** (every FB in the current `fix_set` has `severity: Low`) → **skip the re-launch**. Move every FB in `fix_set` to `feedbacks/done/` (the fix is assumed correct — Low's narrow blast radius makes the re-review safety net unjustified). Set `fix_set := empty`. Loop exits.
    - **mixed or any ≥ Medium** → **re-launch** the originating agents (those that produced any FB currently in `fix_set`) in parallel via a single Agent-tool call batch. Wait for all to complete.
-3. **Partition the re-launch output** (only when re-launch ran):
-   - For each FB in `fix_set` that is **absent** from the new agent output → move its file to `feedbacks/done/`.
-   - For each FB in `fix_set` that **persists** in the new agent output → keep it for the next round.
-   - For each **new** FB in the new agent output (not present in the prior `fix_set`) → re-classify per the initial gate + classify rules above; if clearly-actionable and severity ≥ threshold, add to the next round's `fix_set`; otherwise leave pending (Phase 7 handles it).
+3. **Partition the re-launch output** (only when re-launch ran). For each entry the partition treats FB-file entries and virtual entries (security-scanner) symmetrically — "agent output" means the new FB-file set for FB-file entries and the fresh `security-scanner` scan report for virtual entries:
+   - For each entry in `fix_set` that is **absent** from the new agent output → mark resolved. For FB-file entries, move the file to `feedbacks/done/`. For virtual entries, no file exists to move — drop the entry from `fix_set`; the resolved state is recorded in conversation context only.
+   - For each entry in `fix_set` that **persists** in the new agent output → keep it for the next round (file-based entries stay in `feedbacks/`; virtual entries stay in conversation state).
+   - For each **new** finding in the new agent output (not present in the prior `fix_set`) → re-classify per the initial gate + classify rules above; if clearly-actionable and severity ≥ threshold, add to the next round's `fix_set`. New file-based findings come in as FB files; new security-scanner findings come in as virtual entries with severity from the scan report (defaulting to `Medium`). Findings that fail classification are left pending (Phase 7 handles them).
    - `fix_set := persistent + newly-actionable`.
 4. `round += 1`.
 
