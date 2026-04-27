@@ -388,7 +388,7 @@ Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these a
    - `fix_set := persistent + newly-actionable`.
 4. `round += 1`.
 
-**After the loop**: any FBs still in `fix_set` (cap exhausted with the FB unresolved or unverified) are left pending and surface in the PR's `## Known Issues` at Phase 7. If the cap is `0`, the loop runs zero rounds — every clearly-actionable FB goes straight to `## Known Issues` with no fix attempt.
+**After the loop**: any FBs still in `fix_set` (cap exhausted with the FB unresolved) are left pending and surface in the PR's `## Known Issues` at Phase 7. If the cap is `0`, the loop runs zero rounds — every clearly-actionable FB goes straight to `## Known Issues` with no fix attempt.
 
 **Resolved FBs** are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
 
