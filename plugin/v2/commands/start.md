@@ -47,12 +47,12 @@ If `Project Overrides` is not `none`, apply the content as project-specific guid
 
 Tunables for `/hq:start`. Change the value here and every referencing phase follows automatically.
 
-- **FB retry cap** = **`2`** — applied in two places, with the same value:
-  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB and `[x]`-toggled anyway. Per item independently.
-  - **Phase 6 (Quality Review)**: maximum times a single clearly-actionable FB may be retried (fix + re-run the **originating agent only** — no cross-agent regression check) before being left pending and escalated to the PR's `## Known Issues`. Per FB independently.
-  - Values: `0` skips retries entirely (NG goes straight to FB); `1` permits one retry; `2` is the current default.
+- **FB retry cap** = **`2`** — applied in two places. Same value, **different semantics per phase**:
+  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB and `[x]`-toggled anyway. **Per item independently.**
+  - **Phase 6 (Quality Review)**: maximum number of **fix rounds** allowed in the batch-fix + per-round re-review loop (§ Phase 6 Step 3). One round = "apply fixes to every clearly-actionable FB in the current `fix_set` → re-launch the originating agents (skipped when `fix_set` is all-Low) → partition output into resolved / persistent / new". When the round counter reaches the cap with FBs still unresolved, those FBs are left pending and escalated to the PR's `## Known Issues`. **Per round** — all FBs in a given round share the same round counter (a stubborn FB that needs one more round forces another fix-and-review pass for everyone still in `fix_set`).
+  - Values: `0` skips the loop entirely (every clearly-actionable FB goes straight to `## Known Issues` with no fix attempt); `1` permits a single fix round (fix once, then re-review once → escalate any remaining); `2` is the current default (two fix rounds — i.e. the new-FB / persistent-FB set surfacing after round 1 still gets one more fix attempt).
 
-- **fix-threshold** = **`Medium`** — Phase 6 severity gate. The **minimum severity** at which a clearly-actionable Quality Review FB enters the fix retry loop (§ Phase 6 Step 3). FBs whose `severity` is strictly below the threshold are left pending and escalated straight to the PR's `## Known Issues` — same outcome as design-level / scope-ambiguous FBs. Severity ordering: `Critical > High > Medium > Low`. At the default setting, FBs at or above the threshold are fixed and strictly below are skipped. Plans MAY override this via `## Plan Sketch § **Quality review policy**` (see `hq:workflow § ## Plan Sketch § **Quality review policy**`) — **strictening only**; a relaxation (a value weaker than the default — i.e. fewer severities fall into the fix loop) is rejected at Phase 6 entry with a warning and falls back to the default declared above.
+- **fix-threshold** = **`Low`** — Phase 6 severity gate. The **minimum severity** at which a clearly-actionable Quality Review FB enters the batch-fix loop (§ Phase 6 Step 3). FBs whose `severity` is strictly below the threshold are left pending and escalated straight to the PR's `## Known Issues` — same outcome as design-level / scope-ambiguous FBs. Severity ordering: `Critical > High > Medium > Low`. At the default `Low`, every clearly-actionable severity passes the gate (the gate is open by default); the cost trade-off that previously justified `Medium` (per-FB full-review re-runs) is dissolved by the batch-fix architecture in Step 3, which amortizes one re-review across the entire `fix_set` per round, and additionally skips re-review entirely when `fix_set` is all-Low (Low's narrow blast radius makes the safety-net cost unjustified). Pulling Low into Step 3 instead of escalating to `## Known Issues` removes the `/hq:start` → PR → `/hq:triage` round-trip that was absorbing the bulk of Low FBs in practice. The plan-level override mechanism (formerly at `## Plan Sketch § **Quality review policy**`) was retired alongside this change — at `Low`, the strictening-only direction has no values left, so the override block was dead text and was removed from `hq:workflow`.
 
 ## Commit Policy
 
@@ -361,34 +361,36 @@ Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `##
 
 ### Step 3: Process FBs
 
-Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these are the only Phase 6 agents that write FB files). `security-scanner` findings live in its scan report only — the root agent reads the report, decides what is actionable, and either applies a fix inline (same per-FB rules below, but the "re-run" step consults the scan report rather than re-running the agent) or leaves the residual for human judgment at PR review.
+Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these are the only Phase 6 agents that write FB files). `security-scanner` findings live in its scan report only (no FB files). When the root agent classifies a scan-report finding as clearly-actionable, **synthesize a virtual `fix_set` entry** for it: take the severity from the scan report, defaulting to `Medium` when the report omits one (security findings warrant the re-launch safety net by default — never auto-assign `Low`). Virtual entries participate in the all-Low gate and the per-round cap on equal footing with FB-file entries; the partition step at round end consults a fresh `security-scanner` scan report (the agent is then the originating agent for that entry) instead of looking for a new FB file. Findings that are not clearly-actionable stay residual and surface at PR review for human judgment.
 
-**Per-FB independence** — the FB retry cap (§ Settings) is applied **per FB in isolation**. FB X's failed retries do not consume FB Y's budget. **Cross-agent regression is not re-verified** in Phase 6 — only the originating agent is re-run to confirm the FB it raised is gone. Regressions introduced into a sibling agent's scope are accepted as a known trade-off (trading token cost for breadth); the PR review and `/hq:triage` step are the safety net.
+**Architecture — batch fix + per-round re-review.** Step 3 is a fix-then-verify loop driven by a single `fix_set` of clearly-actionable FBs. Every round applies fixes to the entire `fix_set` first, **then** re-launches only the originating agents once at the end of the round (skipped when `fix_set` is all-Low — see all-Low rule below). The originating-agent re-launch is a **full review of the diff**, structurally identical to Step 2's initial launch — it is not a "verify FB X only" probe — so amortizing it across the whole `fix_set` per round is a hard cost win over a per-FB loop. **Cross-agent regression is not re-verified within Step 3** — only the originating agents (those that produced any FB in the current `fix_set`) are re-launched. Regressions introduced into a sibling agent's scope are accepted as a known trade-off (trading token cost for breadth); the PR review and `/hq:triage` step are the safety net.
 
-**Resolve the severity gate** (once, at the start of Step 3):
+**Build the initial `fix_set`.** Walk every pending FB once and classify:
 
-1. Read the Settings-resolved default `fix-threshold` (§ Settings). Call this value `DEFAULT`. All comparisons and fallbacks below use `DEFAULT` — do not re-state the literal severity by name, so that changing § Settings automatically propagates here.
-2. Read `.hq/tasks/<branch-dir>/gh/plan.md` and locate the `**Quality review policy**` block inside `## Plan Sketch`. If absent, use `fix-threshold := DEFAULT`.
-3. If present, parse the `- fix-threshold: <value>` bullet. Accept only one of `Low` / `Medium` / `High` / `Critical` (**case-sensitive exact match**). If the parsed value is **not** one of the four literal strings (typo like `Hight`, wrong case like `medium`, or any other token), print a warning naming the offending value and the source (`## Plan Sketch § **Quality review policy**`), then fall back to `fix-threshold := DEFAULT` and skip step 4. Do not ABORT.
-4. **Reject relaxation** — compare the parsed value against `DEFAULT` using severity ordering `Critical > High > Medium > Low`. If the parsed value is **stricter than or equal to** `DEFAULT`, accept it as `fix-threshold`. If **relaxed** (parsed > `DEFAULT`), print a warning naming the offending value and the source (`## Plan Sketch § **Quality review policy**`), then fall back to `fix-threshold := DEFAULT`. Do not ABORT.
-5. Hold `fix-threshold` in conversation state for the duration of Step 3.
+1. **Severity gate** — when `fix-threshold` is `Low` (the default — see § Settings), the gate is **a structural no-op** because the severity ordering `Critical > High > Medium > Low` has no value strictly below `Low`; skip this step and treat every FB as gate-passing. The step is preserved for the case where a future operator raises the default; under that scenario, drop any FB whose severity is strictly below the threshold and leave it pending (it flows to `## Known Issues` at Phase 7).
+2. **Classify** — for FBs that passed the gate:
+   - **Clearly-actionable** (bug / typo / logic error / verifiable inconsistency) → add to `fix_set`.
+   - **Design-level / scope-ambiguous** → leave pending (continue-report per Stop Policy). These flow straight to `## Known Issues` at Phase 7 — Step 3 does NOT attempt to fix them.
 
-For each FB:
+**Round loop.** Initialize `round = 1`. While `fix_set` is non-empty AND `round ≤ FB retry cap` (§ Settings):
 
-1. **Severity gate** — read the FB's `severity:` frontmatter field. If `severity < fix-threshold` (using the ordering `Critical > High > Medium > Low`), **short-circuit**: leave the FB pending (it flows to `## Known Issues` at Phase 7) and move to the next FB. This gate is applied before classification so a below-threshold FB is treated the same as a design-level / scope-ambiguous one — continue-report per Stop Policy.
-2. **Classify the FB** — if the gate passed: is it a clearly-actionable bug / typo / logic error, or a design-level / scope-ambiguous concern?
-3. **Clearly-actionable FBs — retry loop** — up to the FB retry cap times:
+1. **Apply fixes** — for each FB in `fix_set`:
    1. Apply a fix.
    2. Follow `hq:workflow` § Before Commit.
    3. Create a `fix: <FB subject>` commit per § Commit Policy.
-   4. **Re-run the originating agent only** — the single agent that wrote this FB. Do not re-run the full Phase 6 agent set; cross-agent regression is not a Phase 6 concern (see Per-FB independence above).
-   5. If the FB is gone from the re-run output, move the FB file to `feedbacks/done/` and exit the loop.
-   6. Otherwise, continue the loop up to the cap.
+2. **Re-launch decision** — inspect `fix_set`'s severities:
+   - **all-Low** (every FB in the current `fix_set` has `severity: Low`) → **skip the re-launch**. Move every FB in `fix_set` to `feedbacks/done/` (the fix is assumed correct — Low's narrow blast radius makes the re-review safety net unjustified). Set `fix_set := empty`. Loop exits.
+   - **mixed or any ≥ Medium** → **re-launch** the originating agents (those that produced any FB currently in `fix_set`) in parallel via a single Agent-tool call batch. Wait for all to complete.
+3. **Partition the re-launch output** (only when re-launch ran). For each entry the partition treats FB-file entries and virtual entries (security-scanner) symmetrically — "agent output" means the new FB-file set for FB-file entries and the fresh `security-scanner` scan report for virtual entries:
+   - For each entry in `fix_set` that is **absent** from the new agent output → mark resolved. For FB-file entries, move the file to `feedbacks/done/`. For virtual entries, no file exists to move — drop the entry from `fix_set`; the resolved state is recorded in conversation context only.
+   - For each entry in `fix_set` that **persists** in the new agent output → keep it for the next round (file-based entries stay in `feedbacks/`; virtual entries stay in conversation state).
+   - For each **new** finding in the new agent output (not present in the prior `fix_set`) → re-classify per the initial gate + classify rules above; if clearly-actionable and severity ≥ threshold, add to the next round's `fix_set`. New file-based findings come in as FB files; new security-scanner findings come in as virtual entries with severity from the scan report (defaulting to `Medium`). Findings that fail classification are left pending (Phase 7 handles them).
+   - `fix_set := persistent + newly-actionable`.
+4. `round += 1`.
 
-   When the cap is exhausted without success, leave the FB pending and move on to the next FB — pending FBs surface later in the PR's `## Known Issues`. If the cap is `0`, skip the loop and leave the FB pending immediately.
-4. **Design-level / scope-ambiguous FBs** — do NOT fix them in Phase 6. Leave them pending (continue-report per Stop Policy). They flow straight into the PR's `## Known Issues` at Phase 7.
+**After the loop**: any FBs still in `fix_set` (cap exhausted with the FB unresolved) are left pending and surface in the PR's `## Known Issues` at Phase 7. If the cap is `0`, the loop runs zero rounds — every clearly-actionable FB goes straight to `## Known Issues` with no fix attempt.
 
-Resolved FBs are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
+**Resolved FBs** are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
 
 Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends.
 
