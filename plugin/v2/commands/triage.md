@@ -6,7 +6,7 @@ allowed-tools: Read, Edit, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), Ta
 
 # TRIAGE — Sort Residual PR Known Issues
 
-This command processes the `## Known Issues` section of a PR body — the hand-off point where `/hq:start` documented items it couldn't resolve. For each item, you decide with the user one of three dispositions:
+This command processes the `## Known Issues` section of a PR body — the hand-off point for items `/hq:start` deliberately deferred. Under the current `/hq:start § Settings § fix-threshold` (`Low`), every clearly-actionable severity is fixed inside Phase 6 by the batch-fix loop, so `## Known Issues` is intentionally narrowed to **items needing separate consideration** — design-level concerns, scope-ambiguous findings, FBs that exhausted the per-round retry cap, and anything Phase 6 deliberately classified as out-of-band. For each item, you decide with the user one of three dispositions:
 
 1. **Add to `hq:plan`** — enqueue as follow-up work; the user runs `/hq:start <plan>` afterward to resume
 2. **Leave as-is** — keep it in the PR body; accepted as a known limitation
