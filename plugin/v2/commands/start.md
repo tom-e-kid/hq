@@ -367,7 +367,7 @@ Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these a
 
 **Build the initial `fix_set`.** Walk every pending FB once and classify:
 
-1. **Severity gate** — at the default `fix-threshold` (`Low`, see § Settings), every clearly-actionable severity passes. Drop any FB whose severity is strictly below the threshold (only relevant if a future tunable raises the threshold) — leave it pending; it flows to `## Known Issues` at Phase 7.
+1. **Severity gate** — when `fix-threshold` is `Low` (the default — see § Settings), the gate is **a structural no-op** because the severity ordering `Critical > High > Medium > Low` has no value strictly below `Low`; skip this step and treat every FB as gate-passing. The step is preserved for the case where a future operator raises the default; under that scenario, drop any FB whose severity is strictly below the threshold and leave it pending (it flows to `## Known Issues` at Phase 7).
 2. **Classify** — for FBs that passed the gate:
    - **Clearly-actionable** (bug / typo / logic error / verifiable inconsistency) → add to `fix_set`.
    - **Design-level / scope-ambiguous** → leave pending (continue-report per Stop Policy). These flow straight to `## Known Issues` at Phase 7 — Step 3 does NOT attempt to fix them.
