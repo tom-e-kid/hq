@@ -350,6 +350,14 @@ Compute `DIFF_KIND` per `## Diff Classification` above (recompute from `git diff
 
 Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `## Diff Classification` above. Issue them in a single Agent-tool call batch so they run in parallel; wait for all launched agents to complete before proceeding.
 
+**Record `initial_review` per launched agent.** Once every launched agent has returned, emit one event per agent via the helper:
+
+```bash
+bash plugin/v2/scripts/quality-review.sh record initial_review agent=<name> fb_count=<n> severity=C:<n>,H:<n>,M:<n>,L:<n>
+```
+
+`<name>` is the agent name (`code-reviewer` / `security-scanner` / `integrity-checker`); `<n>` after `fb_count=` is that agent's total finding count (FB files written for `code-reviewer` / `integrity-checker`; scan-report findings for `security-scanner`); the `severity=` breakdown counts findings by frontmatter `severity:` (FB-file agents) or scan-report severity (`security-scanner` — defaulting to `Medium` when the report omits one, per Step 3). Agents skipped by the matrix produce no event. The events feed Phase 8's `### Quality Review` summary so the per-agent baseline is visible after the run.
+
 #### `integrity-checker` invocation prompt
 
 `integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Plan Sketch` (especially the `**Impact**` block) against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
@@ -374,28 +382,54 @@ Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these a
 
 **Round loop.** Initialize `round = 1`. While `fix_set` is non-empty AND `round ≤ FB retry cap` (§ Settings):
 
+0. **Record round start** — at the top of every round, before any other sub-step:
+
+   ```bash
+   bash plugin/v2/scripts/quality-review.sh record round_start round=<N> fix_set_size=<n>
+   ```
+
 1. **Apply fixes** — for each FB in `fix_set`:
    1. Apply a fix.
    2. Follow `hq:workflow` § Before Commit.
    3. Create a `fix: <FB subject>` commit per § Commit Policy.
 2. **Re-launch decision** — inspect `fix_set`'s severities:
-   - **all-Low** (every FB in the current `fix_set` has `severity: Low`) → **skip the re-launch**. Move every FB in `fix_set` to `feedbacks/done/` (the fix is assumed correct — Low's narrow blast radius makes the re-review safety net unjustified). Set `fix_set := empty`. Loop exits.
-   - **mixed or any ≥ Medium** → **re-launch** the originating agents (those that produced any FB currently in `fix_set`) in parallel via a single Agent-tool call batch. Wait for all to complete.
+   - **all-Low** (every FB in the current `fix_set` has `severity: Low`) → **skip the re-launch**. Record `bash plugin/v2/scripts/quality-review.sh record relaunch round=<N> skipped=all_low`. Move every FB in `fix_set` to `feedbacks/done/` (the fix is assumed correct — Low's narrow blast radius makes the re-review safety net unjustified). Set `fix_set := empty`. Record `bash plugin/v2/scripts/quality-review.sh record round_end round=<N> resolved=<original-count> persistent=0 new=0`. Loop exits.
+   - **mixed or any ≥ Medium** → **re-launch** the originating agents (those that produced any FB currently in `fix_set`) in parallel via a single Agent-tool call batch. Record `bash plugin/v2/scripts/quality-review.sh record relaunch round=<N> agents=<comma-separated-agent-list>`. Wait for all to complete.
 3. **Partition the re-launch output** (only when re-launch ran). For each entry the partition treats FB-file entries and virtual entries (security-scanner) symmetrically — "agent output" means the new FB-file set for FB-file entries and the fresh `security-scanner` scan report for virtual entries:
    - For each entry in `fix_set` that is **absent** from the new agent output → mark resolved. For FB-file entries, move the file to `feedbacks/done/`. For virtual entries, no file exists to move — drop the entry from `fix_set`; the resolved state is recorded in conversation context only.
    - For each entry in `fix_set` that **persists** in the new agent output → keep it for the next round (file-based entries stay in `feedbacks/`; virtual entries stay in conversation state).
    - For each **new** finding in the new agent output (not present in the prior `fix_set`) → re-classify per the initial gate + classify rules above; if clearly-actionable and severity ≥ threshold, add to the next round's `fix_set`. New file-based findings come in as FB files; new security-scanner findings come in as virtual entries with severity from the scan report (defaulting to `Medium`). Findings that fail classification are left pending (Phase 7 handles them).
    - `fix_set := persistent + newly-actionable`.
+   - Record `bash plugin/v2/scripts/quality-review.sh record round_end round=<N> resolved=<n> persistent=<n> new=<n>`.
 4. `round += 1`.
 
-**After the loop — Low cap-exit fix rule** (`hq:workflow § Feedback Loop`): any FBs still in `fix_set` (cap exhausted with the FB unresolved) are partitioned by severity:
+**After the loop — Low cap-exit fix rule** (`hq:workflow § Feedback Loop`): any FBs still in `fix_set` (cap exhausted with the FB unresolved) are partitioned by severity. When this branch is reached (`round > FB retry cap` with `fix_set` non-empty), first record the partition counts:
+
+```bash
+bash plugin/v2/scripts/quality-review.sh record cap_exit low_count=<n> non_low_count=<n>
+```
+
+Then apply the partition:
 
 - **Low subset** — apply one inline fix pass (one `fix: <FB subject>` commit per FB, follow `hq:workflow § Before Commit`) and move each FB file to `feedbacks/done/`. Do NOT re-launch the originating agents — the verification cost trade-off matches `all-Low skip`. This pass guarantees every Low in the residual set (including newly-actionable Low surfaced by the last re-launch) gets at least one fix opportunity.
 - **non-Low subset** (`Medium` / `High` / `Critical`) — leave pending; the FB files stay under `.hq/tasks/<branch-dir>/feedbacks/` and surface in the PR's `## Known Issues` at Phase 7.
 
-If the cap is `0`, the round loop runs zero rounds and the initial classified set IS the residual — the same partition applies: every clearly-actionable Low still gets one inline fix pass + `done/`, every non-Low goes straight to `## Known Issues`. This guarantees Low is structurally absent from `## Known Issues` regardless of cap value.
+If the cap is `0`, the round loop runs zero rounds and the initial classified set IS the residual — the same `cap_exit` event + partition applies: every clearly-actionable Low still gets one inline fix pass + `done/`, every non-Low goes straight to `## Known Issues`. This guarantees Low is structurally absent from `## Known Issues` regardless of cap value.
 
 **Resolved FBs** are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved (non-Low residual) ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
+
+**Phase 6 termination event.** Record exactly **one** terminated event before Phase 6 ends, regardless of how the round loop terminated. This includes the case where the **initial classification produced no clearly-actionable FBs** and the loop never entered — `fix_set_empty` MUST still be recorded so the `Termination:` section appears in the Phase 8 summary. Other paths: the loop exited naturally with `fix_set` emptied by partition (`fix_set_empty`), via all-Low skip (`all_low_skip`), or via cap-exit (`cap_exhausted` / `cap_exit_low_fix`). Use:
+
+```bash
+bash plugin/v2/scripts/quality-review.sh record terminated reason=<fix_set_empty|all_low_skip|cap_exhausted|cap_exit_low_fix>
+```
+
+Reason values (mutually exclusive — pick whichever matches the actual termination path):
+
+- `fix_set_empty` — initial classification produced no clearly-actionable FBs, OR the round loop's partition emptied `fix_set` naturally before the cap was reached. No `cap_exit` event in either case.
+- `all_low_skip` — round loop exited via all-Low skip in some round. No `cap_exit` event.
+- `cap_exhausted` — cap reached with at least one non-Low FB remaining; non-Low subset escalates to `## Known Issues` at Phase 7. Preceded by a `cap_exit` event.
+- `cap_exit_low_fix` — cap reached with only Low FBs remaining; the Low cap-exit fix rule resolved all of them inline, nothing escalates. Preceded by a `cap_exit` event with `non_low_count=0`.
 
 Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends.
 
@@ -478,6 +512,18 @@ Phases that have no recorded stamps appear as `(no data)`. Two scenarios produce
 - **Auto-resume** — Phase 2 and Phase 3 are skipped entirely (the branch and cache already exist), so they produce no stamps for that session.
 
 This is an accepted limitation of the wall-clock design — the stamped phases (4–7 always, plus 1–3 when they run on the feature branch) cover the bulk of the execution time.
+
+### Quality Review
+
+Run the quality-review summary and include its output in the report so the user can see Phase 6's per-agent FB counts, round-by-round fix outcomes, and how the round loop terminated:
+
+```bash
+bash plugin/v2/scripts/quality-review.sh summary
+```
+
+The summary prints up to three sections — `Initial:` (one row per launched agent with its severity breakdown in `C:n H:n M:n L:n` form), `Round N:` (one row per fix round with `fix_set`, partition counts, and re-launch agents — absent when no rounds ran), and `Termination:` (the round loop's exit reason and any `cap_exit` counts). When Phase 6 produced no clearly-actionable FBs and the round loop never entered, the summary still surfaces the `Initial:` and `Termination:` sections (with `reason=fix_set_empty`) so the run is auditable. If no events were recorded at all (e.g., Phase 6 was bypassed), the helper prints `No quality-review events recorded.`.
+
+This data feeds the operational evaluation of `## Settings` defaults (FB retry cap, fix-threshold) and the Low cap-exit fix rule's effectiveness — observe the distribution across runs to judge whether the defaults still match production behavior.
 
 ## Rules
 
