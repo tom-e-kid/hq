@@ -380,7 +380,13 @@ Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these a
    - **Clearly-actionable** (bug / typo / logic error / verifiable inconsistency) → add to `fix_set`.
    - **Design-level / scope-ambiguous** → leave pending (continue-report per Stop Policy). These flow straight to `## Known Issues` at Phase 7 — Step 3 does NOT attempt to fix them.
 
-**Round loop.** Initialize `round = 1`. While `fix_set` is non-empty AND `round ≤ FB retry cap` (§ Settings) — at the top of every round, before sub-step 1, record `bash plugin/v2/scripts/quality-review.sh record round_start round=<N> fix_set_size=<n>`:
+**Round loop.** Initialize `round = 1`. While `fix_set` is non-empty AND `round ≤ FB retry cap` (§ Settings):
+
+0. **Record round start** — at the top of every round, before any other sub-step:
+
+   ```bash
+   bash plugin/v2/scripts/quality-review.sh record round_start round=<N> fix_set_size=<n>
+   ```
 
 1. **Apply fixes** — for each FB in `fix_set`:
    1. Apply a fix.
