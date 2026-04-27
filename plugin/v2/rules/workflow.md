@@ -169,9 +169,6 @@ Parent: #<hq:task issue number>
 **Constraints** *(optional)*
 - <hard dependency / prerequisite / assumption>
 
-**Quality review policy** *(optional)*
-- fix-threshold: <Low | Medium | High | Critical>
-
 ## Plan
 - [ ] <implementation step — single meaningful commit unit>
 
@@ -204,9 +201,6 @@ Parent: #<hq:task issue number>
 
 - **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
 - **`**Constraints**`** *(optional)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty. Note: the `Downstream check directive` no longer routes through `**Constraints**` — it lives in the `**Impact**` block itself (see above).
-- **`**Quality review policy**`** *(optional)* — per-plan override of `/hq:start` Phase 6 Quality Review behavior. Bullet-list syntax, one setting per line (e.g. `- fix-threshold: Low`). Current settings:
-  - `fix-threshold: <Low | Medium | High | Critical>` — the **minimum severity** at which a clearly-actionable Quality Review FB enters the fix retry loop. FBs strictly below this threshold are left pending and escalated to the PR's `## Known Issues` directly (same handling as design-level / scope-ambiguous FBs). The authoritative default is declared in `/hq:start § Settings § fix-threshold`; at that default, findings below the threshold (typically readability / consistency / cosmetic drift — rarely merge blockers) are skipped so the cost of the fix + agent re-run does not outweigh the benefit, with `/hq:triage` available at PR review for anything the plan author wants to pick up.
-  - **Override direction is asymmetric — strictening only, relaxation forbidden.** Lowering the threshold (e.g. `fix-threshold: Low` — fix everything, including nitpicks) is permitted; raising the threshold (a value weaker than the default, i.e. fewer severities fall into the fix loop) is forbidden because borderline findings can mask correctness / security issues, and relaxing the default invites silent quality decay. `/hq:start` Phase 6 parses this block on entry; a relaxation override is rejected with a warning and the default (from `/hq:start § Settings § fix-threshold`) is applied instead. Omit the block entirely to use the default.
 
 ### `## Plan`
 
@@ -463,11 +457,11 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 ### FB Lifecycle (for the root agent after a skill run)
 
 - Read pending FB files and assess each: fix only those that are clearly actionable (bugs, typos, logic errors). Leave design-level or scope-ambiguous FBs as-is for user judgment.
-- Run hq:workflow § Before Commit after fixes
-- Re-run the originating agent only to verify the specific FB is gone. Do NOT re-run the full agent set — cross-agent regression is accepted as a trade-off for review token cost
-- When an FB item is **resolved in-branch**, move its file to `feedbacks/done/`
-- When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems)
-- The fix → re-verify cycle runs up to the caller's **FB retry cap**, applied **per FB independently** (FB A's failed retries do not consume FB B's budget). `/hq:start` defines its cap in its `## Settings` section (default `2`); other callers MUST supply their own. When the cap is exhausted on a given FB, escalate that FB to the PR body and move its file to `done/`.
+- **Batch fix the clearly-actionable set** before re-launching any agent. Apply every fix in the current `fix_set`, follow `hq:workflow § Before Commit` per fix, then re-launch the originating agents (those that produced any FB in the current `fix_set`) **once** at the end of the batch. Do NOT re-run the full agent set — cross-agent regression is accepted as a trade-off for review token cost.
+- **all-Low skip** — when every FB in the current `fix_set` has `severity: Low`, skip the originating-agent re-launch entirely and assume the fixes are correct. Low's narrow blast radius makes the safety-net cost unjustified; the caller is responsible for documenting any caveats inline at the call site.
+- When an FB item is **resolved in-branch** (absent from the post-batch re-launch output, or covered by the all-Low skip), move its file to `feedbacks/done/`.
+- When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems).
+- The batch-fix → re-launch cycle runs up to the caller's **FB retry cap** rounds with **per-round** semantics — every FB still in the `fix_set` at the start of a given round shares that round's counter (one stubborn FB forces another fix-and-re-launch pass for everyone in the set; Low-only sets exit the loop in a single round via the all-Low skip rule above). `/hq:start` defines its cap in its `## Settings` section (default `2`); other callers MUST supply their own. When the cap is exhausted with FBs still unresolved, escalate those FBs to the PR body and move their files to `done/`.
 - Do not modify or delete FB files — only move resolved/escalated ones to `done/`
 
 **Atomicity** — escalation into `## Known Issues` and the move to `feedbacks/done/` are a single atomic operation. Surfacing an FB in the PR body without moving its file (or moving the file without surfacing the content) is forbidden. This atomicity cannot be skipped or weakened by project-level overrides such as `.hq/pr.md` — see `## PR Body Structure` § Invariants.
