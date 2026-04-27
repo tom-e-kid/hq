@@ -115,15 +115,16 @@ case "$cmd" in
     fi
     awk '
       function get(line, key,   v) {
+        # Anchor with [{,] so e.g. "low_count" cannot match inside "non_low_count".
         v = line
-        if (match(v, "\"" key "\":\"[^\"]*\"")) {
-          v = substr(v, RSTART, RLENGTH)
+        if (match(v, "[{,]\"" key "\":\"[^\"]*\"")) {
+          v = substr(v, RSTART + 1, RLENGTH - 1)
           sub("\"" key "\":\"", "", v)
           sub("\"$", "", v)
           return v
         }
-        if (match(v, "\"" key "\":[0-9]+")) {
-          v = substr(v, RSTART, RLENGTH)
+        if (match(v, "[{,]\"" key "\":[0-9]+")) {
+          v = substr(v, RSTART + 1, RLENGTH - 1)
           sub("\"" key "\":", "", v)
           return v
         }
