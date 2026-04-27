@@ -148,7 +148,10 @@ Phase 6: Quality Review (diff-kind aware)
 │    fix every FB in fix_set → re-launch originating agents once
 │    (skipped when fix_set is all-Low; severity gate is open at default Low)
 │    → partition output into resolved / persistent / new → next round
-│  Round count capped by § Settings FB retry cap (per-round, default 2)
+│  Round count capped by § Settings FB retry cap (per-round, default 2;
+│    total reviews = cap + 1 = initial review + N re-launches)
+│  Cap-exit: Low subset → 1 inline fix pass + done/ (Low cap-exit fix rule),
+│            non-Low subset → ## Known Issues
 │  (working tree must be clean at end)
 │
 Phase 7: PR Creation
@@ -175,7 +178,7 @@ Phase 8: Report
 - **Three-agent Phase 6 with non-overlapping scopes** — `code-reviewer` covers quality / correctness / `/simplify`-era signals with a load-bearing guard against redundant-looking concurrency / lifecycle / subscription / cache / SSR / module-level-mutable-state code. `security-scanner` enumerates alert patterns (runs on `sonnet`). `integrity-checker` reconciles the plan's `## Plan Sketch` / `**Impact**` block against the diff — its invocation prompt carries the full `## Plan Sketch` block (minus `**Core decision**` and `**Change Map**`), to keep its external lens uncontaminated by the author's solution framing.
 - **Phase 4 ↔ Phase 5 mini-loop** — Phase 5 is a pure sweep; fixes live in Phase 4 (loopback entry). Capped by § Settings FB retry cap per item. This batch-fix model surfaces shared root causes across multiple failing items.
 - **Phase 5 1-by-1 toggle** — per failing `[auto]` item, write the FB (with `covers_acceptance` pointing back to the item) and toggle the checkbox in a single `plan-check-item.sh` tool call. Batch toggles are prohibited.
-- **Phase 6 batch-fix + per-round re-review** — clearly-actionable FBs are collected into a single `fix_set`, fixed in a batch each round, then verified by one re-launch of the originating agents at round end. The retry cap is **per-round** (one stubborn FB forces another fix-and-review pass for everyone in the set). When `fix_set` is all-Low, the round skips the re-launch entirely — Low's narrow blast radius makes the safety-net cost unjustified, and at the default `fix-threshold` (`Low`) every clearly-actionable severity passes the gate so Low FBs are absorbed inside Phase 6 instead of escalating to `## Known Issues`. Cross-agent regression is not re-verified; PR review / `/hq:triage` are the safety net.
+- **Phase 6 batch-fix + per-round re-review** — clearly-actionable FBs are collected into a single `fix_set`, fixed in a batch each round, then verified by one re-launch of the originating agents at round end. The retry cap is **per-round** (one stubborn FB forces another fix-and-review pass for everyone in the set) and counts fix rounds only — `total reviews = cap + 1 = initial review + N re-launches`. When `fix_set` is all-Low, the round skips the re-launch entirely — Low's narrow blast radius makes the safety-net cost unjustified, and at the default `fix-threshold` (`Low`) every clearly-actionable severity passes the gate so Low FBs are absorbed inside Phase 6 instead of escalating to `## Known Issues`. The **Low cap-exit fix rule** is the symmetric cap-exhaustion counterpart: when the round loop exits with FBs still in `fix_set`, the Low subset receives one inline fix pass and moves to `done/` (no re-launch) while the non-Low subset escalates to `## Known Issues` — guaranteeing Low never reaches `## Known Issues` regardless of cap value. Cross-agent regression is not re-verified; PR review / `/hq:triage` are the safety net.
 - **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.
 - **No `hq:feedback` creation** — escalation to `hq:feedback` is a `/hq:triage` responsibility, not `/hq:start`.
 - **Strict PR creation gate** — all `## Plan` items and all `[auto]` Acceptance items must be checked. `[manual]` items carry over to the PR body for the user to verify.
