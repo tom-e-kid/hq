@@ -4,8 +4,6 @@ A Claude Code plugin for AI-assisted development workflows, anchored in GitHub I
 
 HQ separates a feature from idea to merge into a small set of command-scoped operations, with **two user interventions** as the only mandatory checkpoints — everything else runs autonomously. All work is traceable through GitHub Issues and PRs; the plugin leaves nothing behind in the consumer repo.
 
-![HQ Concept](docs/hq-concept.png)
-
 ## Workflow
 
 ```
@@ -124,7 +122,6 @@ Per-project guidance can be layered via `.hq/<command>.md` overrides (e.g. `.hq/
 | `.claude-plugin/plugin.json` | Plugin manifest |
 | `plugin/v2/` | Active plugin — commands, agents, skills, rules, scripts, docs |
 | `plugin/v1/` | Legacy — frozen, do not modify |
-| `docs/` | Diagrams and visual assets |
 | `CLAUDE.md` | Project instructions for Claude Code |
 | `AGENTS.md` | Pointer to `CLAUDE.md` for OpenAI Codex |
 
