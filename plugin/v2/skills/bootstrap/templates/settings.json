@@ -2,15 +2,5 @@
   "attribution": {
     "commit": "",
     "pr": ""
-  },
-  "permissions": {
-    "allow": [
-      "Bash(bash:*)",
-      "Bash(find:*)",
-      "Bash(gh:*)",
-      "Bash(git:*)",
-      "Write",
-      "Edit"
-    ]
   }
 }

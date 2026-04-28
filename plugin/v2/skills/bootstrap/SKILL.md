@@ -4,11 +4,13 @@ description: Bootstrap project with foundational rules and settings
 
 # Bootstrap
 
-Set up foundational project configuration. Run this once when initializing a new project.
+Set up foundational project configuration. Safe to re-run — the HQ section of CLAUDE.md is managed by this skill, but every other change is confirmed with the user before applying.
 
-## Arguments
+## Principle
 
-- `agents.md` — also install AGENTS.md (Task 2). Without this argument, Task 2 is skipped.
+**Never silently skip and never silently overwrite.** When a target file already exists or already has the right content, report it and ask before changing anything. When proposing an overwrite, state the reason.
+
+The only exception is the HQ block in CLAUDE.md, which is explicitly marked as bootstrap-managed — but even then, surface a one-line summary of what is changing and confirm with the user before writing.
 
 ## Progress Tracking
 
@@ -16,52 +18,138 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`) to show progress. At the
 
 | Task subject | activeForm |
 |---|---|
+| Gather build & test config | Gathering build & test config |
 | Set up CLAUDE.md | Setting up CLAUDE.md |
-| Set up AGENTS.md | Setting up AGENTS.md |
-| Merge settings.local.json | Merging settings.local.json |
+| Ensure attribution in settings.local.json | Ensuring attribution |
 | Update .gitignore | Updating .gitignore |
 
-Set each task to `in_progress` when starting and `completed` when done. If a task is skipped (e.g., AGENTS.md without argument), mark it as `completed` immediately with subject updated to show "skipped".
+Set each task to `in_progress` when starting and `completed` when done.
 
 ## Tasks
 
-### 1. CLAUDE.md
+### 1. Gather build & test config
+
+Goal: collect the information needed to fill CLAUDE.md `## Commands` and the HQ section.
+
+**Detect project type** (multiple may match — handle all that match):
+
+| Detection | Type |
+|-----------|------|
+| `*.xcodeproj` or `*.xcworkspace` exists | Xcode |
+| `Package.swift` exists (without `*.xcodeproj`) | SwiftPM |
+| `package.json` exists | Node/TS |
+| `go.mod` exists | Go |
+
+**Gather commands per type:**
+
+- **Xcode** — invoke the `hq:xcodebuild-config` skill. It produces `.hq/xcodebuild-config.md` interactively. Use the resulting Build Command and Run Command for CLAUDE.md (build / dev rows).
+- **Node/TS** — read `package.json` `scripts` and the `packageManager` field. Confirm with the user which scripts map to install / dev / build / test / lint / format. Default the package manager from `packageManager`; otherwise ask.
+- **Go** — propose standard commands (`go build ./...`, `go test ./...`). Ask about lint/format tools (e.g. `golangci-lint run`, `gofmt -w .`).
+- **SwiftPM** — propose `swift build`, `swift test`. Confirm with the user.
+- **Other / unknown** — ask the user directly for each Commands row.
+
+**Test strategy:**
+
+Use `AskUserQuestion` to ask:
+
+> How should this project be tested by Claude when verifying a change?
+>
+> 1. **Unit** — Claude runs the test command automatically before claiming a change is done.
+> 2. **E2E** — Claude runs end-to-end checks (Playwright, hq:e2e-web, etc.) before claiming a change is done.
+> 3. **Manual** — A human runs tests; Claude reports what changed and waits for confirmation.
+
+Record the choice (and the resolved test command, if applicable) for use in Task 2's HQ section.
+
+**Output**: hold the gathered info in conversation context — Task 2 reads it.
+
+### 2. CLAUDE.md
 
 **Target**: `<project_root>/CLAUDE.md`
 
-If it already exists, skip and report. If not, copy [templates/claude-md.md](templates/claude-md.md) and fill in the placeholders based on the project's actual codebase (package.json, go.mod, Makefile, etc.).
+The HQ section is delimited by `<!-- BEGIN HQ -->` ... `<!-- END HQ -->` and is owned by `hq:bootstrap`.
 
-### 2. AGENTS.md (optional — requires `agents.md` argument)
+#### Branch A — file missing
 
-**Skip this task entirely unless the user passed `agents.md` as an argument.**
+- Copy [templates/claude-md.md](templates/claude-md.md), fill in:
+  - `{{project_name}}` and the one-line description (from `package.json` / `go.mod` / `Package.swift`).
+  - `## Commands` rows from Task 1 findings.
+  - `{{build_pointer}}` and `{{test_strategy}}` in the HQ section (see **Resolved values** below).
+- Save. Report the path.
 
-**Target**: `<project_root>/AGENTS.md`
+#### Branch B — file exists, HQ markers present
 
-If it already exists, skip and report. If not, copy [templates/agents-md.md](templates/agents-md.md). This provides code review and security scan instructions for non-Claude Code AI agents.
+1. Read the file. Compute the new HQ block from Task 1.
+2. Show the user a one-line summary of what changes (e.g. "test strategy: Manual → Unit (`bun test`)"). If the new block is identical to the existing one, report "no change needed" and skip.
+3. Use `AskUserQuestion`:
+   - **Title**: `Overwrite HQ section in CLAUDE.md?`
+   - **Reason**: "the HQ section is bootstrap-managed; re-running keeps it in sync with the latest workflow."
+   - **Options**: `Overwrite` / `Skip`.
+4. If approved, replace only the marked block. Do not touch any other section (Commands, Notes, etc. are user territory once the file exists).
 
-### 3. Settings
+#### Branch C — file exists, HQ markers absent
+
+1. Compute the new HQ block from Task 1.
+2. Use `AskUserQuestion`:
+   - **Title**: `Append HQ section to CLAUDE.md?`
+   - **Reason**: "no HQ markers found; the HQ workflow expects a `## HQ` block (Verification / Build / Test Strategy). Bootstrap appends it at the end of the file."
+   - **Options**: `Append` / `Skip`.
+3. If approved, append the block. Do not modify the rest.
+
+#### Resolved values
+
+- `{{build_pointer}}`:
+  - Xcode → `See [.hq/xcodebuild-config.md](.hq/xcodebuild-config.md) for the canonical build / run commands.`
+  - Other → `See \`## Commands\` above.`
+  - Mixed (Xcode + other) → `Xcode: see [.hq/xcodebuild-config.md](.hq/xcodebuild-config.md). Other targets: see \`## Commands\` above.`
+- `{{test_strategy}}`:
+  - Unit → `Unit — run \`<test command>\` before claiming a change is done.`
+  - E2E → `E2E — run end-to-end checks (e.g. Playwright, hq:e2e-web) before claiming a change is done.`
+  - Manual → `Manual — tests are run by a human. Report what was changed; do not claim "verified" without human confirmation.`
+
+### 3. settings.local.json
 
 **Target**: `<project_root>/.claude/settings.local.json`
 
-If it does not exist, copy [templates/settings.json](templates/settings.json) as the starting point.
+The template carries only the `attribution` block. Empty strings suppress Claude Code's default footer in commits and PRs.
 
-If it already exists, read the existing file and **deep-merge** — for every key in the template, if the key is missing in the target, add it. For array values (e.g., `permissions.allow`), append missing entries without removing existing ones. Never remove or overwrite existing entries.
+```json
+{ "attribution": { "commit": "", "pr": "" } }
+```
 
-After creating or merging, detect the project type and append platform-specific permissions to `permissions.allow` (skip any already present):
+#### Branch A — file missing
 
-| Detection | Permissions to add |
-|-----------|-------------------|
-| `*.xcodeproj` or `*.xcworkspace` exists | `Bash(swift-format:*)`, `Bash(xcodebuild:*)`, `Bash(xcrun:*)` |
-| `package.json` or `tsconfig.json` exists | `Bash(bun:*)` |
-| `go.mod` exists | `Bash(go build:*)`, `Bash(go vet:*)` |
+- Copy [templates/settings.json](templates/settings.json). Report the path.
 
-Multiple detections can match (e.g., a monorepo with both Go and TypeScript). Add all matching permissions.
+#### Branch B — file exists, has `attribution`
+
+- Report "attribution already set" and skip. No prompt needed.
+
+#### Branch C — file exists, no `attribution`
+
+- Use `AskUserQuestion`:
+  - **Title**: `Add attribution block to settings.local.json?`
+  - **Reason**: "adds `attribution: { commit: '', pr: '' }` so commits and PRs from this project don't carry the default Claude Code footer. Existing values in the file are not modified."
+  - **Options**: `Add` / `Skip`.
+- If approved, deep-merge the template (existing values are never overwritten).
+
+Note: detection-based permission entries are no longer added. Auto mode covers most prompts; users can extend `permissions.allow` themselves with `/update-config`.
 
 ### 4. .gitignore
 
 **Target**: `<project_root>/.gitignore`
 
-Ensure the following entries are listed in `.gitignore`. For each entry, append it if missing. If the file doesn't exist, create it.
+#### Branch A — file missing
 
-- `**/*.local.*` — excludes local-only config files (e.g., `settings.local.json`)
-- `.hq/` — excludes HQ working directory
+- Create with a single line: `.hq/`. Report the path.
+
+#### Branch B — file exists, contains `.hq/`
+
+- Report "`.hq/` already ignored" and skip.
+
+#### Branch C — file exists, no `.hq/` entry
+
+- Use `AskUserQuestion`:
+  - **Title**: `Append \`.hq/\` to .gitignore?`
+  - **Reason**: "`.hq/` is the HQ working directory (task context, FB files, scan reports). It is local-only and should not be committed."
+  - **Options**: `Append` / `Skip`.
+- If approved, append `.hq/` to the file.

@@ -2,56 +2,41 @@
 
 {{one-line project description}}
 
-## Tech Stack
-
-<!-- List key technologies. Example:
-- **Runtime**: Bun
-- **Framework**: Next.js 16 (App Router)
-- **DB**: Neon Postgres + Drizzle ORM
--->
-
 ## Commands
 
-| Action   | Command | Note |
-|----------|---------|------|
-| install  |         |      |
-| dev      |         |      |
-| build    |         |      |
-| test     |         |      |
-| lint     |         |      |
-| format   |         |      |
+| Action  | Command | Note |
+|---------|---------|------|
+| install |         |      |
+| dev     |         |      |
+| build   |         |      |
+| test    |         |      |
+| lint    |         |      |
+| format  |         |      |
 
-<!-- Add project-specific command groups as needed. Example:
-### DB Commands
+## Notes
 
-| Action      | Command              | Note               |
-|-------------|----------------------|--------------------|
-| db:migrate  | bun run db:migrate   | run migrations     |
-| db:studio   | bun run db:studio    | GUI                |
+<!-- Project-specific rules Claude cannot infer from code. Examples:
+- Use bun only — npm/pnpm/yarn are forbidden, even for one-off scripts.
+- All API responses must include `trace_id` in headers.
+- The `legacy/` directory is frozen — do not modify.
 -->
 
-## Project Structure
+<!-- BEGIN HQ — managed by hq:bootstrap. Manual edits in this section are overwritten on re-run. -->
+## HQ
 
-<!-- Describe key directories. Example:
-```
-apps/web/          — Next.js app
-packages/lib/      — Shared library
-tools/cli/         — CLI tool
-docs/              — Documentation
-```
--->
+### Verification
 
-## Documentation
+Untested code is a guess. After every change:
 
-<!-- Optional. List docs if the project has a docs/ directory.
-| File              | Purpose              |
-|-------------------|----------------------|
-| `requirements.md` | Core concepts        |
-| `onboarding.md`   | Setup guide          |
--->
+- Run/build the code, trigger the changed feature, check for errors.
+- **UI** → interact with the element. **API** → make the call. **Data** → query the DB. **Config** → restart and verify.
 
-## Verification
+### Build
 
-- "Should work" ≠ "does work" — untested code is just a guess
-- Run/build the code, trigger the changed feature, check for errors
-- UI → interact with the element / API → make the call / Data → query the DB / Config → restart and verify
+{{build_pointer}}
+
+### Test Strategy
+
+{{test_strategy}}
+
+<!-- END HQ -->
