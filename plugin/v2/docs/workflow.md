@@ -164,7 +164,14 @@ Phase 7: PR Creation
 │  Final plan-cache-push.sh <plan>               [Sync: Push]
 │  gh pr create --label hq:pr (inherit milestone + projects)
 │
-Phase 8: Report
+Phase 8: Retrospective
+│  Read feedbacks/done/ + JSONL events + git log + plan cache
+│  Write .hq/retro/<branch-dir>/<plan>.md per hq:workflow § Retrospective
+│    (## Run Summary / ## FB Analysis / ## Reflection — fixed schema)
+│  Per-FB YAML block: detection_validity / preventable_at_implementation /
+│    prevention_lever / notes (enumerated values)
+│
+Phase 9: Report
    Task, plan, branch, PR URL, [manual] count, Known Issues count
 ```
 
