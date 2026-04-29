@@ -471,17 +471,17 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 
 ## Retrospective
 
-Per-run reflective analysis written by `/hq:start` Phase 8 (Retrospective) to a Markdown artifact at `.hq/retro/<branch-dir>/<plan-id>.md`. The artifact lets the run be re-examined after the fact — *was each Phase 6 (Quality Review) FB a valid detection? Could it have been prevented at implementation time? If so, by what lever?* — without re-reading session transcripts. The hypothesis is that a non-trivial fraction of Phase 6 FBs are preventable at implementation time, and structured per-FB analysis exposes the recurring levers.
+Per-run reflective analysis written by `/hq:start` Phase 8 (Retrospective) to a Markdown artifact at `.hq/retro/<branch-dir>/<plan>.md`. The artifact lets the run be re-examined after the fact — *was each Phase 6 (Quality Review) FB a valid detection? Could it have been prevented at implementation time? If so, by what lever?* — without re-reading session transcripts. The hypothesis is that a non-trivial fraction of Phase 6 FBs are preventable at implementation time, and structured per-FB analysis exposes the recurring levers.
 
 `.hq/retro/` follows `.hq/` semantics: gitignored (covered by the existing `.hq` entry), per-clone, branch-local. Worktree copy is not propagated by `worktree-setup.sh` — retro is the run's frozen output, not project-wide configuration. Team-wide aggregation, if ever required, is a separate plan.
 
 ### File path
 
 ```
-.hq/retro/<branch-dir>/<plan-id>.md
+.hq/retro/<branch-dir>/<plan>.md
 ```
 
-`<branch-dir>` = branch name with `/` → `-` (same convention as `.hq/tasks/<branch-dir>/`). `<plan-id>` = bare `hq:plan` issue number (e.g., `75`). One file per `/hq:start` run; auto-resume sessions overwrite the existing file because the artifact captures the latest run snapshot, not a per-session history.
+`<branch-dir>` = branch name with `/` → `-` (same convention as `.hq/tasks/<branch-dir>/`). `<plan>` = bare `hq:plan` issue number (e.g., `75`). One file per `/hq:start` run; auto-resume sessions overwrite the existing file because the artifact captures the latest run snapshot, not a per-session history.
 
 ### Fixed schema
 
