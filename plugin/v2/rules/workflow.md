@@ -511,7 +511,7 @@ The artifact has exactly **three** top-level Markdown sections, in this order:
    **Notes**: <≤ 2 sentences, factual — no rationalization, no praise>
    ````
 
-   When Phase 6 produced **zero** FBs (`fix_set_empty` from initial classification, no FB files written), `## FB Analysis` is still emitted with the literal body `(no FBs to analyze)` — do NOT omit the section. The fixed three-section structure is the primary acceptance gate, and an absent section breaks it.
+   When `feedbacks/done/` has no FB files at Phase 8 entry (which occurs when Phase 6 produced zero FBs — `fix_set_empty` from initial classification with nothing written), `## FB Analysis` is still emitted with the literal body `(no FBs to analyze)` — do NOT omit the section. The fixed three-section structure is the primary acceptance gate, and an absent section breaks it.
 
 3. **`## Reflection`** — free-form prose, ≤ 8 sentences. State what went well, what could improve, and any pattern visible across the FB Analysis entries (e.g., "many FBs marked `preventable_at_implementation: yes` with `prevention_lever: smaller-commit-grain` — next run should split implementation steps before committing"). Self-praise without a concrete pattern citation is the failure mode this section guards against — the LLM is the author and the analysis subject simultaneously, so explicit pattern citation is what keeps the section honest.
 
