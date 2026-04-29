@@ -168,8 +168,9 @@ Phase 8: Retrospective
 │  Read feedbacks/done/ + JSONL events + git log + plan cache
 │  Write .hq/retro/<branch-dir>/<plan>.md per hq:workflow § Retrospective
 │    (## Run Summary / ## FB Analysis / ## Reflection — fixed schema)
-│  Per-FB YAML block: detection_validity / preventable_at_implementation /
-│    prevention_lever / notes (enumerated values)
+│  Per-FB: 3 YAML axes (closed enums) — detection_validity /
+│    preventable_at_implementation / prevention_lever — plus Notes
+│    Markdown field (free-form ≤ 2 sentences) below the YAML fence
 │
 Phase 9: Report
    Task, plan, branch, PR URL, [manual] count, Known Issues count
