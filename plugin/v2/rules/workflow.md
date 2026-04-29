@@ -495,8 +495,7 @@ The artifact has exactly **three** top-level Markdown sections, in this order:
    - initial / resolved / persistent / cap-exited FB counts and severity breakdown
    - counts of FB files in `feedbacks/done/` and `feedbacks/` (residual)
 
-2. **`## FB Analysis`** — one entry per FB whose content is being analyzed. The set of FBs to analyze is the **union of**:
-   - FB files under `.hq/tasks/<branch-dir>/feedbacks/done/` at Phase 8 entry time (FBs resolved in branch, fixed during Phase 5 / Phase 6, plus those escalated to `## Known Issues` at Phase 7 — Phase 7 atomically writes the section and moves the file to `done/`, so by Phase 8 entry time both classes live there)
+2. **`## FB Analysis`** — one entry per FB file under `.hq/tasks/<branch-dir>/feedbacks/done/` at Phase 8 entry time. By Phase 8 entry time both classes of FB live there: FBs resolved in branch (moved to `done/` during Phase 5 / Phase 6) AND FBs escalated to the PR body's `## Known Issues` (Phase 7 atomically writes the section and moves the file to `done/` per `## Feedback Loop`).
 
    Each entry has the form:
 
