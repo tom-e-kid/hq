@@ -71,14 +71,14 @@ If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix
 
 ## Phase Timing
 
-`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 8 can report where the run spent its time. For each of Phase 1–7, stamp once at the top of the phase and once at the bottom:
+`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 9 can report where the run spent its time. For each of Phase 1–8, stamp once at the top of the phase and once at the bottom:
 
 ```
 bash plugin/v2/scripts/phase-timing.sh stamp <N> start
 bash plugin/v2/scripts/phase-timing.sh stamp <N> end
 ```
 
-Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Auto-resume sessions append to the same file; session count is the number of `phase":"1","event":"start"` entries. Phase 8 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
+Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Auto-resume sessions append to the same file; session count is the number of `phase":"1","event":"start"` entries. Phase 9 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
 
 The concrete stamp invocation for each phase is placed at that phase's top and bottom below.
 
@@ -257,9 +257,9 @@ This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and
 
 If the retry cap is `0`, the first sweep's failures go straight to FB + `[x]` with no loopback.
 
-**`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (`[auto] [primary]` — `[manual] [primary]` items are deferred, not failed; see the paragraph below), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 7 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 8 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
+**`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (`[auto] [primary]` — `[manual] [primary]` items are deferred, not failed; see the paragraph below), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 7 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 9 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
 
-**`[primary]` deferred — escape hatch sibling.** When the plan carries a `[manual] [primary]` item (`hq:workflow § #### [manual] [primary] escape hatch`), the Phase 5 sweep does not execute it — same rule as any `[manual]` item, the sweep skips `[manual]`. Do NOT convert it into a failure or an FB; it has not failed, it is **deferred** to reviewer judgment at PR time. Phase 7 gate enforces the compensating controls (`## Primary Verification (manual)` section presence + `hq:manual` label); final pass/fail judgment belongs to the PR reviewer. Phase 8 (Report) MUST surface this item as **`[primary deferred]`** — the sibling notice to `[primary failure]` — so the user sees immediately that the plan's single most important signal is pending reviewer review, not failed.
+**`[primary]` deferred — escape hatch sibling.** When the plan carries a `[manual] [primary]` item (`hq:workflow § #### [manual] [primary] escape hatch`), the Phase 5 sweep does not execute it — same rule as any `[manual]` item, the sweep skips `[manual]`. Do NOT convert it into a failure or an FB; it has not failed, it is **deferred** to reviewer judgment at PR time. Phase 7 gate enforces the compensating controls (`## Primary Verification (manual)` section presence + `hq:manual` label); final pass/fail judgment belongs to the PR reviewer. Phase 9 (Report) MUST surface this item as **`[primary deferred]`** — the sibling notice to `[primary failure]` — so the user sees immediately that the plan's single most important signal is pending reviewer review, not failed.
 
 Acceptance failures are treated as **all actionable** (unlike Phase 6 Quality Review FBs, which are fix-only-if-clearly-actionable). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
 
@@ -356,7 +356,7 @@ Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `##
 bash plugin/v2/scripts/quality-review.sh record initial_review agent=<name> fb_count=<n> severity=C:<n>,H:<n>,M:<n>,L:<n>
 ```
 
-`<name>` is the agent name (`code-reviewer` / `security-scanner` / `integrity-checker`); `<n>` after `fb_count=` is that agent's total finding count (FB files written for `code-reviewer` / `integrity-checker`; scan-report findings for `security-scanner`); the `severity=` breakdown counts findings by frontmatter `severity:` (FB-file agents) or scan-report severity (`security-scanner` — defaulting to `Medium` when the report omits one, per Step 3). Agents skipped by the matrix produce no event. The events feed Phase 8's `### Quality Review` summary so the per-agent baseline is visible after the run.
+`<name>` is the agent name (`code-reviewer` / `security-scanner` / `integrity-checker`); `<n>` after `fb_count=` is that agent's total finding count (FB files written for `code-reviewer` / `integrity-checker`; scan-report findings for `security-scanner`); the `severity=` breakdown counts findings by frontmatter `severity:` (FB-file agents) or scan-report severity (`security-scanner` — defaulting to `Medium` when the report omits one, per Step 3). Agents skipped by the matrix produce no event. The events feed Phase 9's `### Quality Review` summary so the per-agent baseline is visible after the run.
 
 #### `integrity-checker` invocation prompt
 
@@ -418,7 +418,7 @@ If the cap is `0`, the round loop runs zero rounds and the initial classified se
 
 **Resolved FBs** are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved (non-Low residual) ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
 
-**Phase 6 termination event.** Record exactly **one** terminated event before Phase 6 ends, regardless of how the round loop terminated. This includes the case where the **initial classification produced no clearly-actionable FBs** and the loop never entered — `fix_set_empty` MUST still be recorded so the `Termination:` section appears in the Phase 8 summary. Other paths: the loop exited naturally with `fix_set` emptied by partition (`fix_set_empty`), via all-Low skip (`all_low_skip`), or via cap-exit (`cap_exhausted` / `cap_exit_low_fix`). Use:
+**Phase 6 termination event.** Record exactly **one** terminated event before Phase 6 ends, regardless of how the round loop terminated. This includes the case where the **initial classification produced no clearly-actionable FBs** and the loop never entered — `fix_set_empty` MUST still be recorded so the `Termination:` section appears in the Phase 9 summary. Other paths: the loop exited naturally with `fix_set` emptied by partition (`fix_set_empty`), via all-Low skip (`all_low_skip`), or via cap-exit (`cap_exhausted` / `cap_exit_low_fix`). Use:
 
 ```bash
 bash plugin/v2/scripts/quality-review.sh record terminated reason=<fix_set_empty|all_low_skip|cap_exhausted|cap_exit_low_fix>
@@ -482,7 +482,47 @@ Delegate to the `pr` skill with the prepared body, title, and — **only when th
 
 **Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 7 end`
 
-## Phase 8: Report
+## Phase 8: Retrospective
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 8 start`
+
+Generate the retrospective artifact at `.hq/retro/<branch-dir>/<plan>.md` per `hq:workflow` § Retrospective. The artifact captures (a) factual run summary derivable from JSONL events / git log / plan cache and (b) per-FB categorical analysis answering whether each Phase 6 FB was a valid detection and whether it was preventable at implementation time. The hypothesis under test, run after run, is that Phase 6 time can be shortened by catching preventable defects in Phase 4 — the retro artifact accumulates the evidence.
+
+### Inputs
+
+Read these existing artifacts; do not modify them:
+
+- `.hq/tasks/<branch-dir>/feedbacks/done/*.md` — every FB processed during this run. By Phase 8 entry time both classes live here: FBs resolved in branch (moved to `done/` during Phase 5 / Phase 6) AND FBs escalated to the PR body's `## Known Issues` (Phase 7's atomic write+move per `hq:workflow` § Feedback Loop).
+- `.hq/tasks/<branch-dir>/quality-review-events.jsonl` — Phase 6 round-by-round outcomes (consume via `quality-review.sh summary`).
+- `.hq/tasks/<branch-dir>/phase-timings.jsonl` — wall-clock durations (consume via `phase-timing.sh summary`).
+- `.hq/tasks/<branch-dir>/gh/plan.md` — plan body for context.
+- `git log <base>..HEAD` and `git rev-list --count <base>..HEAD` — commit history and total commit count.
+
+### Output path
+
+```bash
+mkdir -p .hq/retro/<branch-dir>
+# write the artifact to .hq/retro/<branch-dir>/<plan>.md
+```
+
+`<branch-dir>` = current branch with `/` → `-`. `<plan>` = bare plan issue number. One file per `/hq:start` run; auto-resumed runs overwrite the prior file (the artifact captures the latest run snapshot, not session history).
+
+### Schema
+
+Three top-level Markdown sections in this exact order — the fixed structure is the primary acceptance gate per `hq:workflow` § Retrospective:
+
+1. **`## Run Summary`** — facts only (no LLM judgment). Fields: plan id / branch / run timestamp (UTC, ISO 8601) / phase wall-clock durations / total commits / Phase 6 termination reason and round outcomes / FB counts (initial / resolved / persistent / cap-exited) and severity breakdown / `feedbacks/done/` and `feedbacks/` (residual) counts.
+2. **`## FB Analysis`** — one entry per FB file under `feedbacks/done/` at Phase 8 entry time. Entry format and the 3 YAML axes (`detection_validity` / `preventable_at_implementation` / `prevention_lever`) plus the free-form `**Notes**` Markdown field are specified in `hq:workflow` § Retrospective. **Zero-FB case**: when `feedbacks/done/` has no FB files, emit the literal body `(no FBs to analyze)` under the section header. Do NOT omit the section — the primary acceptance gate counts the three section headers.
+3. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries (or, in the zero-FB case, comment on the run's signal/noise: did `## Acceptance` actually exercise the implementation?). Self-praise without a concrete pattern citation is the failure mode this section guards against.
+
+### Stop Policy
+
+- Phase 8 runs only when Phase 7 completed. On any ABORT path the run terminates earlier and Phase 8 is not reached — no special handling needed here.
+- Errors composing the artifact (missing JSONL events, FB file with malformed frontmatter, etc.) are continue-report: emit what's available, leave a clearly-labeled gap in the affected section, and continue. Do NOT block once the PR is already created.
+
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 8 end`
+
+## Phase 9: Report
 
 Summarize:
 
@@ -504,14 +544,14 @@ Run the phase-timing summary and include its output in the report so the user ca
 bash plugin/v2/scripts/phase-timing.sh summary
 ```
 
-The summary prints per-phase wall-clock duration (Phase 1–7), a total, and the session count (how many times Phase 1 `start` fired — i.e., how often the run was interrupted and auto-resumed). Note in the Report that the durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work.
+The summary prints per-phase wall-clock duration (Phase 1–8), a total, and the session count (how many times Phase 1 `start` fired — i.e., how often the run was interrupted and auto-resumed). Note in the Report that the durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work.
 
 Phases that have no recorded stamps appear as `(no data)`. Two scenarios produce this:
 
-- **Fresh start** — Phase 1 and Phase 2 run before the feature branch is created (Phase 3 step 2), so their stamps land in the base branch's `.hq/tasks/<base-branch-dir>/phase-timings.jsonl`. Phase 8 reads the feature branch's file and therefore shows Phase 1 and Phase 2 as `(no data)`.
+- **Fresh start** — Phase 1 and Phase 2 run before the feature branch is created (Phase 3 step 2), so their stamps land in the base branch's `.hq/tasks/<base-branch-dir>/phase-timings.jsonl`. Phase 9 reads the feature branch's file and therefore shows Phase 1 and Phase 2 as `(no data)`.
 - **Auto-resume** — Phase 2 and Phase 3 are skipped entirely (the branch and cache already exist), so they produce no stamps for that session.
 
-This is an accepted limitation of the wall-clock design — the stamped phases (4–7 always, plus 1–3 when they run on the feature branch) cover the bulk of the execution time.
+This is an accepted limitation of the wall-clock design — the stamped phases (4–8 always, plus 1–3 when they run on the feature branch) cover the bulk of the execution time.
 
 ### Quality Review
 
@@ -529,7 +569,7 @@ This data feeds the operational evaluation of `## Settings` defaults (FB retry c
 
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
 - **Cache-first** — during Phases 4–7, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
-- **Do not skip Phase 5 or Phase 6** — acceptance and quality review are mandatory.
+- **Do not skip Phase 5, Phase 6, or Phase 8** — acceptance, quality review, and retrospective are mandatory. Phase 8 (Retrospective) runs even on a zero-FB Phase 6; the artifact's fixed three-section structure is the primary acceptance gate.
 - **Commit as you go** — follow § Commit Policy. The working tree must be clean by Phase 7.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
 - **No `hq:feedback` creation** — this command does NOT create `hq:feedback` Issues. That happens via `/hq:triage` during PR review.

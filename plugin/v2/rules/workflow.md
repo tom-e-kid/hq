@@ -258,7 +258,7 @@ The default rule forbids `[manual] [primary]`. This subsection is the sole excep
 
 **Runtime behavior**:
 
-- `/hq:start` Phase 5 does NOT execute `[manual] [primary]` (same as other `[manual]` items — the Phase 5 sweep ignores `[manual]`). Phase 8 Report surfaces the item as **`[primary deferred]`** — the sibling notice to `[primary failure]`, signalling the single most important signal is pending reviewer judgment rather than failed.
+- `/hq:start` Phase 5 does NOT execute `[manual] [primary]` (same as other `[manual]` items — the Phase 5 sweep ignores `[manual]`). Phase 9 Report surfaces the item as **`[primary deferred]`** — the sibling notice to `[primary failure]`, signalling the single most important signal is pending reviewer judgment rather than failed.
 - Final pass/fail judgment happens at PR review. Reviewer uses the evidence block to verify the observable was actually achieved; merge approval is the explicit ack gate.
 
 **Rollback path**: if `[manual] [primary]` usage drifts beyond the domains above (e.g., selected for web features where `/hq:e2e-web` was available), tighten condition (a) to enumerate permitted domains explicitly. No automated drift monitor is built into this workflow version — PR review is the safety net.
@@ -468,3 +468,71 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 **Atomicity** — escalation into `## Known Issues` and the move to `feedbacks/done/` are a single atomic operation. Surfacing an FB in the PR body without moving its file (or moving the file without surfacing the content) is forbidden. This atomicity cannot be skipped or weakened by project-level overrides such as `.hq/pr.md` — see `## PR Body Structure` § Invariants.
 
 **Note**: FB escalation to `hq:feedback` Issues happens during PR review via `/hq:triage` — not from `/hq:start`, `/pr`, or `/hq:archive`. Local FB files are a **branch-internal** concept; the PR body's `## Known Issues` is the hand-off point.
+
+## Retrospective
+
+Per-run reflective analysis written by `/hq:start` Phase 8 (Retrospective) to a Markdown artifact at `.hq/retro/<branch-dir>/<plan>.md`. The artifact lets the run be re-examined after the fact — *was each Phase 6 (Quality Review) FB a valid detection? Could it have been prevented at implementation time? If so, by what lever?* — without re-reading session transcripts. The hypothesis is that a non-trivial fraction of Phase 6 FBs are preventable at implementation time, and structured per-FB analysis exposes the recurring levers.
+
+`.hq/retro/` follows `.hq/` semantics: gitignored (covered by the existing `.hq` entry), per-clone, branch-local. Worktree copy is not propagated by `worktree-setup.sh` — retro is the run's frozen output, not project-wide configuration. Team-wide aggregation, if ever required, is a separate plan.
+
+### File path
+
+```
+.hq/retro/<branch-dir>/<plan>.md
+```
+
+`<branch-dir>` = branch name with `/` → `-` (same convention as `.hq/tasks/<branch-dir>/`). `<plan>` = bare `hq:plan` issue number (e.g., `75`). One file per `/hq:start` run; auto-resume sessions overwrite the existing file because the artifact captures the latest run snapshot, not a per-session history.
+
+### Fixed schema
+
+The artifact has exactly **three** top-level Markdown sections, in this order:
+
+1. **`## Run Summary`** — facts about the run, all derivable from existing JSONL events + git log + plan cache (no LLM judgment in this section). Fields:
+   - plan id, branch name, run timestamp (UTC, ISO 8601)
+   - phase wall-clock durations (read `.hq/tasks/<branch-dir>/phase-timings.jsonl` via `phase-timing.sh summary`)
+   - total commits made on the branch (`git rev-list --count <base>..HEAD`)
+   - Phase 6 termination reason and round-by-round outcome (read `.hq/tasks/<branch-dir>/quality-review-events.jsonl` via `quality-review.sh summary`)
+   - initial / resolved / persistent / cap-exited FB counts and severity breakdown
+   - counts of FB files in `feedbacks/done/` and `feedbacks/` (residual)
+
+2. **`## FB Analysis`** — one entry per FB file under `.hq/tasks/<branch-dir>/feedbacks/done/` at Phase 8 entry time. By Phase 8 entry time both classes of FB live there: FBs resolved in branch (moved to `done/` during Phase 5 / Phase 6) AND FBs escalated to the PR body's `## Known Issues` (Phase 7 atomically writes the section and moves the file to `done/` per `## Feedback Loop`).
+
+   Each entry has the form:
+
+   ````markdown
+   ### FB### — <Severity> — <originating agent>
+
+   ```yaml
+   detection_validity: <valid | invalid | borderline>
+   preventable_at_implementation: <yes | no | partial>
+   prevention_lever: <stricter-acceptance | smaller-commit-grain | reuse-existing | better-pre-read | n/a>
+   ```
+
+   **Notes**: <≤ 2 sentences, factual — no rationalization, no praise>
+   ````
+
+   When `feedbacks/done/` has no FB files at Phase 8 entry (which occurs when Phase 6 produced zero FBs — `fix_set_empty` from initial classification with nothing written), `## FB Analysis` is still emitted with the literal body `(no FBs to analyze)` — do NOT omit the section. The fixed three-section structure is the primary acceptance gate, and an absent section breaks it.
+
+3. **`## Reflection`** — free-form prose, ≤ 8 sentences. State what went well, what could improve, and any pattern visible across the FB Analysis entries (e.g., "many FBs marked `preventable_at_implementation: yes` with `prevention_lever: smaller-commit-grain` — next run should split implementation steps before committing"). Self-praise without a concrete pattern citation is the failure mode this section guards against — the LLM is the author and the analysis subject simultaneously, so explicit pattern citation is what keeps the section honest.
+
+### Per-FB analysis fields
+
+The per-FB block has **two parts**: (1) a YAML fence carrying **3 categorical axes** with closed enumerations, and (2) a `**Notes**` field below the fence — free-form Markdown, ≤ 2 sentences. The split is deliberate: the YAML axes are the aggregable structured surface (strict enumeration is what makes cross-run analysis tractable when an active loop is built later); the `Notes` field is the human-readable elaboration that does not need to fit a closed schema. Free-form prose MUST stay in `Notes`, never in axis values.
+
+**YAML axes (closed enumerations):**
+
+| Axis | Values | Meaning |
+|---|---|---|
+| `detection_validity` | `valid` / `invalid` / `borderline` | Was the QR detection itself sound? `valid` — yes, the FB names a real defect. `invalid` — false positive, the agent was wrong. `borderline` — defensible but the call could have gone either way. |
+| `preventable_at_implementation` | `yes` / `no` / `partial` | Could this have been caught during Phase 4 (Execute) instead of surfacing in Phase 6? `yes` — clearly yes, a discipline gap. `no` — only QR's external lens could see it. `partial` — partially preventable; the underlying signal was reachable but the specific framing required QR. |
+| `prevention_lever` | `stricter-acceptance` / `smaller-commit-grain` / `reuse-existing` / `better-pre-read` / `n/a` | If preventable, by what change in workflow? `stricter-acceptance` — the plan's `## Acceptance` would have caught it if tightened. `smaller-commit-grain` — splitting the commit would have surfaced it. `reuse-existing` — reaching for an existing mechanism instead of new code would have avoided it. `better-pre-read` — reading the surrounding code more carefully before editing would have caught it. `n/a` — applies when `preventable_at_implementation` is `no`, OR when `detection_validity` is `invalid` (false positive — the question of prevention does not apply to a defect that did not exist). |
+
+**Markdown field (free-form):**
+
+- `**Notes**` — ≤ 2 sentences, factual elaboration. No rationalization. No praise. Lives below the YAML fence in the per-FB entry template; not part of the YAML block.
+
+Adding axis values or introducing a new YAML axis is a deliberate change to this rule file; runtime composition MUST NOT invent values or add keys.
+
+### Future active loop (out of scope here)
+
+Reading retro files back into `/hq:draft` Phase 2 (Simplicity gate priors) or `/hq:start` Phase 1 (pre-flight priors) is **deliberately not implemented** in the current writer. The judgment is that the writer side should accumulate enough artifacts to evaluate before designing the consumer side. When the consumer is added, it ships as a **separate `hq:plan`**, not as an extension to this section.
