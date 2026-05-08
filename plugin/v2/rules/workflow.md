@@ -86,7 +86,7 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
   - Prescribed headings: `## Plan Sketch`, `## Plan`, `## Acceptance`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
   - File paths, identifiers, code fences, shell commands
 - **Conversation language (content)**:
-  - `hq:task` body (background / requirements / scope / success criteria)
+  - `hq:task` body content — prose inside `## Background` / `## What` / `## Scope` / `## Success Criteria`, plus the optional `## Phase Split` (see `## hq:task` below)
   - `hq:plan` body content — `## Plan Sketch` prose (Problem / Editable surface / Read-only surface / Impact Direction notes / Core decision / Constraints), each `## Plan` step description, each `## Acceptance` condition
   - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
@@ -125,6 +125,92 @@ Without a parent hq:task:
   - `gh label create "hq:pr" --description "HQ PR associated with an hq:plan" --color "8A2BE2" 2>/dev/null || true`
   - `gh label create "hq:wip" --description "HQ work in progress — automation gate / drafting marker" --color "FFA500" 2>/dev/null || true`
   - `gh label create "hq:manual" --description "HQ PR marker — plan has [manual] [primary] acceptance (manual primary verification required)" --color "FFD700" 2>/dev/null || true`
+
+## `hq:task`
+
+An `hq:task` issue describes **what** needs to be done — the requirement, not the implementation. It is the trigger of the workflow and the input source for `/hq:draft` (which composes one or more `hq:plan` issues from it).
+
+The body is a **lightweight requirement document** primarily read by humans. Optimize for four properties; when they conflict, prioritize in this order:
+
+1. **Sufficient** — carries enough information for `/hq:draft` to compose a `hq:plan` without re-soliciting requirements.
+2. **Phase-split aware** — when the requirement clearly exceeds a single `hq:plan` grain, the split is acknowledged here.
+3. **Volume-appropriate** — verbose task bodies dissolve reader attention; aim for a length the reader will actually read.
+4. **Human-readable** — prose and structure favor the human reviewer, not the machine consumer.
+
+The body's required sections are `## What` and `## Success Criteria` — the minimum a requirement document needs. `## Background`, `## Scope`, and `## Phase Split` are **optional** — emit each only when it carries information not already implied by `## What`. Emission rules:
+
+- Angle-bracket `<placeholder>` tokens are substituted with real content.
+- Optional sections are **omitted entirely** when they would carry no substantive content. Do not emit empty headings, `_None._`, or single-phase / boundary-self-evident placeholders.
+- Section content follows the **Language** rule — content in the conversation language, headings in English.
+
+```markdown
+## Background *(optional)*
+<Why now — the pain or opportunity that motivates the task.>
+
+## What
+<The requirement — desired end state in user or system terms, not in code-change terms.>
+
+## Scope *(optional)*
+**In:** <what this task covers>
+**Out:** <what this task deliberately excludes>
+
+## Success Criteria
+- <observable conditions that, when satisfied, indicate the requirement is met>
+
+## Phase Split *(optional)*
+- **Phase 1**: <name and responsibility>
+- **Phase 2**: <name and responsibility>
+```
+
+### `## Background` *(optional)*
+
+Include when motivation is non-obvious, or when later readers (including `/hq:draft`) benefit from knowing why now. Avoid architectural rationale — that belongs in `hq:plan` `**Core decision**`. Skip on tasks whose `## What` already implies the motivation.
+
+### `## What` *(required)*
+
+The outcome statement. State the desired end state in user / system terms, not in code-change terms.
+
+- ✓ *"Users can sign in with Google OAuth, with first-time sign-in auto-creating a profile row."*
+- ✗ *"Add a new endpoint `POST /auth/google` that calls Google's OAuth API and writes to the `users` table."*
+
+The first leaves the implementation path open for `/hq:draft` to design; the second pre-decides the implementation and constrains the plan space.
+
+### `## Scope` *(optional)*
+
+Use when scope boundaries are non-obvious, or when there is real risk of `/hq:draft` expanding into territory the requester does not want. Format: a two-bullet block — `**In:**` (what this task covers) and `**Out:**` (what this task deliberately excludes). Skip the section entirely when the boundary is self-evident from `## What`.
+
+### `## Success Criteria` *(required)*
+
+1–5 observable conditions, each one sentence. **Outcome-level** — what the user or system can do — not machine-checkable signals. The translation to a concrete `[primary]` signal happens in `hq:plan` `## Acceptance`.
+
+- ✓ *"A new user can complete sign-in within 3 clicks from the landing page."*
+- ✓ *"Existing sessions remain valid across the deployment."*
+- ✗ *"`pnpm test` passes"* — that is a `hq:plan` acceptance, not a task-level success criterion.
+
+When the requirement is too vague to yield any observable condition, the task is not ready — return to the brainstorm before creating the issue.
+
+### `## Phase Split` *(optional)*
+
+Emit only when the requirement naturally splits into multiple `hq:plan` grains. Trigger conditions:
+
+- The change crosses **multiple architectural layers** (e.g., DB schema + API + UI), each carrying independent value.
+- A **meaningful intermediate state exists** — a stopping point that delivers user-visible value or unblocks parallel work.
+- **Verification boundaries differ** across the phases (e.g., a schema migration must reach production before UI exposure).
+
+Each phase bullet states a name and a responsibility — **not** the editable surface or implementation steps. Surface and Plan items are the responsibility of `/hq:draft` Phase 2, not of `hq:task` authoring. The phase split here is a recommendation, not a binding contract — `/hq:draft` may revise the boundary based on what investigation surfaces.
+
+### Length guideline
+
+`hq:task` length is bounded by **the reader's attention budget**, not a numeric line count. When the body grows long enough that a reviewer skims rather than reads, evaluate whether (a) the task should split into multiple tasks, (b) implementation detail has leaked from `hq:plan`, or (c) `## Background` is over-explaining. Numeric guidelines may emerge once enough `hq:task` examples accumulate; until then, volume judgment stays qualitative.
+
+### Self-contained invariant
+
+Every `hq:task` must:
+
+- Be **self-contained** — readable as a standalone requirement document. `/hq:draft` should be able to produce a `hq:plan` from the body alone, supplemented only by the brainstorm conversation.
+- Define **`## What`** and **`## Success Criteria`** at minimum. `## Background`, `## Scope`, and `## Phase Split` are optional — include each when it carries information not already implied by `## What`.
+- Stay **outcome-level** — implementation paths belong in `hq:plan`, not here.
+- Follow the **Language** rule — content in the conversation language, headings in English.
 
 ## `hq:plan`
 
