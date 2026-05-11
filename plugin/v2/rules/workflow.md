@@ -304,7 +304,7 @@ Files or symbols this plan may modify. The single positive set — anything not 
 2. Note the rationale in `## Approach` (one line is enough: "X also required because Y").
 3. Then proceed with the modification.
 
-This converts the boundary from a rigid fence into an explicit expansion channel — Karpathy-loop の境界明示は残し、stack-correct な実装が機械的に却下される失敗モードを断つ。
+This converts the boundary from a rigid fence into an explicit expansion channel — the Karpathy-loop fence invariant is preserved, while the failure mode of mechanically rejecting stack-correct implementations is eliminated.
 
 ### `## Plan` *(required)*
 
