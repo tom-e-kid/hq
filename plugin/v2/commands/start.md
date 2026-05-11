@@ -47,12 +47,15 @@ If `Project Overrides` is not `none`, apply the content as project-specific guid
 
 Tunables for `/hq:start`. Change the value here and every referencing phase follows automatically.
 
-- **FB retry cap** = **`2`** — applied in two places. Same value, **different semantics per phase**:
-  - **Phase 5 (Acceptance)**: maximum times a single `[auto]` item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB and `[x]`-toggled anyway. **Per item independently.**
-  - **Phase 6 (Quality Review)**: maximum number of **fix rounds** allowed in the batch-fix + per-round re-review loop (§ Phase 6 Step 3). One round = "apply fixes to every clearly-actionable FB in the current `fix_set` → re-launch the originating agents (skipped when `fix_set` is all-Low) → partition output into resolved / persistent / new". The cap counts **fix rounds only** — `total reviews = cap + 1 = the initial Step 2 review + one re-launch per round`. When the round counter reaches the cap with FBs still unresolved, the Low cap-exit fix rule (`hq:workflow § Feedback Loop`) partitions them: the Low subset is fixed inline and moved to `feedbacks/done/` (no re-launch); the non-Low subset escalates to the PR's `## Known Issues`. **Per round** — all FBs in a given round share the same round counter (a stubborn FB that needs one more round forces another fix-and-review pass for everyone still in `fix_set`).
-  - Values: `0` skips the loop entirely (the initial classified set IS the residual; the Low cap-exit fix rule still applies — every clearly-actionable Low gets one inline fix pass + `done/`, every non-Low goes straight to `## Known Issues`); `1` permits a single fix round (fix once, then re-review once; remaining Low → Low cap-exit fix, remaining non-Low → `## Known Issues`); `2` is the current default (two fix rounds — i.e. the new-FB / persistent-FB set surfacing after round 1 still gets one more fix attempt before cap-exit partition).
+- **Phase 5 retry cap** = **`2`** — maximum times a single `[auto]` Acceptance item may re-enter the Phase 4 → Phase 5 mini-loop before being recorded as an FB and `[x]`-toggled anyway. **Per item independently.** Values: `0` skips the loopback entirely (first failure → FB + `[x]`-anyway); `1` permits one fix-and-resweep attempt; `2` is the current default. Phase 6 has **no** retry cap — Phase 6 is pure review per `hq:workflow § Feedback Loop` (every FB surfaces in `## Known Issues` without inline fix).
 
-- **fix-threshold** = **`Low`** — Phase 6 severity gate. The **minimum severity** at which a clearly-actionable Quality Review FB enters the batch-fix loop (§ Phase 6 Step 3). FBs whose `severity` is strictly below the threshold are left pending and escalated straight to the PR's `## Known Issues` — same outcome as design-level / scope-ambiguous FBs. Severity ordering: `Critical > High > Medium > Low`. At the default `Low`, every clearly-actionable severity passes the gate (the gate is open by default); the cost trade-off that previously justified `Medium` (per-FB full-review re-runs) is dissolved by the batch-fix architecture in Step 3, which amortizes one re-review across the entire `fix_set` per round, and additionally skips re-review entirely when `fix_set` is all-Low (Low's narrow blast radius makes the safety-net cost unjustified). Pulling Low into Step 3 instead of escalating to `## Known Issues` removes the `/hq:start` → PR → `/hq:triage` round-trip that was absorbing the bulk of Low FBs in practice. Combined with the `Low cap-exit fix rule` (`hq:workflow § Feedback Loop`), **clearly-actionable Low FBs** (those that enter `fix_set`) are **structurally absent from `## Known Issues`** — both the round loop's natural exit (all-Low skip) and its cap-exit partition terminate them at `feedbacks/done/`. Design-level or scope-ambiguous Low FBs still flow to `## Known Issues` at Phase 7 per the classify step (§ Phase 6 Step 3 step 2), unchanged from prior behavior. The plan-level override mechanism (formerly a `**Quality review policy**` field in the plan body) was retired alongside this change — at `Low`, the strictening-only direction has no values left, so the override block was dead text and was removed from `hq:workflow`.
+- **quality_review_mode** = **`judgment`** — Phase 6 § Step 1 (Agent Selection) decision mode. Values:
+  - `judgment` (default) — orchestrator decides which Quality Review agents to launch via a qualitative "third-party senior engineer" review of the diff + plan, modulated by the hard-floor patterns at § Phase 6 § Step 1.
+  - `full` — apply the Diff Classification matrix at `## Diff Classification` deterministically. Use when judgment-mode variance is unacceptable.
+
+  Override the default project-wide via `.hq/start.md` (per-clone).
+
+- **Memory file** — `.hq/start-memory.md` (per-clone, gitignored). Accumulates user corrections about Phase 6 Self-Review Gate decisions (Step 0) and Agent Selection decisions (Step 1) — the orchestrator reads it at Phase 6 entry to inform current judgment. The file does not exist by default; it is created on first user correction and grows over time. See § Phase 6 for the consumption pattern.
 
 ## Commit Policy
 
@@ -62,7 +65,7 @@ Commit granularity by phase:
 
 - **Phase 4 (Execute)** — **one commit per `## Plan` item**. After implementing a step and checking its cache checkbox, create a commit whose subject matches the Plan item. Use Conventional Commits types (`feat`/`fix`/`refactor`/`docs`/`chore`/`test`).
 - **Phase 5 (Acceptance)** — if an `[auto]` check fails and is fixed, create a `fix: <what was wrong>` commit per fix. No commit for pure test runs.
-- **Phase 6 (Quality Review)** — one commit per resolved FB. Subject derived from the FB title (e.g., `fix: <FB subject>`).
+- **Phase 6 (Quality Review)** — **no commits**. Phase 6 is pure review per `hq:workflow § Feedback Loop`; FBs are written to disk but never auto-fixed, so the working tree at Phase 6 exit equals the working tree at Phase 6 entry.
 - **Phase 7 (PR Creation)** — no new commits. The working tree MUST be clean at this point; the `pr` skill will not prompt about uncommitted changes.
 
 All commits must pass `hq:workflow` § Before Commit (format + build + blast-radius self-check). Do not skip hooks.
@@ -280,7 +283,7 @@ The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing 
 
 ## Diff Classification
 
-Phase 6 branches on the nature of the diff. Compute the classification at the start of Phase 6.
+The Diff Classification matrix below is consumed by **`quality_review_mode = full`** only (see § Settings). In `judgment` mode the matrix is informational — the orchestrator may consult `DIFF_KIND` as one input among many, but the binding decision rule is the qualitative judgment described at § Phase 6 § Step 1.
 
 ### Rule
 
@@ -328,110 +331,155 @@ Hold `DIFF_KIND` in conversation state during Phase 6. If Phase 6 is resumed in 
 
 The classification drives which agents run in Phase 6 (Quality Review). Each agent has a fixed scope; only presence / absence in the matrix depends on `DIFF_KIND`:
 
-| `DIFF_KIND` | `code-reviewer` (quality / load-bearing guard) | `security-scanner` (runtime risk pattern detection) | `integrity-checker` (`## Editable surface` + `## Plan` ↔ diff reconciliation) |
+| `DIFF_KIND` | `code-reviewer` (quality / load-bearing guard) | `security-scanner` (runtime risk pattern detection) | `integrity-checker` (`## Editable surface` ↔ diff external grep — `[削除]` residuals / unmatched consumer) |
 |---|---|---|---|
 | `code` | ✓ | ✓ | ✓ |
-| `doc` | ✓ | — (skip) | ✓ |
+| `doc` | **— (skip)** | ✓ | ✓ |
 | `mixed` | ✓ | ✓ | ✓ |
 
-`integrity-checker` has no skip case by design — its whole purpose is to reconcile the `hq:plan` `## Editable surface` declarations against the diff, which is equally relevant on doc and code diffs. `security-scanner` targets runtime / credential / injection risk that doc-only changes structurally cannot introduce, so running it on `doc` burns tokens without useful output.
+`code-reviewer`'s Review Criteria (Readability / Correctness / Performance / Dead code) all assume executable code — running it on `doc`-only diffs (pure prose / structural rule edits) returns no useful signal, so it skips. `security-scanner` runs on doc diffs because doc files routinely carry credential samples in README / `.env` examples / external URLs, and the scanner's Alert Policy covers those patterns. `integrity-checker` runs on every kind because `## Editable surface` reconciliation applies to doc rule files as much as to code (note: post the Phase 6 refactor, `integrity-checker`'s scope is narrowed to `[削除]` whole-repo grep + external consumer grep — the mechanical reconciliation is now performed by orchestrator at § Phase 6 § Step 0).
 
 ## Phase 6: Quality Review
 
 **Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 start`
 
-Phase 6 launches the agent subset selected by `DIFF_KIND` per the **Agent launch matrix** in `## Diff Classification` above.
+Phase 6 is **pure review** — every FB produced here flows directly to `## Known Issues` at Phase 7 without auto-fix (`hq:workflow § Feedback Loop`). The phase has three sequential steps:
 
-### Step 1: Classify the diff
+- **Step 0** — Pre-Quality Self-Review Gate (orchestrator self-assessment)
+- **Step 1** — Agent Selection (`quality_review_mode = judgment` default, `full` fallback)
+- **Step 2** — Initial Review + FB Collection (agents launched in parallel)
 
-Compute `DIFF_KIND` per `## Diff Classification` above (recompute from `git diff --name-only <base>...HEAD` if not already in conversation state).
+No round loop, no batch-fix, no severity gate. The output is FB files under `.hq/tasks/<branch-dir>/feedbacks/` and decision reports under `.hq/tasks/<branch-dir>/reports/`. Phase 6 makes no commits — the working tree at Phase 6 exit equals the working tree at Phase 6 entry.
 
-### Step 2: Launch agents per the matrix
+### Step 0: Pre-Quality Self-Review Gate
 
-Launch the agents selected for `DIFF_KIND` by the **Agent launch matrix** in `## Diff Classification` above. Issue them in a single Agent-tool call batch so they run in parallel; wait for all launched agents to complete before proceeding.
+Before launching any agent, the orchestrator performs a **self-review gate** — the equivalent of "would a senior engineer let this through without external review?" The gate is **judgment-based**, not mechanical. It evaluates the diff + plan body across 3 axes:
 
-**Record `initial_review` per launched agent.** Once every launched agent has returned, emit one event per agent via the helper:
+1. **Plan alignment** — does the diff implement what `## Editable surface` + `## Plan` declared? Cross-check declared surfaces against the diff and `*(consumer: <name>)*` suffixes against actually-touched files. Mechanical set-diff signals (declared-but-missing / diff-but-undeclared / unmatched consumer) inform this axis but do **not** auto-trigger fixes — the orchestrator integrates them into its qualitative judgment.
+2. **Out-of-scope impact** — does the diff affect anything beyond `## Editable surface` that warrants verification? Look for callers of changed symbols, downstream rule references, related test paths. The implementer is the only role that can know what was meaningfully modified vs casually touched.
+3. **Tunnel vision check** — does the implementation feel natural for the project's history / technology stack / convention space? Or did following the plan produce something out-of-character (re-inventing existing mechanisms, missing established patterns, etc.)?
+
+Read `.hq/start-memory.md` (per-clone, gitignored) **before** judgment — it accumulates prior user corrections about Self-Review Gate decisions that should inform current judgment. The file is absent until the first correction lands; treat absence as "no prior corrections, judge fresh".
+
+**Result classification**:
+
+- **Pass** — proceed to Step 1.
+- **Minor gap** — write an FB under `.hq/tasks/<branch-dir>/feedbacks/` (severity drawn per FB schema; `skill: /hq:start` frontmatter to mark self-review-gate origin). Proceed to Step 1. The FB surfaces in `## Known Issues` at Phase 7 along with agent-emitted FBs.
+- **Significant gap** — `pause-consult` per `## Stop Policy`. The implementer has surfaced a gap that requires a decision outside the plan's scope (e.g., "should I refactor to match an existing pattern?" "should I expand scope or revert?"). Stop and consult the user; only after the user resolves the gap does Phase 6 proceed.
+
+**Decision report (required regardless of result)** — write `.hq/tasks/<branch-dir>/reports/self-review-gate-<YYYY-MM-DD-HHMM>.md`:
+
+```markdown
+## Pre-Quality Self-Review Decision
+
+**Plan alignment**: <reasoning, with concrete diff/plan citations>
+**Out-of-scope impact**: <reasoning + verified surfaces>
+**Tunnel vision check**: <reasoning + past pattern references>
+
+**Result**: pass | minor-gap | significant-gap
+
+**Decision rationale**: <single paragraph>
+```
+
+**Event record**:
+
+```bash
+bash plugin/v2/scripts/quality-review.sh record self_review_gate result=<pass|minor_gap|significant_gap>
+```
+
+### Step 1: Agent Selection
+
+The orchestrator decides which Quality Review agents from `{code-reviewer, security-scanner, integrity-checker}` to launch in Step 2. The decision mode is governed by **`quality_review_mode`** (§ Settings):
+
+#### `judgment` mode (default)
+
+The orchestrator decides as **"a third-party senior engineer reviewing this PR"** — not as the implementer who just wrote the diff. The first-person framing is structural, to defuse self-marking bias (the implementer naturally rationalizes their own work).
+
+Decision inputs:
+
+- The diff body — what kind of change is this?
+- The plan body — what was intended?
+- Step 0's Self-Review Gate findings — what residual concerns surfaced?
+- `.hq/start-memory.md` — accumulated user corrections about prior agent-selection calls.
+
+The default lean is to launch agents whose review axes apply to the diff:
+
+- `code-reviewer` — executable code, or doc with embedded code samples (` ``` ` fences).
+- `security-scanner` — any path that may carry credentials / external comm / config / dependency changes. README / `.env*` examples / external URLs / config files all qualify, regardless of `DIFF_KIND`.
+- `integrity-checker` — diffs containing `[削除]` tags **or** `*(consumer: <name>)*` suffixes where the consumer is not visited in the diff file list (signals that whole-repo / external-path grep is needed). Without those signals, Step 0's mechanical reconciliation has already covered Editable-surface ↔ diff integrity.
+
+**Hard floor (always-launch overrides)** — regardless of judgment, the following patterns force agent launch:
+
+- Diff contains a literal credential prefix matching `AKIA[0-9A-Z]{16}` / `sk-[A-Za-z0-9_]+` / `ghp_[A-Za-z0-9_]+` / `Bearer\s+[A-Za-z0-9_-]+` etc. → **`security-scanner` MUST run**. This is the catastrophic-leak floor; LLM optimism cannot waive it.
+
+Projects may extend hard-floor patterns via `.hq/start.md` (e.g., touching `.env*` always runs `security-scanner`).
+
+#### `full` mode
+
+Apply the Agent launch matrix at `## Diff Classification` deterministically. Use when judgment-mode variance is unacceptable for a particular project.
+
+#### Decision report (required regardless of mode)
+
+Write `.hq/tasks/<branch-dir>/reports/agent-selection-<YYYY-MM-DD-HHMM>.md`:
+
+```markdown
+## Agent Selection Decision
+
+**Mode**: judgment | full
+**DIFF_KIND**: code | doc | mixed
+**Editable surface tags**: <list>
+
+**Launched**: <comma-separated agent list>
+**Skipped**: <comma-separated agent list>
+
+**Rationale per agent**:
+- <agent>: launched — <one-line reason>
+- <agent>: skipped — <one-line reason; "not needed" is insufficient>
+```
+
+Skip-decision rationale MUST be **explicit per agent** — bare "not needed" is rejected. The decision report goes to the PR's audit trail; subsequent user correction (appended to `.hq/start-memory.md`) tightens future decisions.
+
+**Event record**:
+
+```bash
+bash plugin/v2/scripts/quality-review.sh record agent_selection mode=<judgment|full> launched=<comma-list> skipped=<comma-list>
+```
+
+### Step 2: Initial Review + FB Collection
+
+Launch the agents selected in Step 1 in parallel via a single Agent-tool call batch. Wait for all to complete.
+
+**Record `initial_review` per launched agent**:
 
 ```bash
 bash plugin/v2/scripts/quality-review.sh record initial_review agent=<name> fb_count=<n> severity=C:<n>,H:<n>,M:<n>,L:<n>
 ```
 
-`<name>` is the agent name (`code-reviewer` / `security-scanner` / `integrity-checker`); `<n>` after `fb_count=` is that agent's total finding count (FB files written for `code-reviewer` / `integrity-checker`; scan-report findings for `security-scanner`); the `severity=` breakdown counts findings by frontmatter `severity:` (FB-file agents) or scan-report severity (`security-scanner` — defaulting to `Medium` when the report omits one, per Step 3). Agents skipped by the matrix produce no event. The events feed Phase 9's `### Quality Review` summary so the per-agent baseline is visible after the run.
+`<name>` is the agent name; `<n>` after `fb_count=` is that agent's total finding count (FB files written for `code-reviewer` / `integrity-checker`; scan-report findings for `security-scanner`); the `severity=` breakdown counts findings by frontmatter `severity:` (FB-file agents) or scan-report severity (`security-scanner` — defaulting to `Medium` when the report omits one). Agents not launched produce no event. The events feed Phase 9's `### Quality Review` summary.
+
+`security-scanner` does not write FB files — findings live in its scan report. For each scan-report finding the orchestrator deems an actionable risk, synthesize one FB file (severity from scan report, default `Medium`; `skill: /security-scan` frontmatter). These FBs participate in the standard Phase 7 atomic write+move flow.
 
 #### `integrity-checker` invocation prompt
 
-`integrity-checker`'s scope is narrower than the other two agents: it reconciles the `hq:plan` `## Editable surface` + `## Plan` against the diff. To keep the agent from being pulled back into the root agent's implementation framing, the invocation prompt MUST be constructed as follows:
+Post the Phase 6 refactor, `integrity-checker`'s scope is narrowed to two functions:
 
-1. Read `.hq/tasks/<branch-dir>/gh/plan.md` (the cached plan body).
-2. Extract the **`## Editable surface` section** (every entry with its inline tag `[新規]` / `[改修]` / `[削除]` / `[silent-break]` and ≤1行 note) and the **`## Plan` section** (every item, including `*(consumer: <name>)*` suffixes where present). Preserve the section structure verbatim.
-3. Do NOT pass `## Why` or `## Approach` — those fields reflect the root agent's framing of the problem and chosen design rationale. Passing them to `integrity-checker` contaminates its external lens and causes it to grade the diff against the author's intent rather than against the declared `## Editable surface` positive set.
-4. Pass the extracted `## Editable surface` + `## Plan` inline in the agent prompt, labeled clearly, along with the diff range (`<base>...HEAD`). The agent already knows how to gather the diff itself — do not inline the diff body.
+1. `[削除]` whole-repo grep — search for residual references to symbols / paths declared `[削除]` in `## Editable surface`.
+2. External consumer grep — for `*(consumer: <name>)*` suffixes where the named consumer is **not** in the diff file list, grep / read the named path to verify whether the coordinated update landed.
 
-### Step 3: Process FBs
+Mechanical `## Editable surface` ↔ diff reconciliation is performed by the orchestrator at Step 0; do NOT re-run it here.
 
-Collect pending FBs produced by `code-reviewer` and `integrity-checker` (these are the only Phase 6 agents that write FB files). `security-scanner` findings live in its scan report only (no FB files). When the root agent classifies a scan-report finding as clearly-actionable, **synthesize a virtual `fix_set` entry** for it: take the severity from the scan report, defaulting to `Medium` when the report omits one (security findings warrant the re-launch safety net by default — never auto-assign `Low`). Virtual entries participate in the all-Low gate and the per-round cap on equal footing with FB-file entries; the partition step at round end consults a fresh `security-scanner` scan report (the agent is then the originating agent for that entry) instead of looking for a new FB file. Findings that are not clearly-actionable stay residual and surface at PR review for human judgment.
+Construct the invocation prompt:
 
-**Architecture — batch fix + per-round re-review.** Step 3 is a fix-then-verify loop driven by a single `fix_set` of clearly-actionable FBs. Every round applies fixes to the entire `fix_set` first, **then** re-launches only the originating agents once at the end of the round (skipped when `fix_set` is all-Low — see all-Low rule below). The originating-agent re-launch is a **full review of the diff**, structurally identical to Step 2's initial launch — it is not a "verify FB X only" probe — so amortizing it across the whole `fix_set` per round is a hard cost win over a per-FB loop. **Cross-agent regression is not re-verified within Step 3** — only the originating agents (those that produced any FB in the current `fix_set`) are re-launched. Regressions introduced into a sibling agent's scope are accepted as a known trade-off (trading token cost for breadth); the PR review and `/hq:triage` step are the safety net.
+1. Read `.hq/tasks/<branch-dir>/gh/plan.md`.
+2. Extract the `## Editable surface` and `## Plan` sections verbatim.
+3. Do NOT pass `## Why` or `## Approach` — those reflect implementer framing.
+4. Pass diff range (`<base>...HEAD`) inline.
 
-**Build the initial `fix_set`.** Walk every pending FB once and classify:
+### After Step 2
 
-1. **Severity gate** — when `fix-threshold` is `Low` (the default — see § Settings), the gate is **a structural no-op** because the severity ordering `Critical > High > Medium > Low` has no value strictly below `Low`; skip this step and treat every FB as gate-passing. The step is preserved for the case where a future operator raises the default; under that scenario, drop any FB whose severity is strictly below the threshold and leave it pending (it flows to `## Known Issues` at Phase 7).
-2. **Classify** — for FBs that passed the gate:
-   - **Clearly-actionable** (bug / typo / logic error / verifiable inconsistency) → add to `fix_set`.
-   - **Design-level / scope-ambiguous** → leave pending (continue-report per Stop Policy). These flow straight to `## Known Issues` at Phase 7 — Step 3 does NOT attempt to fix them.
+The set of FBs in `.hq/tasks/<branch-dir>/feedbacks/` — comprising Step 0 minor-gap FBs + Step 2 agent-emitted FBs + scan-report-derived FBs — is the final residual. No fix loop runs. Phase 7 (PR Creation) atomically escalates each FB to `## Known Issues` and moves the file to `done/`.
 
-**Round loop.** Initialize `round = 1`. While `fix_set` is non-empty AND `round ≤ FB retry cap` (§ Settings):
-
-0. **Record round start** — at the top of every round, before any other sub-step:
-
-   ```bash
-   bash plugin/v2/scripts/quality-review.sh record round_start round=<N> fix_set_size=<n>
-   ```
-
-1. **Apply fixes** — for each FB in `fix_set`:
-   1. Apply a fix.
-   2. Follow `hq:workflow` § Before Commit.
-   3. Create a `fix: <FB subject>` commit per § Commit Policy.
-2. **Re-launch decision** — inspect `fix_set`'s severities:
-   - **all-Low** (every FB in the current `fix_set` has `severity: Low`) → **skip the re-launch**. Record `bash plugin/v2/scripts/quality-review.sh record relaunch round=<N> skipped=all_low`. Move every FB in `fix_set` to `feedbacks/done/` (the fix is assumed correct — Low's narrow blast radius makes the re-review safety net unjustified). Set `fix_set := empty`. Record `bash plugin/v2/scripts/quality-review.sh record round_end round=<N> resolved=<original-count> persistent=0 new=0`. Loop exits.
-   - **mixed or any ≥ Medium** → **re-launch** the originating agents (those that produced any FB currently in `fix_set`) in parallel via a single Agent-tool call batch. Record `bash plugin/v2/scripts/quality-review.sh record relaunch round=<N> agents=<comma-separated-agent-list>`. Wait for all to complete.
-3. **Partition the re-launch output** (only when re-launch ran). For each entry the partition treats FB-file entries and virtual entries (security-scanner) symmetrically — "agent output" means the new FB-file set for FB-file entries and the fresh `security-scanner` scan report for virtual entries:
-   - For each entry in `fix_set` that is **absent** from the new agent output → mark resolved. For FB-file entries, move the file to `feedbacks/done/`. For virtual entries, no file exists to move — drop the entry from `fix_set`; the resolved state is recorded in conversation context only.
-   - For each entry in `fix_set` that **persists** in the new agent output → keep it for the next round (file-based entries stay in `feedbacks/`; virtual entries stay in conversation state).
-   - For each **new** finding in the new agent output (not present in the prior `fix_set`) → re-classify per the initial gate + classify rules above; if clearly-actionable and severity ≥ threshold, add to the next round's `fix_set`. New file-based findings come in as FB files; new security-scanner findings come in as virtual entries with severity from the scan report (defaulting to `Medium`). Findings that fail classification are left pending (Phase 7 handles them).
-   - `fix_set := persistent + newly-actionable`.
-   - Record `bash plugin/v2/scripts/quality-review.sh record round_end round=<N> resolved=<n> persistent=<n> new=<n>`.
-4. `round += 1`.
-
-**After the loop — Low cap-exit fix rule** (`hq:workflow § Feedback Loop`): any FBs still in `fix_set` (cap exhausted with the FB unresolved) are partitioned by severity. When this branch is reached (`round > FB retry cap` with `fix_set` non-empty), first record the partition counts:
-
-```bash
-bash plugin/v2/scripts/quality-review.sh record cap_exit low_count=<n> non_low_count=<n>
-```
-
-Then apply the partition:
-
-- **Low subset** — apply one inline fix pass (one `fix: <FB subject>` commit per FB, follow `hq:workflow § Before Commit`) and move each FB file to `feedbacks/done/`. Do NOT re-launch the originating agents — the verification cost trade-off matches `all-Low skip`. This pass guarantees every Low in the residual set (including newly-actionable Low surfaced by the last re-launch) gets at least one fix opportunity.
-- **non-Low subset** (`Medium` / `High` / `Critical`) — leave pending; the FB files stay under `.hq/tasks/<branch-dir>/feedbacks/` and surface in the PR's `## Known Issues` at Phase 7.
-
-If the cap is `0`, the round loop runs zero rounds and the initial classified set IS the residual — the same `cap_exit` event + partition applies: every clearly-actionable Low still gets one inline fix pass + `done/`, every non-Low goes straight to `## Known Issues`. This guarantees Low is structurally absent from `## Known Issues` regardless of cap value.
-
-**Resolved FBs** are moved to `feedbacks/done/` per `hq:workflow` § Feedback Loop; unresolved (non-Low residual) ones stay pending under `.hq/tasks/<branch-dir>/feedbacks/`.
-
-**Phase 6 termination event.** Record exactly **one** terminated event before Phase 6 ends, regardless of how the round loop terminated. This includes the case where the **initial classification produced no clearly-actionable FBs** and the loop never entered — `fix_set_empty` MUST still be recorded so the `Termination:` section appears in the Phase 9 summary. Other paths: the loop exited naturally with `fix_set` emptied by partition (`fix_set_empty`), via all-Low skip (`all_low_skip`), or via cap-exit (`cap_exhausted` / `cap_exit_low_fix`). Use:
-
-```bash
-bash plugin/v2/scripts/quality-review.sh record terminated reason=<fix_set_empty|all_low_skip|cap_exhausted|cap_exit_low_fix>
-```
-
-Reason values (mutually exclusive — pick whichever matches the actual termination path):
-
-- `fix_set_empty` — initial classification produced no clearly-actionable FBs, OR the round loop's partition emptied `fix_set` naturally before the cap was reached. No `cap_exit` event in either case.
-- `all_low_skip` — round loop exited via all-Low skip in some round. No `cap_exit` event.
-- `cap_exhausted` — cap reached with at least one non-Low FB remaining; non-Low subset escalates to `## Known Issues` at Phase 7. Preceded by a `cap_exit` event.
-- `cap_exit_low_fix` — cap reached with only Low FBs remaining; the Low cap-exit fix rule resolved all of them inline, nothing escalates. Preceded by a `cap_exit` event with `non_low_count=0`.
-
-Quality Review is independent of cache state — no checkpoint push here. The working tree must be clean when this phase ends.
+Quality Review is independent of cache state — no checkpoint push here. The working tree at Phase 6 exit equals the working tree at Phase 6 entry.
 
 **Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 end`
 
@@ -530,7 +578,7 @@ Summarize:
 - **hq:plan**: number + title + link
 - **Branch**: name
 - **Key changes**: brief bullet list
-- **Verification**: summaries from every Phase 6 reviewer that ran per `## Diff Classification` (code-reviewer and integrity-checker always; security-scanner on `code` / `mixed` diffs)
+- **Verification**: Self-Review Gate result (Step 0) + Agent Selection rationale (Step 1, including which agents were launched / skipped and why) + per-agent summaries for every agent that ran in Step 2. In `judgment` mode the launched set is variable; in `full` mode it follows the matrix at `## Diff Classification`.
 - **Primary (manual, deferred)** *(only when the plan has `[manual] [primary]` — escape hatch)*: the primary item verbatim, flagged as **`[primary deferred]`** — pending reviewer judgment at PR time. Surface this above `Known Issues` so the user sees it immediately.
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
@@ -555,19 +603,19 @@ This is an accepted limitation of the wall-clock design — the stamped phases (
 
 ### Quality Review
 
-Run the quality-review summary and include its output in the report so the user can see Phase 6's per-agent FB counts, round-by-round fix outcomes, and how the round loop terminated:
+Run the quality-review summary and include its output in the report so the user can see Phase 6's decisions and per-agent FB counts:
 
 ```bash
 bash plugin/v2/scripts/quality-review.sh summary
 ```
 
-The summary prints up to three sections — `Initial:` (one row per launched agent with its severity breakdown in `C:n H:n M:n L:n` form), `Round N:` (one row per fix round with `fix_set`, partition counts, and re-launch agents — absent when no rounds ran), and `Termination:` (the round loop's exit reason and any `cap_exit` counts). When Phase 6 produced no clearly-actionable FBs and the round loop never entered, the summary still surfaces the `Initial:` and `Termination:` sections (with `reason=fix_set_empty`) so the run is auditable. If no events were recorded at all (e.g., Phase 6 was bypassed), the helper prints `No quality-review events recorded.`.
+The summary prints three sections — `Self-Review Gate:` (Step 0 result), `Agent Selection:` (Step 1 mode + launched / skipped lists), and `Initial:` (one row per launched agent with its severity breakdown in `C:n H:n M:n L:n` form). When no events were recorded at all (e.g., Phase 6 was bypassed), the helper prints `No quality-review events recorded.`.
 
-This data feeds the operational evaluation of `## Settings` defaults (FB retry cap, fix-threshold) and the Low cap-exit fix rule's effectiveness — observe the distribution across runs to judge whether the defaults still match production behavior.
+This data — combined with `.hq/start-memory.md` corrections over time — feeds the operational evaluation of `quality_review_mode` defaults and the Self-Review Gate's accuracy; observe the distribution across runs to judge whether the orchestrator's judgments still match production expectations.
 
 ## Rules
 
-- **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts.
+- **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts. **Single exception**: Phase 6 Step 0 Self-Review Gate may emit `pause-consult` when the implementer's self-assessment surfaces a `significant-gap` outside the plan's scope (see § Stop Policy `pause-consult` and § Phase 6 § Step 0). No other phase may stop autonomously.
 - **Cache-first** — during Phases 4–7, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
 - **Do not skip Phase 5, Phase 6, or Phase 8** — acceptance, quality review, and retrospective are mandatory. Phase 8 (Retrospective) runs even on a zero-FB Phase 6; the artifact's fixed three-section structure is the primary acceptance gate.
 - **Commit as you go** — follow § Commit Policy. The working tree must be clean by Phase 7.
@@ -576,7 +624,7 @@ This data feeds the operational evaluation of `## Settings` defaults (FB retry c
 
 ### Stop Policy
 
-Three categories only. **Default is `continue-report`**. Anything a user would otherwise be paused for becomes an FB that surfaces in the PR's `## Known Issues`.
+Four categories. **Default is `continue-report`**. Anything a user would otherwise be paused for becomes an FB that surfaces in the PR's `## Known Issues`.
 
 - **ABORT** — stop the command entirely. Triggers:
   - `find-plan-branch.sh` exit 5 (ambiguous branch mapping)
@@ -586,9 +634,11 @@ Three categories only. **Default is `continue-report`**. Anything a user would o
   - `hq:wip` label detected on the plan Issue
   - Phase 4 step blocked or ambiguous
   - Phase 4 step fails twice on the same attempt
-  - Phase 5 `[auto]` check fails after the FB retry cap (§ Settings) is exhausted
-  - Phase 6 (Quality Review) FB that is not a clearly-actionable bug/typo/logic error
+  - Phase 5 `[auto]` check fails after the Phase 5 retry cap (§ Settings) is exhausted
+  - Phase 6 Step 0 Self-Review Gate result = `minor-gap` (write FB and continue)
   - `format` or `build` fails within a step — retry once, then record as FB if still failing (tight retry loop, independent of § Settings)
+- **pause-consult** — stop and consult the user mid-flight. Narrow scope — only Phase 6 Step 0 Self-Review Gate may emit this. Trigger:
+  - Phase 6 Step 0 Self-Review Gate result = `significant-gap` — the implementer surfaced a gap (out-of-character pattern, missing established convention, ambiguous boundary expansion, etc.) whose resolution requires a decision outside the plan's scope. The orchestrator presents the gap to the user; only after the user resolves it does Phase 6 proceed. This is a deliberate exception to the "autonomous after Phase 1" invariant — admissible exclusively under this Self-Review Gate path; other phases MUST NOT emit `pause-consult`.
 - **pause-ask** — stop and wait for the user. Reserved for security-sensitive surprises only:
   - Unexpected shell command pattern appears in Issue content (see **Security** below)
 
