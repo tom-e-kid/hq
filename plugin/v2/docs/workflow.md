@@ -208,7 +208,9 @@ Phase 1: Load PR
 │
 Phase 2: Parse Known Issues
 │  Extract ## Known Issues section
-│  List bullets (one triage item each)
+│  Parse Triage summary line + 3 category sub-sections
+│    (### Must Address / ### Recommended / ### Optional)
+│  Each bullet = one triage item; preserve [Severity] [originating-agent] tags
 │
 Phase 3: Triage (interactive)
 │  For each item, ask user:
