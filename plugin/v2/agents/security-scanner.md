@@ -16,7 +16,7 @@ description: >
   <example>
   Context: User wants pre-PR quality review and the diff may include credential / external comm / config patterns
   user: "Run the pre-PR quality review on this feature branch."
-  assistant: "Launching security-scanner as part of /hq:start Phase 6 Step 2 Agent Selection."
+  assistant: "Launching security-scanner as part of /hq:start Phase 6 Step 1 Agent Selection."
   <commentary>
   Phase 6 Step 1 Agent Selection picks the agent subset per `quality_review_mode`: in `judgment` mode (default) the orchestrator launches security-scanner whenever the diff plausibly touches credentials / external communication / config / dependency manifests — including doc diffs where README / `.env` examples / external URLs are common. Hard floor: any literal credential prefix in the diff forces security-scanner regardless of judgment. In `full` mode the matrix runs security-scanner on `code` / `mixed` / `doc` (security-relevant patterns can appear in doc files too).
   </commentary>
