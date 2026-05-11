@@ -83,11 +83,13 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
 
 - **English (fixed)**:
   - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `[primary]`, `Closes #<plan>`, `Refs #<task>`
-  - Prescribed headings: `## Plan Sketch`, `## Plan`, `## Acceptance`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - Prescribed headings: `## Why`, `## Approach`, `## Editable surface`, `## Plan`, `## Acceptance`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - Editable surface inline tags: `[新規]` / `[改修]` / `[削除]` / `[silent-break]` (the brackets and tag values are fixed; the latter three are romaji-free fixed strings even in English-only repos — they are structural markers, not translatable prose)
+  - Plan item consumer suffix: `*(consumer: <name>)*` (the literal `consumer:` keyword is fixed; `<name>` is the consumer identifier)
   - File paths, identifiers, code fences, shell commands
 - **Conversation language (content)**:
   - `hq:task` body content — prose inside `## Background` / `## What` / `## Scope` / `## Success Criteria`, plus the optional `## Phase Split` (see `## hq:task` below)
-  - `hq:plan` body content — `## Plan Sketch` prose (Problem / Editable surface / Read-only surface / Impact Direction notes / Core decision / Constraints), each `## Plan` step description, each `## Acceptance` condition
+  - `hq:plan` body content — prose inside `## Why` / `## Approach`, each `## Editable surface` entry note (after the inline tag), each `## Plan` step description, each `## Acceptance` condition
   - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
 
