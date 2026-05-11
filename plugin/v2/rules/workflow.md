@@ -623,7 +623,7 @@ The artifact has exactly **three** top-level Markdown sections, in this order:
    ```yaml
    detection_validity: <valid | invalid | borderline>
    preventable_at_implementation: <yes | no | partial>
-   prevention_lever: <stricter-acceptance | smaller-commit-grain | reuse-existing | better-pre-read | n/a>
+   prevention_lever: <stricter-acceptance | smaller-commit-grain | reuse-existing | better-pre-read | plan-discipline | n/a>
    ```
 
    **Notes**: <≤ 2 sentences, factual — no rationalization, no praise>
