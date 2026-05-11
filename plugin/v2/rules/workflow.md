@@ -609,11 +609,11 @@ The artifact has exactly **three** top-level Markdown sections, in this order:
    - plan id, branch name, run timestamp (UTC, ISO 8601)
    - phase wall-clock durations (read `.hq/tasks/<branch-dir>/phase-timings.jsonl` via `phase-timing.sh summary`)
    - total commits made on the branch (`git rev-list --count <base>..HEAD`)
-   - Phase 6 termination reason and round-by-round outcome (read `.hq/tasks/<branch-dir>/quality-review-events.jsonl` via `quality-review.sh summary`)
-   - initial / resolved / persistent / cap-exited FB counts and severity breakdown
+   - Phase 6 Self-Review Gate result + Agent Selection mode and launched / skipped agents (read `.hq/tasks/<branch-dir>/quality-review-events.jsonl` via `quality-review.sh summary`)
+   - Per-agent initial FB counts and severity breakdown
    - counts of FB files in `feedbacks/done/` and `feedbacks/` (residual)
 
-2. **`## FB Analysis`** — one entry per FB file under `.hq/tasks/<branch-dir>/feedbacks/done/` at Phase 8 entry time. By Phase 8 entry time both classes of FB live there: FBs resolved in branch (moved to `done/` during Phase 5 / Phase 6) AND FBs escalated to the PR body's `## Known Issues` (Phase 7 atomically writes the section and moves the file to `done/` per `## Feedback Loop`).
+2. **`## FB Analysis`** — one entry per FB file under `.hq/tasks/<branch-dir>/feedbacks/done/` at Phase 8 entry time. Under the post-refactor pure-review Phase 6, FBs reach `done/` via a single path: Phase 7's atomic `## Known Issues` write + `done/` move (per `## Feedback Loop`). There is no Phase 5 / Phase 6 in-branch resolution path anymore.
 
    Each entry has the form:
 
