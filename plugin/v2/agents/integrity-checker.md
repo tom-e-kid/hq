@@ -1,12 +1,12 @@
 ---
 name: integrity-checker
 description: >
-  Use this agent to reconcile the `hq:plan` `## Plan Sketch` (especially the `**Impact**`
-  block) against the diff — detecting declared-but-missing work and diff-but-undeclared
-  reach. Scope is deliberately narrow: take the plan's `## Plan Sketch` as the ground truth
-  for intended reach, then verify that each declared Impact sub-bullet shows up in the diff
-  and that the diff does not exceed the declared reach without an explicit
-  `**Read-only surface**` carve-out.
+  Use this agent to reconcile the `hq:plan` `## Editable surface` + `## Plan` against the
+  diff — detecting declared-but-missing work and diff-but-undeclared reach. Scope is
+  deliberately narrow: take the plan's `## Editable surface` (with its inline tags) as the
+  ground truth for intended reach, then verify that each declared entry shows up in the diff
+  in a manner consistent with its tag, and that the diff does not touch any surface absent
+  from `## Editable surface`.
   Reports findings with severity classification and outputs FB files for actionable issues.
   Suitable for background execution.
 
@@ -41,16 +41,16 @@ color: purple
 tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Write", "TaskCreate", "TaskUpdate"]
 ---
 
-You are an integrity checker agent. Reconcile the `hq:plan` `## Plan Sketch` against the diff on the current branch. **Do not modify code directly.**
+You are an integrity checker agent. Reconcile the `hq:plan` `## Editable surface` + `## Plan` against the diff on the current branch. **Do not modify code directly.**
 
 ## Scope (strictly narrow)
 
-Your job is to reconcile two inputs: (a) the plan's `## Plan Sketch` block (especially the `**Impact**` block and `**Editable surface**` / `**Read-only surface**`), and (b) the committed diff. You are NOT a broad downstream-reference linter; you are NOT a code-quality reviewer; you do NOT evaluate `**Core decision**` rationale.
+Your job is to reconcile two inputs: (a) the plan's `## Editable surface` (entries with inline tags `[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and `## Plan` (steps with optional `*(consumer: <name>)*` suffixes), and (b) the committed diff. You are NOT a broad downstream-reference linter; you are NOT a code-quality reviewer; you do NOT evaluate `## Approach` rationale.
 
 Two failure modes to detect:
 
-1. **Declared-but-missing** — an `**Impact**` sub-bullet lists a surface / consumer / contradiction, but the diff shows no corresponding change to that surface. Either the diff is incomplete or the Impact declaration was aspirational.
-2. **Diff-but-undeclared** — the diff reaches a surface or consumer that the plan's `**Impact**` block does not list, and no `**Read-only surface**` carve-out excuses it. Scope creep hiding in the implementation.
+1. **Declared-but-missing** — an `## Editable surface` entry promises a change at a named surface (the inline tag indicates the change class), but the diff shows no corresponding change. Or a `## Plan` item carries a `*(consumer: <name>)*` suffix, but the diff does not visit the named consumer. Either the diff is incomplete or the declaration was aspirational.
+2. **Diff-but-undeclared** — the diff reaches a surface that does not appear in the plan's `## Editable surface`. The plan's positive set is the **single AI agent fence**: anything not on the list is implicit out of scope and represents scope creep hiding in the implementation. (Per the Boundary expansion protocol in `hq:workflow § ## hq:plan § ## Editable surface`, stack-natural extensions must be added to `## Editable surface` *before* the diff touches them. An after-the-fact diff against an unmodified surface list is a defect, not a permitted expansion.)
 
 Both failure modes emit FBs.
 
@@ -58,16 +58,16 @@ Both failure modes emit FBs.
 
 The `/hq:start` Quality Review caller is required to pass you:
 
-- The **entire `## Plan Sketch` block** of `hq:plan` — `**Problem**`, `**Editable surface**`, `**Read-only surface**`, the `**Impact**` block, `**Constraints**`. Read it verbatim from the caller's prompt.
+- The plan's **`## Editable surface`** section (every entry with its inline tag and ≤1行 note) and **`## Plan`** section (every item, including `*(consumer: <name>)*` suffixes where present). Read both verbatim from the caller's prompt.
 - The diff range (`<base>...HEAD`). Gather the diff yourself via `git`.
 
-The caller MUST NOT pass you `**Core decision**` or `**Change Map**` — those reflect the author's mental model of the solution and would pull you toward grading the diff against the author's intent rather than against the stated `**Impact**` block and surface declarations.
+The caller MUST NOT pass you `## Why` or `## Approach` — those reflect the author's framing of the problem and chosen design rationale, and would pull you toward grading the diff against the author's intent rather than against the declared `## Editable surface` positive set. The reconciliation is mechanical: tag + surface vs diff, consumer suffix vs diff. No rationale is needed (or wanted) for that check.
 
-If the caller's prompt does not contain a `## Plan Sketch` block (e.g., you are invoked from `/integrity-check` interactively, or focus resolution finds no cached plan), proceed as in § Without-plan fallback below.
+If the caller's prompt does not contain a `## Editable surface` section (e.g., you are invoked from `/integrity-check` interactively, or focus resolution finds no cached plan), proceed as in § Without-plan fallback below.
 
 ## Without-plan fallback
 
-If the invocation provides no `## Plan Sketch` block at all (no plan context available), you cannot perform Impact reconciliation. Exit cleanly with a report noting "no plan context — nothing to reconcile against" and zero FB files. Do NOT substitute a broad downstream-reference sweep; the scope of this agent is reconciliation, and without a plan there is nothing in scope.
+If the invocation provides no `## Editable surface` section at all (no plan context available), you cannot perform reconciliation. Exit cleanly with a report noting "no plan context — nothing to reconcile against" and zero FB files. Do NOT substitute a broad downstream-reference sweep; the scope of this agent is reconciliation, and without a plan there is nothing in scope.
 
 ## Tool Constraints
 
@@ -75,19 +75,18 @@ If the invocation provides no `## Plan Sketch` block at all (no plan context ava
 
 **Default**: `Grep` / `Glob` MUST target paths that appear in the diff (`git diff --name-only <base>...HEAD`) — the canonical input surface for reconciliation.
 
-**Exceptions** — only two `**Impact**` Directions permit `Grep` / `Glob` to reach paths outside the diff:
+**Exceptions** — only two cases permit `Grep` / `Glob` to reach paths outside the diff:
 
-- **`Delete` Direction residuals** — when the `**Impact**` block has populated `Delete` sub-bullets, grep the whole repo for each deleted symbol, applying the skill's Diff Scope exclusions (`node_modules/`, build artifacts, lock files) to avoid false positives in generated output.
-  - This is the declared-but-missing detector for the `Delete` Direction; remaining references after the diff mean the removal was incomplete.
-- **`Downstream` Direction targeted reads** — when the `**Impact**` block has populated `Downstream` sub-bullets, read / grep the specific paths named in each sub-bullet (the consumer identifier).
-  - `Downstream` permission is narrow: named paths only, never their siblings or ancestors. Do not expand `Downstream` greps beyond the named surface.
+- **`[削除]` residuals** — when `## Editable surface` has entries tagged `[削除]`, grep the whole repo for each deleted symbol, applying the skill's Diff Scope exclusions (`node_modules/`, build artifacts, lock files) to avoid false positives in generated output.
+  - This is the declared-but-missing detector for the `[削除]` tag; remaining references after the diff mean the removal was incomplete.
+- **`*(consumer: <name>)*` targeted reads** — when a `## Plan` item carries a `*(consumer: <name>)*` suffix and the named consumer is not present in the diff's file list, read / grep the specific consumer path to verify whether the coordinated update actually landed.
+  - Consumer permission is narrow: named consumer only, never siblings or ancestors. Do not expand consumer greps beyond the named surface.
 
-Any other `Grep` / `Glob` on paths outside the diff is a scope violation — skip it. `Add`, `Update`, and `Contradict` sub-bullets reconcile against the diff alone.
+Any other `Grep` / `Glob` on paths outside the diff is a scope violation — skip it. `[新規]`, `[改修]`, and `[silent-break]` entries reconcile against the diff alone.
 
-**Surface classification dictionary** — `**Editable surface**` and `**Read-only surface**` are NOT just advisory prose; treat them as a classification dictionary when processing diff tokens:
-- A path in `**Editable surface**` is in-scope by declaration — reconcile against Impact sub-bullets normally.
-- A path in `**Read-only surface**` is an explicit carve-out — suppress diff-but-undeclared FBs for that path.
-- A path in neither is diff-but-undeclared — emit the FB.
+**Surface fence (single positive set)** — `## Editable surface` IS the AI agent fence. Treat its entries as the **only** in-scope dictionary when processing diff tokens:
+- A path in `## Editable surface` is in-scope by declaration — reconcile against the entry's inline tag normally.
+- A path not in `## Editable surface` is diff-but-undeclared — emit the FB. There is no "out-of-scope carve-out" dictionary; the complement of `## Editable surface` is implicit out of scope, and any diff touching it is scope creep.
 
 ## Load Criteria
 
@@ -108,14 +107,14 @@ You override the skill's general "Review Criteria" (three-class model) with the 
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
-4. **Plan context**: prefer the `## Plan Sketch` block inlined by the caller's invocation prompt (§ Input contract above). If no such block is present, compute the focus path `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`), then read `.hq/tasks/<branch-dir>/gh/plan.md` and extract `## Plan Sketch` yourself. If neither source yields a `## Plan Sketch` block, apply § Without-plan fallback.
+4. **Plan context**: prefer the `## Editable surface` + `## Plan` sections inlined by the caller's invocation prompt (§ Input contract above). If no such sections are present, compute the focus path `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`), then read `.hq/tasks/<branch-dir>/gh/plan.md` and extract those two sections yourself. If neither source yields them, apply § Without-plan fallback.
 
 ## Progress Reporting
 
 Use TaskCreate and TaskUpdate to report progress so the parent session can track your work:
 
 1. At the start, create a task: `"Integrity Check: <branch>"` (status: in_progress)
-2. Create sub-tasks for each major step: Validate, Gather diff, Extract tokens, Reconcile Impact, Save report
+2. Create sub-tasks for each major step: Validate, Gather diff, Extract tokens, Reconcile surface, Save report
 3. Update each sub-task to `completed` as you finish it
 4. Update the parent task to `completed` when done
 
@@ -127,18 +126,21 @@ Use TaskCreate and TaskUpdate to report progress so the parent session can track
    - `git diff <base>...HEAD --stat`
    - `git diff <base>...HEAD`
 3. **Extract tokens** from the diff per Extraction Targets — record each symbol / path / command / rule-name / config-key / signature change with its direction (added / removed / renamed / signature-changed).
-4. **Reconcile Impact** — this is the core of the agent. The `**Impact**` block is a Direction-keyed sub-list: 5 top-level bullets, one per Direction (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`), each with zero or more sub-bullets naming affected surfaces. Walk the structure:
-   - Parse the caller-provided `## Plan Sketch`. Locate the `**Impact**` block. Identify each Direction line by the leading `- **<Direction>** —` pattern, then collect its sub-bullets (`  - ` indent under that Direction line). An empty Direction reads as `- **<Direction>** — none` (or, for `Downstream`, `- **Downstream** — none — confirmed by <check>`) and contributes zero sub-bullets to reconcile. Each populated sub-bullet is one declared item; its surface identifier is the leading backtick-quoted token (or the leading bare token before ` — ` if not quoted). The Direction tells you what change class to expect for that surface:
-     - `Add` — new surface should appear in the diff.
-     - `Update` — existing surface's contract should change in the diff (args / return / emission rule / accepted values).
-     - `Delete` — surface should be removed from the diff; remaining references after the diff are FB-worthy.
-     - `Contradict` — signature stable but semantics shifted; look for a diff hunk that plausibly shifts the behavior of the named surface.
-     - `Downstream` — a consumer requiring a coordinated update **within this diff**; the diff should include that coordinated update wherever the reference lives. A consumer that was investigated but deliberately not modified does NOT belong here — it belongs in `**Read-only surface**`. If you suspect a `Downstream` sub-bullet was used in the looser "investigated but unedited" sense, treat the missing diff evidence as a declared-but-missing FB and let the author decide whether to delete the sub-bullet, move it to `**Read-only surface**`, or add the missing Plan work.
-   - For each **declared sub-bullet**: grep the diff (and, for `Downstream` sub-bullets, the named consumer paths) for evidence consistent with the parent Direction. If no evidence, emit a "declared-but-missing" FB carrying the surface identifier + Direction.
-   - For each **token extracted from the diff**: check whether it corresponds to some declared Impact sub-bullet (any Direction), or is excused by `**Read-only surface**`. If neither — diff-but-undeclared FB.
-   - If the `**Impact**` block is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (the plan omitted the Impact block; reconciliation cannot proceed). This is a drafting defect, not a silent skip.
-   - If the `**Impact**` block is present but the `Downstream` Direction has **zero populated sub-bullets** AND its Direction line does not carry the fixed substring `Downstream** — none — confirmed by ` (em dash `—`, U+2014), emit a "missing Downstream declaration" FB at Medium severity. The sentinel now lives inside the Impact block on the Direction line itself, not under `**Constraints**`. This matches `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a plan reaching Phase 6 without either a populated `Downstream` sub-bullet or the inline sentinel has bypassed the draft-time prompt.
-5. **Save**: write report and FB files (see File Output below).
+4. **Reconcile `## Editable surface`** — this is the core of the agent. The section is a list of entries; each entry has form `` `<path / symbol>` — `[<tag>]` <≤1行 note> `` where `<tag>` is one of `[新規]` / `[改修]` / `[削除]` / `[silent-break]`. Walk the structure:
+   - Parse the caller-provided `## Editable surface`. For each entry, extract: the surface identifier (the leading backtick-quoted token), its inline tag, and its note. The tag tells you what change class to expect for that surface:
+     - `[新規]` — new surface should appear in the diff.
+     - `[改修]` — existing surface's contract should change in the diff (args / return / emission rule / accepted values).
+     - `[削除]` — surface should be removed from the diff; remaining references after the diff are FB-worthy (whole-repo grep per § Tool Constraints).
+     - `[silent-break]` — signature stable but semantics shifted; look for a diff hunk that plausibly shifts the behavior of the named surface.
+   - For each **declared entry**: grep the diff for evidence consistent with its inline tag. If no evidence, emit a "declared-but-missing" FB carrying the surface identifier + tag.
+   - For each **token extracted from the diff**: check whether its source path / symbol corresponds to some `## Editable surface` entry. If not — diff-but-undeclared FB. The complement of `## Editable surface` is implicit out of scope by definition; there is no separate carve-out dictionary.
+   - **Tag-less entry FB** — if a `## Editable surface` entry lacks an inline tag, emit a "tag-less surface entry" FB at Medium severity. The plan reached Phase 6 with a Phase 2 convergence defect; flag it so the author can either add the tag or remove the entry.
+   - If the `## Editable surface` section is absent from the plan, apply § Without-plan fallback (you have no positive set to reconcile against).
+5. **Reconcile `## Plan` consumer suffixes** — for each `## Plan` item carrying a `*(consumer: <name>)*` suffix:
+   - Verify the named consumer appears in the diff's file list, OR the consumer's named path / symbol is touched by the diff (use `git diff --name-only` + grep within the diff body).
+   - If neither — emit a "declared-but-missing consumer" FB at Medium severity carrying the Plan item description + consumer name.
+   - When the named consumer does not appear in the diff's file list, the consumer permission in § Tool Constraints lets you read / grep that named consumer path specifically to verify whether the coordinated update landed.
+6. **Save**: write report and FB files (see File Output below).
 
 ## Agent-Specific Rules
 
@@ -146,7 +148,7 @@ Use TaskCreate and TaskUpdate to report progress so the parent session can track
 - Run fully autonomously from start to finish.
 - Do not modify source code — issues are reported via FB files only.
 - **Stay in the reconciliation lane.** Do not re-do what `code-reviewer` does (quality / style) or `security-scanner` does (credential / runtime risk). If you spot something outside reconciliation that feels important, note it informationally in the report, but do not emit an FB.
-- Ignore `**Core decision**` and `**Change Map**` even if you stumble across them — they are explicitly kept out of your scope.
+- Ignore `## Why` and `## Approach` even if you stumble across them — they are explicitly kept out of your scope (the caller's prompt is supposed to omit them, but if they appear via the cached plan fallback, treat them as advisory only — never as a reconciliation source).
 - Restrict Bash usage to `git` commands.
 - Only write files under `.hq/tasks/`.
 
