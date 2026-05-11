@@ -70,27 +70,58 @@ If the section is empty or absent, report "No Known Issues to triage." and end.
 
 List the items for the user, numbered **and grouped by category** so the action priority is obvious — Must Address first, then Recommended, then Optional. Within each category, preserve insertion order from the PR body.
 
-## Phase 3: Triage Items (interactive)
+## Phase 3: Triage Items (strict-interactive)
 
-For each item, ask the user:
+Process items **one at a time**, strictly serially: present item n → wait for the user's explicit response → record → only then present item n+1. Do NOT present multiple items in a single prompt, do NOT collect "bulk" decisions, and do NOT advance on silent / ambiguous / blanket responses. The per-item briefing is the load-bearing surface that keeps each disposition grounded in the FB's actual content rather than a categorical pre-decision; surrendering that anchor (e.g., asking "what should we do for all 5 items?", or accepting "go with your suggestion") restores the autonomous-suggestion failure mode this design exists to block.
+
+### Per-item briefing (required for every item)
+
+For each item, emit **all three** of the following before waiting for the user's response. The Suggestion is advisory only — it is the agent's read of the finding, NOT a vote, default, or pre-applied disposition; the user's explicit response is the sole authority for what gets applied.
+
+- **概要** (Summary, 2-3 sentences) — plain-language description of what the FB is pointing out. Translate technical shorthand into something the reviewer can act on in seconds.
+- **浮上経緯** (Origin) — which agent / which review axis surfaced this item, drawn from the `[<originating-agent>]` tag in the PR body line.
+- **Suggestion** — one of `1` / `2` / `3` with a 1-2 sentence rationale tying the suggestion to the FB's actual content. Bias toward `2` (leave as-is) when the call is genuinely ambiguous (documentation-only nits, false-positive-shaped findings, low-impact stylistic notes). Use `3` (escalate to hq:feedback) only when the item names a clearly different owner or operates on a clearly different timescale than the current PR. The historical failure mode is too many `1` / `3` dispositions polluting the issue tracker with "while-we're-at-it" carve-outs.
+
+Briefing template (the literal shape to emit per item):
 
 ```
 Item <n>/<total> [<category>]: <item text>
-  (1) add to hq:plan (follow-up work)
-  (2) leave as-is
-  (3) escalate to hq:feedback (carve out as separate Issue)
+
+  概要: <2-3 sentences of plain-language summary>
+  浮上経緯: <originating agent / review axis>
+  Suggestion: <1|2|3> (<add to hq:plan | leave as-is | escalate to hq:feedback>) — <1-2 sentence rationale>
+
+Choose disposition for this item — reply with 1, 2, or 3:
+  1 — add to hq:plan (follow-up work)
+  2 — leave as-is
+  3 — escalate to hq:feedback (carve out as separate Issue)
 ?
 ```
 
-`<category>` reflects the PR body's grouping — `Must Address` / `Recommended` / `Optional`. Default disposition leanings (the user is free to override per item):
+### Accepted responses
 
-- **Must Address (Critical / High)** — strong lean toward `(1) add to hq:plan` or `(3) escalate to hq:feedback`. Leaving Critical / High as-is requires explicit user judgment ("this is acknowledged as a known limitation").
-- **Recommended (Medium)** — genuine judgment call. All three dispositions are routinely appropriate; user decides per item.
-- **Optional (Low)** — strong lean toward `(2) leave as-is` or `(3) escalate to hq:feedback`. Pulling Low items into `hq:plan` follow-up work risks the same scope creep that motivated the Phase 7 pure-review design.
+The user response MUST be **exactly one** of the literal strings `1`, `2`, or `3` (surrounding whitespace tolerated). Anything else is rejected:
 
-Record the user's choice per item. Allow the user to skim-then-decide: if they ask to see all items first, show the full list and revisit decisions in order.
+- silent / blank / no response → halt
+- `y` / `yes` / `ok` / "👍" / "go with your suggestion" / "your call" → halt
+- "全部 (2) で" / "bulk leave" / "leave all" / multiple numbers like `1, 2` / range like `1-3` → halt
+- free-form natural-language disposition ("add it to the plan", "escalate that one") → halt
 
-**Do not apply any changes yet** — collect all decisions first, then apply in Phase 4.
+On halt, re-emit the same item's full briefing verbatim and re-prompt. Do NOT fall back to the Suggestion. Do NOT advance to item n+1. Do NOT silently re-classify a free-form answer into a numeric disposition. The agent's job on rejection is to ask the same question again, not to interpret intent.
+
+### Serialization (one at a time)
+
+Items are processed strictly one at a time:
+
+1. Present item n's briefing (with Summary / Origin / Suggestion).
+2. Wait for the user's response.
+3. Validate per "Accepted responses". On halt, re-prompt with the same briefing.
+4. On a valid response, record the disposition for item n.
+5. Then — only then — present item n+1.
+
+Skim mode is **read-only**. The user MAY ask to see the full list of items before disposing of any; in that case emit a numbered read-only summary (no briefing, no Suggestion) and immediately return to the strict one-at-a-time loop for the actual disposition decisions. Skim presentation never collects dispositions.
+
+**Do not apply any changes yet** — Phase 4 applies the recorded dispositions atomically.
 
 ## Phase 4: Apply Changes
 
@@ -159,7 +190,8 @@ Summarize:
 ## Rules
 
 - **Only this command creates `hq:feedback` Issues** — all other workflow commands route residual problems through the PR body.
-- **Interactive for the triage phase only** — Phase 3 requires user decisions, but Phase 4 applies them autonomously.
+- **No disposition may be APPLIED without an explicit per-item response from the user.** Suggestions are advisory only; absence of an explicit response means halt, never default-to-suggestion. This invariant is the structural barrier that keeps the agent's read of a finding (the Suggestion) cleanly separated from the user's authoritative disposition decision; collapsing the two — by accepting "go with your suggestion" / bulk responses / silent acquiescence — restores the autonomous Issue-tracker pollution this command's Phase 3 is designed to block.
+- **Interactive for the triage phase only** — Phase 3 requires explicit per-item user decisions, but Phase 4 applies the recorded dispositions autonomously.
 - **Atomic PR body update** — apply all per-item edits in a single `gh pr edit` call, not one call per item.
 - **Cache sync for `hq:plan` additions** — go through `plan-cache-pull.sh` and `plan-cache-push.sh`. Do NOT `gh issue edit` the plan directly.
 - **Preserve unrelated PR body content** — only modify the `## Known Issues` section.
