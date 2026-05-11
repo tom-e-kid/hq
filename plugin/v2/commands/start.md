@@ -575,13 +575,20 @@ mkdir -p .hq/retro/<branch-dir>
 
 Four top-level Markdown sections in this exact order — the fixed structure is the primary acceptance gate per `hq:workflow` § Retrospective:
 
-1. **`## Run Summary`** — facts only (no LLM judgment). Fields: plan id / branch / run timestamp (UTC, ISO 8601) / phase wall-clock durations / total commits / Phase 6 Self-Review result / Phase 7 Agent Selection mode and launched / skipped agents / per-agent initial FB counts and severity breakdown / `feedbacks/done/` count.
+1. **`## Run Summary`** — facts only (no LLM judgment). **All fields are MUST — omitting any of them breaks the primary acceptance gate.** Fields:
+   - plan id / branch / run timestamp (UTC, ISO 8601)
+   - **Phase wall-clock durations** — emit `phase-timing.sh summary` output **verbatim** under a `**Phase timing**:` subheading. Phase 1–9 lines, total, session count. When the helper prints `No timing data recorded.`, emit that line verbatim with a one-line cause note (stamp invocations never landed for this run) — **never silently skip the field**. Phases 4–9 showing `(no data)` is a workflow defect signal and MUST be called out in `## Reflection`.
+   - total commits made on the branch (`git rev-list --count <base>..HEAD`)
+   - Phase 6 Self-Review result
+   - Phase 7 Agent Selection mode + launched / skipped agents
+   - per-agent initial FB counts and severity breakdown
+   - `feedbacks/done/` count + residual `feedbacks/` count
 2. **`## Judgment Review`** — reflective evaluation of the two judgment calls this run made. **Two subsections** in this order:
    - **`### Phase 6 Self-Review`** — quote the **Decision rationale** paragraph from the Phase 6 Self-Review decision report. Then add a `**Hindsight**:` line (≤ 2 sentences) on whether the call (pass / minor-gap / significant-gap) reads sound given what Phase 7 subsequently surfaced and what landed in `feedbacks/done/`. Cite concrete signals — if Phase 7 produced FBs that the Self-Review should have caught, say so; if the Self-Review's minor-gap FB later proved load-bearing, note it; if everything aligned, name what aligned.
    - **`### Phase 7 Agent Selection`** — quote the **Overall rationale** paragraph from the Phase 7 Agent Selection decision report and list which agents were launched / skipped (with their one-line reasons). Then add a `**Hindsight**:` line (≤ 2 sentences) on whether the subset was right — did a launched agent return nothing useful (over-launch), or did a skipped axis surface as an FB from somewhere else / from the user later (under-launch)? Cite concrete FB ids or severity counts where applicable.
    - When the source decision report is missing (resumed runs, prior-version artifacts), emit `(decision report not found — judgment review unavailable)` in place of the quoted rationale and skip the **Hindsight** line.
 3. **`## FB Analysis`** — one entry per FB file under `feedbacks/done/` at Phase 9 entry time. Entry format and the 3 YAML axes (`detection_validity` / `preventable_at_implementation` / `prevention_lever`) plus the free-form `**Notes**` Markdown field are specified in `hq:workflow` § Retrospective. **Zero-FB case**: when `feedbacks/done/` has no FB files, emit the literal body `(no FBs to analyze)` under the section header. Do NOT omit the section — the primary acceptance gate counts the four section headers.
-4. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries or across the Judgment Review section (or, in the zero-FB case, comment on the run's signal/noise: did `## Acceptance` actually exercise the implementation?). Self-praise without a concrete pattern citation is the failure mode this section guards against.
+4. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries, the Judgment Review section, **or the `## Run Summary` Phase timing block** (e.g., "Phase 7 dominated wall-clock at 18m — agent re-launches inflated it; consider judgment-mode skip for `integrity-checker` next run"). When `## Run Summary` shows Phases 4–9 `(no data)` or `No timing data recorded.`, the Reflection MUST surface this as a workflow defect signal — it indicates the timing helper failed silently and the next run cannot be compared until it is fixed. Self-praise without a concrete pattern citation is the failure mode this section guards against.
 
 ### Stop Policy
 
@@ -602,28 +609,33 @@ Summarize:
 - **Agent Selection (Phase 7)**: mode (`judgment` / `full`) + launched / skipped lists with the per-agent one-line reasons + the **Overall rationale** paragraph from the Phase 7 decision report (verbatim or paraphrased ≤ 2 sentences). In `judgment` mode the launched set is variable; in `full` mode it follows the matrix at `## Diff Classification`.
 - **Per-agent results (Phase 7 Step 2)**: per-agent summaries for every agent that ran (severity counts, notable FBs).
 - **Primary (manual, deferred)** *(only when the plan has `[manual] [primary]` — escape hatch)*: the primary item verbatim, flagged as **`[primary deferred]`** — pending reviewer judgment at PR time. Surface this above `Known Issues` so the user sees it immediately.
+- **Phase Timing** *(MUST)*: include the `### Timing` subsection below verbatim with `phase-timing.sh summary` output. Not omittable on any path — see § Timing.
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
 - **Known Issues**: count (handle via `/hq:triage <PR>` after review)
 
 The **Self-Review (Phase 6)** and **Agent Selection (Phase 7)** lines are the user-facing surfacing of "what reason, what choice" for each judgment call — they let the user evaluate whether the orchestrator's judgments matched their expectations and append corrections to `.hq/start-memory.md` if not.
 
-### Timing
+### Timing *(MUST)*
 
-Run the phase-timing summary and include its output in the report so the user can see where the run spent its time:
+The Phase Timing block is a **required output** of every `/hq:start` run — emit it on every Phase 10 invocation, regardless of run outcome (zero-FB, all-FB-Optional, escape hatch, etc.). The block exists so the user can see where the run actually spent time and so future runs can compare wall-clock distributions. Skipping or shortening this block is a real gap, not a continue-report.
+
+Run the phase-timing summary and include its **verbatim output** under a `### Timing` subsection in the report:
 
 ```bash
 bash plugin/v2/scripts/phase-timing.sh summary
 ```
 
-The summary prints per-phase wall-clock duration (Phase 1–9), a total, and the session count (how many times Phase 1 `start` fired — i.e., how often the run was interrupted and auto-resumed). Note in the Report that the durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work.
+The summary prints per-phase wall-clock duration (Phase 1–9), a total, and the session count (how many times Phase 1 `start` fired — i.e., how often the run was interrupted and auto-resumed). Durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work — annotate this once in the Report so the user does not over-interpret.
 
-Phases that have no recorded stamps appear as `(no data)`. Two scenarios produce this:
+**If the helper prints `No timing data recorded.`** — emit that line verbatim under `### Timing` along with a one-line cause note (stamps were never recorded for this run, e.g., the timing script was broken or the branch's JSONL file was wiped). Do NOT silently omit the section — absence of data is itself a reportable signal.
+
+Phases that have no recorded stamps appear as `(no data)`. Two expected scenarios produce this:
 
 - **Fresh start** — Phase 1 and Phase 2 run before the feature branch is created (Phase 3 step 2), so their stamps land in the base branch's `.hq/tasks/<base-branch-dir>/phase-timings.jsonl`. Phase 10 reads the feature branch's file and therefore shows Phase 1 and Phase 2 as `(no data)`.
 - **Auto-resume** — Phase 2 and Phase 3 are skipped entirely (the branch and cache already exist), so they produce no stamps for that session.
 
-This is an accepted limitation of the wall-clock design — the stamped phases (4–9 always, plus 1–3 when they run on the feature branch) cover the bulk of the execution time.
+Phases 4–9 showing `(no data)` is **NOT expected** — that means the stamp invocation failed (e.g., the script rejected the phase number, the JSONL write failed). Flag this in the Report as a workflow defect so it gets fixed.
 
 ### Quality Review
 

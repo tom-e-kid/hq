@@ -610,9 +610,9 @@ Per-run reflective analysis written by `/hq:start` Phase 9 (Retrospective) to a 
 
 The artifact has exactly **four** top-level Markdown sections, in this order:
 
-1. **`## Run Summary`** — facts about the run, all derivable from existing JSONL events + git log + plan cache + decision reports (no LLM judgment in this section). Fields:
+1. **`## Run Summary`** — facts about the run, all derivable from existing JSONL events + git log + plan cache + decision reports (no LLM judgment in this section). **Every field below is MUST — omitting any of them breaks the primary acceptance gate.** Fields:
    - plan id, branch name, run timestamp (UTC, ISO 8601)
-   - phase wall-clock durations (read `.hq/tasks/<branch-dir>/phase-timings.jsonl` via `phase-timing.sh summary`)
+   - **phase wall-clock durations** — read `.hq/tasks/<branch-dir>/phase-timings.jsonl` via `phase-timing.sh summary` and emit the helper's output **verbatim**. When the helper prints `No timing data recorded.` (no stamps ever landed for this run), emit that line verbatim with a one-line cause note — **never silently skip the field**. Phases 4–9 showing `(no data)` is a workflow defect signal (stamp invocations failed) and the `## Reflection` section MUST call it out.
    - total commits made on the branch (`git rev-list --count <base>..HEAD`)
    - Phase 6 Self-Review result (read `.hq/tasks/<branch-dir>/quality-review-events.jsonl` via `quality-review.sh summary`)
    - Phase 7 Agent Selection mode and launched / skipped agents (same source)
@@ -644,7 +644,7 @@ The artifact has exactly **four** top-level Markdown sections, in this order:
 
    When `feedbacks/done/` has no FB files at Phase 9 entry (which occurs when no FBs were generated across the entire run — Phase 4 / 5 / 6 / 7 all clean), `## FB Analysis` is still emitted with the literal body `(no FBs to analyze)` — do NOT omit the section. The fixed four-section structure is the primary acceptance gate, and an absent section breaks it.
 
-4. **`## Reflection`** — free-form prose, ≤ 8 sentences. State what went well, what could improve, and any pattern visible across the FB Analysis entries or the Judgment Review entries (e.g., "many FBs marked `preventable_at_implementation: yes` with `prevention_lever: smaller-commit-grain` — next run should split implementation steps before committing"; or "Phase 7 Agent Selection skipped `integrity-checker` despite a `[削除]` tag in the diff — the hard-floor for `[削除]` should be reconsidered"). Self-praise without a concrete pattern citation is the failure mode this section guards against — the LLM is the author and the analysis subject simultaneously, so explicit pattern citation is what keeps the section honest.
+4. **`## Reflection`** — free-form prose, ≤ 8 sentences. State what went well, what could improve, and any pattern visible across the FB Analysis entries, the Judgment Review entries, **or the `## Run Summary` Phase timing block** (e.g., "many FBs marked `preventable_at_implementation: yes` with `prevention_lever: smaller-commit-grain` — next run should split implementation steps before committing"; or "Phase 7 Agent Selection skipped `integrity-checker` despite a `[削除]` tag in the diff — the hard-floor for `[削除]` should be reconsidered"; or "Phase 7 wall-clock dominated the run at 18m — judgment-mode agent set is over-launching, consider skipping `integrity-checker` next run"). When `## Run Summary` shows Phases 4–9 `(no data)` or `No timing data recorded.`, the Reflection MUST surface this as a workflow defect signal — silent timing-stamp failure breaks cross-run comparability and is itself a reportable issue. Self-praise without a concrete pattern citation is the failure mode this section guards against — the LLM is the author and the analysis subject simultaneously, so explicit pattern citation is what keeps the section honest.
 
 ### Per-FB analysis fields
 

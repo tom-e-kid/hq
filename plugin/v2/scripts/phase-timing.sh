@@ -45,7 +45,7 @@ case "$cmd" in
     [[ $# -eq 2 ]] || usage
     phase="$1"
     event="$2"
-    [[ "$phase" =~ ^[1-7]$ ]] || { echo "error: <phase> must be 1-7" >&2; exit 2; }
+    [[ "$phase" =~ ^[1-9]$ ]] || { echo "error: <phase> must be 1-9" >&2; exit 2; }
     [[ "$event" == "start" || "$event" == "end" ]] || { echo "error: <event> must be 'start' or 'end'" >&2; exit 2; }
     jsonl=$(resolve_jsonl)
     mkdir -p "$(dirname "$jsonl")"
@@ -62,7 +62,7 @@ case "$cmd" in
     awk '
       {
         # Skip lines that are not complete timing records (e.g., truncated writes).
-        if ($0 !~ /"phase":"[1-7]".*"event":"(start|end)".*"ts":[0-9]+/) next
+        if ($0 !~ /"phase":"[1-9]".*"event":"(start|end)".*"ts":[0-9]+/) next
 
         ph = $0
         sub(/.*"phase":"/, "", ph); sub(/".*/, "", ph)
@@ -92,7 +92,7 @@ case "$cmd" in
         }
       }
       END {
-        for (i = 1; i <= 7; i++) {
+        for (i = 1; i <= 9; i++) {
           ph = i ""
           if (phase_seen[ph]) {
             printf "Phase %s: %s\n", ph, fmt(phase_dur[ph] + 0)
