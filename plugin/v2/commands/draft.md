@@ -130,13 +130,13 @@ Converged means **committable**: Claude writes the primary as one line with its 
 
 Phase 2 has **one exit gate**: a single in-chat message — the **commit-or-pushback message** — that names what Phase 3 is about to compose and waits for the user's binary response (`go` / push back). The GitHub Issue itself is the full review surface (intervention #1 in the workflow); there is no separate in-chat point-check. Do NOT bypass this message and proceed to Phase 3 unilaterally — including under auto mode.
 
-**Format** — three lines, exactly:
+**Format** — header line + two mandatory bullets + one conditional bullet:
 
 ```
 Phase 2 converge — 以下で Issue 化する。違和感あれば続ける、なければ "go":
 - Primary acceptance `[auto|manual]`: <signal>
 - Editable surface: <comma-separated path / symbol list>
-- 残ってる懸念: <one line if any concern is still live, otherwise omit this line>
+- 残ってる懸念: <one line if any concern is still live, otherwise omit this line entirely>
 ```
 
 Shape rules:
