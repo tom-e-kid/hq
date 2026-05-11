@@ -114,7 +114,7 @@ You override the skill's general "Review Criteria" (three-class model) with the 
 Use TaskCreate and TaskUpdate to report progress so the parent session can track your work:
 
 1. At the start, create a task: `"Integrity Check: <branch>"` (status: in_progress)
-2. Create sub-tasks for each major step: Validate, Gather diff, Extract tokens, Reconcile surface, Save report
+2. Create sub-tasks for each major step: Validate, Gather diff, Extract tokens, Reconcile Editable surface, Reconcile consumer suffixes, Save report
 3. Update each sub-task to `completed` as you finish it
 4. Update the parent task to `completed` when done
 
