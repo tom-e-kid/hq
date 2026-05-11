@@ -77,20 +77,26 @@ If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix
 
 ## Phase Timing
 
-`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 10 can report where the run spent its time. For each of Phase 1–9, stamp once at the top of the phase and once at the bottom:
+`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 10 can report where the run spent its time. **Stamp scope is Phase 4–9 only.** For each of Phase 4 through Phase 9, stamp once at the top of the phase and once at the bottom:
 
 ```
 bash plugin/v2/scripts/phase-timing.sh stamp <N> start
 bash plugin/v2/scripts/phase-timing.sh stamp <N> end
 ```
 
-Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Auto-resume sessions append to the same file; session count is the number of `phase":"1","event":"start"` entries. Phase 10 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
+Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Phase 10 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
+
+**Phase 1/2/3 are deliberately not stamped** — they cannot be measured on the feature branch's JSONL:
+
+- **Phase 1 (Pre-flight)** fresh start: runs on the caller's branch before any switch, so both stamps would land in the caller's branch JSONL (not visible to the feature branch's summary). Auto-resume: `start` lands on caller, then `git checkout` switches to the feature branch, then `end` lands there — the pair is split across two JSONL files and yields a useless half-record.
+- **Phase 2 (Load Plan)** fresh start: still on the caller's branch. Auto-resume: phase is skipped entirely.
+- **Phase 3 (Execution Prep)** fresh start: the Phase 3 step that runs `git checkout -b <branch>` sits between `start` and `end`, splitting the stamp pair across two JSONL files. Auto-resume: phase is skipped.
+
+Phase 10 (Report) is also not stamped — it is the consumer of the summary and self-stamping would not add measurable signal (the report-emission time is a few tool calls).
 
 The concrete stamp invocation for each phase is placed at that phase's top and bottom below.
 
 ## Phase 1: Pre-flight Check (non-interactive)
-
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 1 start`
 
 Parse `$ARGUMENTS` → `<hq:plan number>` (accept `#1234` or `1234`). The plan number is **required**. If missing, ask the user ONCE for the `hq:plan` Issue number to implement, then continue.
 
@@ -130,11 +136,7 @@ Read `.hq/tasks/<branch-dir>/gh/plan.md` and inspect checkbox state:
 
 The Phase 4 ↔ Phase 5 loopback has no cache-visible state of its own — the sweep counter lives in conversation context only. On auto-resume after interruption, the sweep counter resets to zero (Phase 5 re-runs from the beginning; already-passed items stay `[x]` and are skipped).
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 1 end`
-
 ## Phase 2: Load Plan (fresh start only)
-
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 2 start`
 
 Fetch the `hq:plan` Issue:
 
@@ -160,11 +162,7 @@ Keep the plan payload (and the task payload, when a parent exists) in conversati
 - Example: `feat(plan): implement user authentication with OAuth 2.0` → `feat/oauth-login`
 - Keep the description short (≤ 40 chars, kebab-case, alphanumeric + hyphens).
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 2 end`
-
 ## Phase 3: Execution Prep (fresh start only)
-
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 3 start`
 
 1. **Resolve base branch** per `hq:workflow § Branch Rules`. For a fresh start (no prior `context.md`), the chain reduces to: `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. Hold the resolved value as `<base>` for the next steps.
 2. **Create feature branch** from base, capturing the actual divergence point first:
@@ -183,8 +181,6 @@ Keep the plan payload (and the task payload, when a parent exists) in conversati
    This writes the canonical working copy to `.hq/tasks/<branch-dir>/gh/plan.md`.
 6. **Save focus to memory** — a project-type memory entry with branch name and plan number, plus the source number when the plan has a parent `hq:task`. When no parent exists, omit the source number from the memory entry.
 7. **Read `hq:workflow`** (`${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md`) and follow all applicable rules.
-
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 3 end`
 
 ## Phase 4: Execute
 
@@ -577,7 +573,7 @@ Four top-level Markdown sections in this exact order — the fixed structure is 
 
 1. **`## Run Summary`** — facts only (no LLM judgment). **All fields are MUST — omitting any of them breaks the primary acceptance gate.** Fields:
    - plan id / branch / run timestamp (UTC, ISO 8601)
-   - **Phase wall-clock durations** — emit `phase-timing.sh summary` output **verbatim** under a `**Phase timing**:` subheading. Phase 1–9 lines, total, session count. When the helper prints `No timing data recorded.`, emit that line verbatim with a one-line cause note (stamp invocations never landed for this run) — **never silently skip the field**. Phases 4–9 showing `(no data)` is a workflow defect signal and MUST be called out in `## Reflection`.
+   - **Phase wall-clock durations** — emit `phase-timing.sh summary` output **verbatim** under a `**Phase timing**:` subheading. Phase 4–9 lines + total (Phase 1–3 / Phase 10 are out of scope — see `/hq:start § Phase Timing`). When the helper prints `No timing data recorded.`, emit that line verbatim with a one-line cause note (stamp invocations never landed for this run) — **never silently skip the field**. Any Phase 4–9 showing `(no data)` is a workflow defect signal and MUST be called out in `## Reflection`.
    - total commits made on the branch (`git rev-list --count <base>..HEAD`)
    - Phase 6 Self-Review result
    - Phase 7 Agent Selection mode + launched / skipped agents
@@ -588,7 +584,7 @@ Four top-level Markdown sections in this exact order — the fixed structure is 
    - **`### Phase 7 Agent Selection`** — quote the **Overall rationale** paragraph from the Phase 7 Agent Selection decision report and list which agents were launched / skipped (with their one-line reasons). Then add a `**Hindsight**:` line (≤ 2 sentences) on whether the subset was right — did a launched agent return nothing useful (over-launch), or did a skipped axis surface as an FB from somewhere else / from the user later (under-launch)? Cite concrete FB ids or severity counts where applicable.
    - When the source decision report is missing (resumed runs, prior-version artifacts), emit `(decision report not found — judgment review unavailable)` in place of the quoted rationale and skip the **Hindsight** line.
 3. **`## FB Analysis`** — one entry per FB file under `feedbacks/done/` at Phase 9 entry time. Entry format and the 3 YAML axes (`detection_validity` / `preventable_at_implementation` / `prevention_lever`) plus the free-form `**Notes**` Markdown field are specified in `hq:workflow` § Retrospective. **Zero-FB case**: when `feedbacks/done/` has no FB files, emit the literal body `(no FBs to analyze)` under the section header. Do NOT omit the section — the primary acceptance gate counts the four section headers.
-4. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries, the Judgment Review section, **or the `## Run Summary` Phase timing block** (e.g., "Phase 7 dominated wall-clock at 18m — agent re-launches inflated it; consider judgment-mode skip for `integrity-checker` next run"). When `## Run Summary` shows Phases 4–9 `(no data)` or `No timing data recorded.`, the Reflection MUST surface this as a workflow defect signal — it indicates the timing helper failed silently and the next run cannot be compared until it is fixed. Self-praise without a concrete pattern citation is the failure mode this section guards against.
+4. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries, the Judgment Review section, **or the `## Run Summary` Phase timing block** (e.g., "Phase 7 dominated wall-clock at 18m — agent re-launches inflated it; consider judgment-mode skip for `integrity-checker` next run"). When `## Run Summary` shows any Phase 4–9 as `(no data)` or `No timing data recorded.`, the Reflection MUST surface this as a workflow defect signal — it indicates the timing helper failed silently and the next run cannot be compared until it is fixed. Self-praise without a concrete pattern citation is the failure mode this section guards against.
 
 ### Stop Policy
 
@@ -626,16 +622,11 @@ Run the phase-timing summary and include its **verbatim output** under a `### Ti
 bash plugin/v2/scripts/phase-timing.sh summary
 ```
 
-The summary prints per-phase wall-clock duration (Phase 1–9), a total, and the session count (how many times Phase 1 `start` fired — i.e., how often the run was interrupted and auto-resumed). Durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work — annotate this once in the Report so the user does not over-interpret.
+The summary prints per-phase wall-clock duration for **Phase 4–9** and a total. Phase 1–3 / Phase 10 are out of scope (see § Phase Timing for the rationale) and do NOT appear in the output. Durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work — annotate this once in the Report so the user does not over-interpret.
 
 **If the helper prints `No timing data recorded.`** — emit that line verbatim under `### Timing` along with a one-line cause note (stamps were never recorded for this run, e.g., the timing script was broken or the branch's JSONL file was wiped). Do NOT silently omit the section — absence of data is itself a reportable signal.
 
-Phases that have no recorded stamps appear as `(no data)`. Two expected scenarios produce this:
-
-- **Fresh start** — Phase 1 and Phase 2 run before the feature branch is created (Phase 3 step 2), so their stamps land in the base branch's `.hq/tasks/<base-branch-dir>/phase-timings.jsonl`. Phase 10 reads the feature branch's file and therefore shows Phase 1 and Phase 2 as `(no data)`.
-- **Auto-resume** — Phase 2 and Phase 3 are skipped entirely (the branch and cache already exist), so they produce no stamps for that session.
-
-Phases 4–9 showing `(no data)` is **NOT expected** — that means the stamp invocation failed (e.g., the script rejected the phase number, the JSONL write failed). Flag this in the Report as a workflow defect so it gets fixed.
+Any Phase 4–9 showing `(no data)` is a **workflow defect** — that means the stamp invocation failed (e.g., the script rejected the phase number, the JSONL write failed, the phase was skipped). Flag this in the Report as a defect so it gets fixed.
 
 ### Quality Review
 
