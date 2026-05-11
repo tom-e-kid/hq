@@ -80,7 +80,7 @@ For each item, emit **all three** of the following before waiting for the user's
 
 - **概要** (Summary, 2-3 sentences) — plain-language description of what the FB is pointing out. Translate technical shorthand into something the reviewer can act on in seconds.
 - **浮上経緯** (Origin) — which agent / which review axis surfaced this item, drawn from the `[<originating-agent>]` tag in the PR body line.
-- **Suggestion** — one of `(1)` / `(2)` / `(3)` with a 1-2 sentence rationale tying the suggestion to the FB's actual content. Bias toward `(2) leave as-is` when the call is genuinely ambiguous (documentation-only nits, false-positive-shaped findings, low-impact stylistic notes). Use `(3) escalate to hq:feedback` only when the item names a clearly different owner or operates on a clearly different timescale than the current PR. The historical failure mode is too many `(1)` / `(3)` dispositions polluting the issue tracker with "while-we're-at-it" carve-outs.
+- **Suggestion** — one of `1` / `2` / `3` with a 1-2 sentence rationale tying the suggestion to the FB's actual content. Bias toward `2` (leave as-is) when the call is genuinely ambiguous (documentation-only nits, false-positive-shaped findings, low-impact stylistic notes). Use `3` (escalate to hq:feedback) only when the item names a clearly different owner or operates on a clearly different timescale than the current PR. The historical failure mode is too many `1` / `3` dispositions polluting the issue tracker with "while-we're-at-it" carve-outs.
 
 Briefing template (the literal shape to emit per item):
 
@@ -89,12 +89,12 @@ Item <n>/<total> [<category>]: <item text>
 
   概要: <2-3 sentences of plain-language summary>
   浮上経緯: <originating agent / review axis>
-  Suggestion: (<1|2|3>) <add to hq:plan | leave as-is | escalate to hq:feedback> — <1-2 sentence rationale>
+  Suggestion: <1|2|3> (<add to hq:plan | leave as-is | escalate to hq:feedback>) — <1-2 sentence rationale>
 
-Choose disposition for this item:
-  (1) add to hq:plan (follow-up work)
-  (2) leave as-is
-  (3) escalate to hq:feedback (carve out as separate Issue)
+Choose disposition for this item — reply with 1, 2, or 3:
+  1 — add to hq:plan (follow-up work)
+  2 — leave as-is
+  3 — escalate to hq:feedback (carve out as separate Issue)
 ?
 ```
 
