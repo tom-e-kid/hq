@@ -130,21 +130,39 @@ Converged means **committable**: Claude writes the primary as one line with its 
 
 Phase 2 has **one exit gate**: a single in-chat message — the **commit-or-pushback message** — that names what Phase 3 is about to compose and waits for the user's binary response (`go` / push back). The GitHub Issue itself is the full review surface (intervention #1 in the workflow); there is no separate in-chat point-check. Do NOT bypass this message and proceed to Phase 3 unilaterally — including under auto mode.
 
-**Format** — header line + two mandatory bullets + one conditional bullet:
+**Format** — labeled blocks, separated by blank lines, with a single short close prompt at the end:
 
 ```
-Phase 2 converge — 以下で Issue 化する。違和感あれば続ける、なければ "go":
-- Primary acceptance `[auto|manual]`: <signal>
-- Editable surface: <comma-separated path / symbol list>
-- 残ってる懸念: <one line if any concern is still live, otherwise omit this line entirely>
+**Phase 2 converge** — Issue 化に進む内容:
+
+**Approach**
+<chosen design — 1 行>
+vs <rejected alternative>: <reason — 1 行>
+
+**Editable surface**
+- `<path / symbol>`
+- `<path / symbol>`
+
+**Primary acceptance** `[auto|manual]`
+<signal>
+
+**残ってる懸念** *(条件付き — 無ければこのブロックごと省略)*
+<one line>
+
+OK なら "go"。
 ```
+
+Block order mirrors the `hq:plan` body's section order (`## Approach` → `## Editable surface` → `## Acceptance`) so the user reads the converge message and the resulting Issue along the same axis. `残ってる懸念` is exit-message-only (not part of the plan body) and sits at the tail.
 
 Shape rules:
 
-- **Every line is Claude's commitment, not a menu.** Hedging qualifiers ("tentative", "候補", "one possibility") are forbidden. If you are tempted to hedge, Phase 2 has not converged — keep brainstorming.
-- **Primary acceptance** line carries the marker inline (`[auto]` or `[manual]`) and the single concrete signal — no rationale or coverage prose here; those live in the plan body Claude is about to compose.
-- **Editable surface** line is a flat comma-separated list of paths / symbols. Inline tags and ≤1行 notes go into the plan body, not into this message.
-- **残ってる懸念** line is **conditional** — emit only when a real concern is still live (e.g., "X についてはサンプル env が無いので [primary] が [manual] になっている"). Empty-by-default: do not pad with "none" or "特になし".
+- **Every block is Claude's commitment, not a menu.** Hedging qualifiers ("tentative", "候補", "one possibility") are forbidden. If you are tempted to hedge, Phase 2 has not converged — keep brainstorming.
+- **Header line** opens with `**Phase 2 converge**` (bolded marker) and a forward-framed clause ("Issue 化に進む内容"). Do NOT pad with objection-prompting boilerplate ("違和感あれば〜なければ go" etc.) — the close prompt at the bottom carries that role in a short, positive form.
+- **Approach** block is the condensed form of `## Approach`: one line for the chosen design, one line for at least one rejected alternative with its reason (`vs <alt>: <reason>` shape). No figure / sample code in the exit message — those belong in the plan body. Multiple rejected alternatives are allowed; one `vs <alt>: <reason>` line per alternative.
+- **Editable surface** block is a per-line list (one path / symbol per bullet, in backticks). Do NOT comma-join into a single line. Inline tags and ≤1行 notes go into the plan body, not into this message.
+- **Primary acceptance** block is the marker on the label line, the single concrete signal on its own line below — no rationale or coverage prose here; those live in the plan body Claude is about to compose.
+- **残ってる懸念** block is **conditional** — emit the label + content only when a real concern is still live (e.g., "X についてはサンプル env が無いので [primary] が [manual] になっている"). Empty-by-default: omit the entire block (label included) rather than emitting "none" / "特になし".
+- **Close prompt** is the single short line `OK なら "go"。` — no longer, no decorations. It is the structural binary-response cue; everything above it is the content under review.
 
 **User response handling**:
 
