@@ -219,11 +219,16 @@ Phase 2: Parse Known Issues
 │    (### Must Address / ### Recommended / ### Optional)
 │  Each bullet = one triage item; preserve [Severity] [originating-agent] tags
 │
-Phase 3: Triage (interactive)
-│  For each item, ask user:
-│    (1) add to hq:plan
-│    (2) leave as-is
-│    (3) escalate to hq:feedback
+Phase 3: Triage (strict-interactive, advisory suggestion)
+│  For each item, sequentially (item n+1 is not shown until item n is answered):
+│    Briefing: 概要 / 浮上経緯 / advisory Suggestion + 1-2 文 rationale
+│    Disposition prompt — bare 1 / 2 / 3 only:
+│      1: add to hq:plan
+│      2: leave as-is
+│      3: escalate to hq:feedback
+│  Silent / blank / "go with your suggestion" / bulk / 自然言語 disposition は halt
+│    → 同 briefing で再質問 (Suggestions are advisory; no disposition is APPLIED
+│      without an explicit per-item response)
 │  (collect decisions; no writes yet)
 │
 Phase 4: Apply (batch)
