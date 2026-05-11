@@ -508,11 +508,18 @@ The PR body produced by `/hq:start` (via the `pr` skill) follows this structure:
 - [ ] [manual] <another [manual] item>
 
 ## Known Issues
-<!-- Emit one line per pending FB, grouped by severity descending. OMIT severity rows with no matching FB — do NOT emit empty placeholder rows. -->
-- [Critical]: <unresolved FB title> — <brief description>
-- [High]: <unresolved FB title> — <brief description>
-- [Medium]: <unresolved FB title> — <brief description>
-- [Low]: <unresolved FB title> — <brief description>
+
+**Triage summary**: <N> must address, <M> recommended, <K> optional. Process via `/hq:triage <PR>`.
+
+### Must Address (Critical / High)
+- [Critical] [<originating-agent>] <unresolved FB title> — <brief description>
+- [High] [<originating-agent>] <unresolved FB title> — <brief description>
+
+### Recommended (Medium)
+- [Medium] [<originating-agent>] <unresolved FB title> — <brief description>
+
+### Optional (Low)
+- [Low] [<originating-agent>] <unresolved FB title> — <brief description>
 
 Closes #<hq:plan>
 Refs #<hq:task>
@@ -522,7 +529,7 @@ The `Refs #<hq:task>` line is emitted **only when the `hq:plan` has a parent `hq
 
 - **`## Primary Verification (manual)`** — present **only** when the plan's `## Acceptance` has a `[manual] [primary]` item (escape hatch). Holds the evidence block required for reviewer to verify the escape hatch primary. Omitted entirely when the plan has `[auto] [primary]`.
 - **`## Manual Verification`** — all unchecked `[manual]` items from the Acceptance section (excluding the `[manual] [primary]` item, which lives in its own section above), for user verification during PR review.
-- **`## Known Issues`** — unresolved issues that `/hq:start` could not auto-fix. **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
+- **`## Known Issues`** — every Phase 4 / 5 / 6 FB that did not auto-resolve, organized into three action-priority categories (Must Address / Recommended / Optional) so PR reviewers can triage at a glance. The leading `**Triage summary**` line gives the count breakdown immediately; each entry carries both a severity tag (`[<Severity>]`) and an originating-agent tag (`[<originating-agent>]`). **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
 - If either section is empty, omit it.
 
 During PR review, use `/hq:triage <PR>` to process the `Known Issues` entries — each can be: (1) added to the `hq:plan` for follow-up work, (2) left as-is, or (3) carved out as an `hq:feedback` Issue.
@@ -535,7 +542,7 @@ The following structural elements of the PR body are invariants of the HQ workfl
 - **`hq:manual` label** — whenever a `[manual] [primary]` item exists in the plan's `## Acceptance` section at PR creation time, the PR MUST carry the `hq:manual` label (in addition to `hq:pr`). Applied by the `pr` skill.
 - **`## Manual Verification` section presence** — whenever unchecked `[manual]` items exist in the plan's `## Acceptance` section at PR creation time (excluding the `[manual] [primary]` item, which is covered by `## Primary Verification (manual)` above), they MUST appear verbatim under a section literally named `## Manual Verification`.
 - **`## Known Issues` section presence** — whenever pending FB files exist at PR creation time, their titles + brief descriptions MUST appear under a section literally named `## Known Issues`.
-- **`## Known Issues` severity prefix and sort order** — every entry in `## Known Issues` MUST carry a severity prefix in the literal form `[<Severity>]:` (one of `[Critical]:` / `[High]:` / `[Medium]:` / `[Low]:`, drawn from the FB file's frontmatter `severity:` field). The severity prefix lets the PR reviewer and `/hq:triage` see finding priority at a glance without opening each FB file. Entries MUST be sorted in severity **descending** order (Critical → High → Medium → Low); within the same severity the ordering is insertion order (no secondary sort). `.hq/pr.md` MUST NOT suppress, rename, reformat, or reorder the prefix.
+- **`## Known Issues` structure** — when pending FBs exist at PR creation time, `## Known Issues` MUST contain: (a) a `**Triage summary**` line at the top stating the count breakdown across the three action categories (e.g., `**Triage summary**: 2 must address, 1 recommended, 5 optional. Process via /hq:triage <PR>.`), and (b) up to three category sub-sections in this order — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)`. Each category sub-section is emitted **only when at least one FB falls in it**; empty categories are omitted entirely (no empty headings). Each entry under a category MUST carry **both** tags: a severity tag in the literal form `[<Severity>]` (one of `[Critical]:` / `[High]:` / `[Medium]:` / `[Low]:`, drawn from the FB file's frontmatter `severity:` field) **and** an originating-agent tag in the form `[<originating-agent>]` (drawn from the FB file's frontmatter `skill:` field, normalized to the agent / source name — e.g., `code-reviewer` / `integrity-checker` / `security-scanner` / `self-review-gate` / `/hq:start`). Within each category, entries preserve **insertion order** (no secondary sort). `.hq/pr.md` MUST NOT suppress, rename, reformat, or reorder this structure.
 - **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
 - **`Closes #<hq:plan>` trailer** — every PR body MUST end with this line.
 - **`Refs #<hq:task>` trailer** — required when the `hq:plan` has a parent `hq:task`; the `Refs` line MUST follow `Closes`. Omitted entirely when no parent exists — the PR body then ends with only `Closes #<hq:plan>`.
@@ -562,18 +569,19 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 
 **Format** — FB files must follow [feedback.md](feedback.md). Read `plan` and `source` values from `.hq/tasks/<branch-dir>/context.md` for the frontmatter fields.
 
-**`covers_acceptance` frontmatter (optional, soft convention)** — FB files MAY include a `covers_acceptance: "<unique substring of an acceptance item>"` frontmatter field linking the FB to the specific `## Acceptance` item it covers. Populate this field in Phase 4/5-origin FBs (where the correspondence is 1:1 with an acceptance item by construction); leave it unset on Phase 6-origin FBs (code-reviewer / integrity-checker findings that do not map 1:1 to an acceptance item). No hook or script enforces this field — it exists to make the audit trail linear for reviewers and to support the Phase 5 1-by-1 toggle rule. See [feedback.md](feedback.md) for the full schema.
+**`covers_acceptance` frontmatter (optional, soft convention)** — FB files MAY include a `covers_acceptance: "<unique substring of an acceptance item>"` frontmatter field linking the FB to the specific `## Acceptance` item it covers. Populate this field in Phase 4/5-origin FBs (where the correspondence is 1:1 with an acceptance item by construction); leave it unset on Phase 6-origin FBs (Quality Review and self-review-gate findings that do not map 1:1 to an acceptance item). No hook or script enforces this field — it exists to make the audit trail linear for reviewers and to support the Phase 5 1-by-1 toggle rule. See [feedback.md](feedback.md) for the full schema.
 
-### FB Lifecycle (for the root agent after a skill run)
+### FB Lifecycle (for the root agent)
 
-- Read pending FB files and assess each: fix only those that are clearly actionable (bugs, typos, logic errors). Leave design-level or scope-ambiguous FBs as-is for user judgment.
-- **Batch fix the clearly-actionable set** before re-launching any agent. Apply every fix in the current `fix_set`, follow `hq:workflow § Before Commit` per fix, then re-launch the originating agents (those that produced any FB in the current `fix_set`) **once** at the end of the batch. Do NOT re-run the full agent set — cross-agent regression is accepted as a trade-off for review token cost.
-- **all-Low skip** — when every FB in the current `fix_set` has `severity: Low`, skip the originating-agent re-launch entirely and assume the fixes are correct. Low's narrow blast radius makes the safety-net cost unjustified; the caller is responsible for documenting any caveats inline at the call site.
-- **Low cap-exit fix rule** — the cap-exhaustion counterpart to `all-Low skip`. When the round loop exits with FBs still in `fix_set` (cap exhausted), partition the residual set by severity: the Low subset receives one inline fix pass and moves to `feedbacks/done/` (no re-launch — same verification-cost trade-off as `all-Low skip`); the non-Low subset is **left pending** (files remain in `feedbacks/`) and surfaces at Phase 7, where the atomic `## Known Issues` write + `done/` move happens per `Atomicity` below. This guarantees every Low in the residual set gets at least one fix opportunity even when the loop ends with persistent or newly-actionable Low entries — preserving the structural property that **clearly-actionable Low FBs** (those that entered `fix_set`) never reach `## Known Issues` (design-level or scope-ambiguous Low FBs bypass `fix_set` and still flow to `## Known Issues` per the caller's classify step — they are out of scope for this rule). Applies regardless of the cap value, including cap = 0 (where the loop never enters and the initial classified set is the residual): non-Low is left pending for Phase 7 atomic escalation, Low still receives its single fix pass before `done/`.
-- When an FB item is **resolved in-branch** (absent from the post-batch re-launch output, or covered by the all-Low skip, or moved to `done/` by the Low cap-exit fix rule), move its file to `feedbacks/done/`.
-- When an FB item is **escalated to the PR body's `## Known Issues`** at PR creation time, move its file to `feedbacks/done/` as well — its role has shifted to the PR body (now the source of truth for residual problems).
-- The batch-fix → re-launch cycle runs up to the caller's **FB retry cap** rounds with **per-round** semantics — every FB still in the `fix_set` at the start of a given round shares that round's counter (one stubborn FB forces another fix-and-re-launch pass for everyone in the set; Low-only sets exit the loop in a single round via the all-Low skip rule above). The cap counts **fix rounds** only; total agent reviews = cap + 1 = the initial Step 2 review plus one re-launch per round. `/hq:start` defines its cap in its `## Settings` section (default `2`); other callers MUST supply their own. When the cap is exhausted with FBs still unresolved, apply the Low cap-exit fix rule above: the Low subset is fixed inline and moves to `done/`; the non-Low subset is left pending (files remain in `feedbacks/`) for the caller's PR-body assembly step, which escalates them to `## Known Issues` and moves the files to `done/` atomically per `Atomicity` below.
-- Do not modify or delete FB files — only move resolved/escalated ones to `done/`
+FB handling is **phase-dependent** — different phases generate FBs for different reasons, and the response differs accordingly:
+
+- **Phase 4 (Execute) FBs** — continue-report on blocked / ambiguous / failed-twice steps. The root agent captures the residual as an FB so the work can continue, and the FB later escalates to the PR's `## Known Issues` (Phase 7).
+- **Phase 5 (Acceptance) FBs** — continue-report on `[auto]` checks that exhausted the Phase 5 retry cap. Per `/hq:start § Phase 5`, the checkbox is toggled `[x]` anyway and the failure is tracked by the FB. The FB escalates to `## Known Issues` at Phase 7.
+- **Phase 6 (Quality Review) FBs** — Phase 6 is **pure review, no auto-fix**. Every FB produced by the Quality Review (Self-Review Gate Step 0 minor gaps + agent-emitted findings from Step 2) flows **directly** to `## Known Issues` at Phase 7, regardless of severity (Critical through Low) and regardless of clarity (clearly-actionable through design-ambiguous). The root agent does NOT inline-fix Phase 6 FBs — the user (or `/hq:triage` post-merge) decides each FB's disposition.
+
+**No batch-fix loop, no round counter, no severity gate.** Phase 6 is pure review: prior architecture's batch-fix loop, severity-based threshold gate, and Low-severity-specific exit rules are retired alongside the move to pure review. The motivation is that auto-fixing Quality Review FBs risks scope creep (重箱の隅をつく fix triggering unrelated regressions) — leaving the fix decision to the human aligns with the Karpathy-loop bounded-scope principle and is consistent across all severity levels.
+
+**FB → `feedbacks/done/`** — an FB file moves to `feedbacks/done/` only when its content is surfaced in the PR body's `## Known Issues` (Phase 7's atomic write+move). There is no other path to `done/`. Files do not get modified or deleted at any other point.
 
 **Atomicity** — escalation into `## Known Issues` and the move to `feedbacks/done/` are a single atomic operation. Surfacing an FB in the PR body without moving its file (or moving the file without surfacing the content) is forbidden. This atomicity cannot be skipped or weakened by project-level overrides such as `.hq/pr.md` — see `## PR Body Structure` § Invariants.
 
@@ -621,7 +629,7 @@ The artifact has exactly **three** top-level Markdown sections, in this order:
    **Notes**: <≤ 2 sentences, factual — no rationalization, no praise>
    ````
 
-   When `feedbacks/done/` has no FB files at Phase 8 entry (which occurs when Phase 6 produced zero FBs — `fix_set_empty` from initial classification with nothing written), `## FB Analysis` is still emitted with the literal body `(no FBs to analyze)` — do NOT omit the section. The fixed three-section structure is the primary acceptance gate, and an absent section breaks it.
+   When `feedbacks/done/` has no FB files at Phase 8 entry (which occurs when no FBs were generated across the entire run — Phase 4 / 5 / 6 all clean), `## FB Analysis` is still emitted with the literal body `(no FBs to analyze)` — do NOT omit the section. The fixed three-section structure is the primary acceptance gate, and an absent section breaks it.
 
 3. **`## Reflection`** — free-form prose, ≤ 8 sentences. State what went well, what could improve, and any pattern visible across the FB Analysis entries (e.g., "many FBs marked `preventable_at_implementation: yes` with `prevention_lever: smaller-commit-grain` — next run should split implementation steps before committing"). Self-praise without a concrete pattern citation is the failure mode this section guards against — the LLM is the author and the analysis subject simultaneously, so explicit pattern citation is what keeps the section honest.
 
@@ -635,7 +643,7 @@ The per-FB block has **two parts**: (1) a YAML fence carrying **3 categorical ax
 |---|---|---|
 | `detection_validity` | `valid` / `invalid` / `borderline` | Was the QR detection itself sound? `valid` — yes, the FB names a real defect. `invalid` — false positive, the agent was wrong. `borderline` — defensible but the call could have gone either way. |
 | `preventable_at_implementation` | `yes` / `no` / `partial` | Could this have been caught during Phase 4 (Execute) instead of surfacing in Phase 6? `yes` — clearly yes, a discipline gap. `no` — only QR's external lens could see it. `partial` — partially preventable; the underlying signal was reachable but the specific framing required QR. |
-| `prevention_lever` | `stricter-acceptance` / `smaller-commit-grain` / `reuse-existing` / `better-pre-read` / `n/a` | If preventable, by what change in workflow? `stricter-acceptance` — the plan's `## Acceptance` would have caught it if tightened. `smaller-commit-grain` — splitting the commit would have surfaced it. `reuse-existing` — reaching for an existing mechanism instead of new code would have avoided it. `better-pre-read` — reading the surrounding code more carefully before editing would have caught it. `n/a` — applies when `preventable_at_implementation` is `no`, OR when `detection_validity` is `invalid` (false positive — the question of prevention does not apply to a defect that did not exist). |
+| `prevention_lever` | `stricter-acceptance` / `smaller-commit-grain` / `reuse-existing` / `better-pre-read` / `plan-discipline` / `n/a` | If preventable, by what change in workflow? `stricter-acceptance` — the plan's `## Acceptance` would have caught it if tightened. `smaller-commit-grain` — splitting the commit would have surfaced it. `reuse-existing` — reaching for an existing mechanism instead of new code would have avoided it. `better-pre-read` — reading the surrounding code more carefully before editing would have caught it. `plan-discipline` — the gap was a Phase 2 / Phase 4 plan-vs-diff discipline issue (over-declared `## Editable surface`, Boundary expansion protocol not invoked when stack-natural extension required it, speculative `(consumer: <name>)` declarations) — adhering to the workflow's plan/diff contract would have prevented Phase 6 from surfacing it. `n/a` — applies when `preventable_at_implementation` is `no`, OR when `detection_validity` is `invalid` (false positive — the question of prevention does not apply to a defect that did not exist). |
 
 **Markdown field (free-form):**
 
