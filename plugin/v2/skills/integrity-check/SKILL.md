@@ -1,11 +1,12 @@
 ---
 name: integrity-check
 description: >
-  Detect end-to-end integrity gaps created by a diff — downstream references that were
-  not updated, half-shipped features, and diffs that touch surfaces absent from the plan's
-  `## Editable surface` (the single AI agent fence). Explicitly looks **beyond** the hunks:
-  extracts changed symbols / file paths / command / rule names from the diff and greps the
-  whole repo for stale references.
+  Detect external integrity gaps created by a diff — `[削除]` residuals lingering elsewhere
+  in the repo, unmatched `*(consumer: <name>)*` declarations whose target needs external
+  verification, and (in interactive fallback mode) downstream references / half-shipped
+  features that survive a rename / removal. Explicitly looks **beyond** the hunks: extracts
+  changed symbols / file paths / command / rule names from the diff and greps the whole repo
+  for stale references.
 ---
 
 ## Project Overrides
@@ -16,9 +17,9 @@ If `.hq/integrity-check.md` exists, its instructions take precedence over the de
 
 ## Why This Skill Exists
 
-`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. The plan's `## Editable surface` is the **positive set** — the single agent fence — but its complement (implicit out of scope) is precisely where these gaps hide: the diff updates the surface listed in the plan, but a downstream file that depends on that surface is not on the list and stays stale, and no reviewer objects because reviewers honor scope.
+`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. Mechanical `## Editable surface` ↔ diff set-diff (orchestrator-side at Phase 6 Step 0) catches half of this — diff-but-undeclared and declared-but-missing within the diff file list — but the **other half** lives in external paths the diff never touches: a deleted symbol still referenced by a doc page, a named consumer in a Plan suffix that ought to have been visited but wasn't.
 
-This skill's job is to break that blind spot. It reads the diff, pulls every referenceable token out of the changed side, and greps the repo to verify downstream consumers are consistent. Violations are reported as FBs even when they fall outside the plan's `## Editable surface` — completing a half-shipped feature is what matters, not honoring an under-declared positive set.
+This skill's job is to break that blind spot via external grep. The agent-mode scope (under `/hq:start` Phase 6) is intentionally narrow — `[削除]` residuals + unmatched consumer verification — because the orchestrator's Step 0 already covers everything mechanical within the diff. The interactive `/integrity-check` mode (no plan context) falls back to a broader downstream-reference / feature-completeness sweep.
 
 ## Diff Scope
 
@@ -47,28 +48,26 @@ From the diff, extract every item that can be referenced from elsewhere. For eac
 
 ## Review Criteria
 
-The baseline criteria below capture the skill's historical three-class model. The `integrity-checker` agent overrides these at runtime with a narrower scope: reconciliation of the `hq:plan` `## Editable surface` + `## Plan` against the diff (declared-but-missing / diff-but-undeclared). When invoked interactively via `/integrity-check` without an active plan context, fall back to the three-class model below.
+The baseline criteria below capture the skill's three-class model — used when `/integrity-check` is invoked interactively (no plan context). The `integrity-checker` agent overrides these at runtime with a narrower **external-grep-only** scope: `[削除]` residual grep + unmatched consumer external visits. Mechanical Editable surface ↔ diff reconciliation is no longer performed by the agent — it is owned by the `/hq:start` orchestrator at Phase 6 Step 0 (Pre-Quality Self-Review Gate).
 
-### 1. Plan / diff reconciliation (primary — agent override)
+### 1. External grep gaps (agent override — primary)
 
-When a plan's `## Editable surface` (with inline tags) and `## Plan` are available, evaluate these two failure modes:
+When invoked by `/hq:start` Phase 6 Step 2, the agent restricts itself to two failure modes that mechanical orchestrator-side checks cannot catch:
 
-- **Declared-but-missing** — a `## Editable surface` entry promises a change at a named surface (the inline tag `[新規]` / `[改修]` / `[削除]` / `[silent-break]` indicates the change class), but the diff shows no corresponding change. OR a `## Plan` item carries a `*(consumer: <name>)*` suffix, but the diff does not visit the named consumer. Either the diff is incomplete or the declaration was aspirational.
-- **Diff-but-undeclared** — the diff reaches a surface that does not appear in `## Editable surface`. The positive set is the single agent fence; the complement is implicit out of scope by definition, so any touched surface absent from the list is scope creep. (Per the Boundary expansion protocol in `hq:workflow § ## hq:plan § ## Editable surface`, stack-natural extensions must be added to `## Editable surface` *before* the diff touches them. An after-the-fact diff against an unmodified list is a defect, not a permitted expansion.)
+- **`[削除]` residuals** — for each `## Editable surface` entry tagged `[削除]`, whole-repo grep for residual references. Hits outside the diff = stale references.
+- **Unmatched consumer external visits** — for `*(consumer: <name>)*` suffixes whose named consumer is not in the diff file list, read / grep the named path to verify the coordinated update landed.
 
-If the `## Editable surface` section is absent from the plan, the agent cannot perform reconciliation — apply § Without-plan fallback (exit cleanly with a "no plan context" report).
+Other tag classes (`[新規]` / `[改修]` / `[silent-break]`) and in-diff consumer presence are out of scope for the agent — orchestrator's Step 0 covers them.
 
-If a `## Editable surface` entry is present but **lacks an inline tag**, emit a "tag-less surface entry" FB at Medium severity. The plan reached Phase 6 with a Phase 2 convergence defect — flag it so the author can either add the tag or remove the entry.
+### 2. Downstream reference integrity (interactive fallback)
 
-### 2. Downstream reference integrity (fallback)
-
-Used when no plan context is available. For each **removed / renamed / signature-changed** token, grep the whole repo (respecting exclusions) for surviving references. Any hit outside the diff that still uses the old name / old signature is a stale reference.
+Used when no plan context is available (e.g., `/integrity-check` run interactively). For each **removed / renamed / signature-changed** token, grep the whole repo (respecting exclusions) for surviving references. Any hit outside the diff that still uses the old name / old signature is a stale reference.
 
 - Same-repo references in code and markdown
 - Workflow-rule citations (`hq:workflow § <section>`) that refer to renamed sections
 - Documentation that describes removed commands, flags, or files
 
-### 3. End-to-end feature completeness (fallback)
+### 3. End-to-end feature completeness (interactive fallback)
 
 Used when no plan context is available. Mentally trace the path from entrypoint to effect for each changed feature. Look for:
 
@@ -94,19 +93,17 @@ If a feature cannot reach from its declared entrypoint to its declared effect us
 
 ## Reporting Format
 
-Report findings grouped by the Review Criteria class they belong to. When operating under the primary (plan / diff reconciliation) criterion, group entries by failure mode (declared-but-missing / diff-but-undeclared). When operating under the fallback criteria (no plan context), group by downstream reference integrity / end-to-end feature completeness. Within each group, sort by severity: Critical / High / Medium / Low.
+Report findings grouped by the Review Criteria class they belong to. When operating under the primary (agent override — external grep) criterion, group entries by failure mode (`[削除]` residuals / unmatched consumer external visits). When operating under the fallback criteria (no plan context), group by downstream reference integrity / end-to-end feature completeness. Within each group, sort by severity: Critical / High / Medium / Low.
 
 Each item must include:
 
 - **Changed token** — the symbol / path / command / rule name that triggered the check, and the direction (added / removed / renamed / signature-changed)
-- **Stale location(s)** — file and line numbers of surviving references (or the missing-consumer site, for end-to-end gaps)
+- **Stale location(s)** — file and line numbers of surviving references (or the unmatched-consumer site)
 - **Description** — what is inconsistent, in one or two sentences
 - **Impact** — what breaks, or what misleads, because of this
 - **Severity** — Critical / High / Medium / Low
-- **Scope note** — if the gap falls at a surface absent from the plan's `## Editable surface`, say so and recommend either updating `## Editable surface` (Boundary expansion protocol) or completing the missing downstream work
 
 End with a summary:
 
 - Total issues by severity
-- Count of diff-but-undeclared findings (subset of the above — surfaces touched without `## Editable surface` declaration)
 - Informational items (no action needed)
