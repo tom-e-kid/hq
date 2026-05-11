@@ -8,9 +8,11 @@
 ## Branch Rules
 
 - **Never work directly on base branches** (`main`, `develop*`) — always create a feature branch
-- **Base branch resolution** (used by all skills): `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → `"main"`
-  - Most projects need no config — git remote HEAD detection works automatically
-  - Set `.hq/settings.json` `{ "base_branch": "<branch>" }` only when an explicit override is needed (e.g., worktree targeting `develop`)
+- **Base branch resolution** (used by all skills): `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → `"main"`
+  - `.hq/tasks/<branch-dir>/context.md` `base_branch:` is the **per-branch authoritative record** — written at branch creation time (`/hq:start` Phase 3) from `git symbolic-ref --short HEAD` immediately before `git checkout -b`. It captures the actual divergence point and survives global setting drift across worktrees / stacked PRs.
+  - `.hq/settings.json` is the **project-wide default** — used when no `context.md` exists for the current branch (e.g., the branch was created outside `/hq:start`, or `context.md` was lost). Most projects need no config here — git remote HEAD detection works automatically.
+  - Set `.hq/settings.json` `{ "base_branch": "<branch>" }` only when an explicit project-wide override is needed (e.g., a repo whose default base is `develop`, not `main`).
+  - The resolution order is **invariant** across all consumers (`/hq:start`, `pr` skill, `worktree-rebase` skill). Consumers MUST NOT skip the `context.md` step.
 
 ## Before Commit
 
@@ -407,6 +409,7 @@ Every `hq:plan` must:
 plan: <hq:plan issue number>
 source: <hq:task issue number>
 branch: <original branch name with slashes intact, e.g., feat/oauth-login>
+base_branch: <branch this feature branch was created from, e.g., main / develop / refactor/parent-feature>
 gh:
   task: .hq/tasks/<branch-dir>/gh/task.json
   plan: .hq/tasks/<branch-dir>/gh/plan.md
@@ -416,6 +419,7 @@ gh:
 - `plan` — **MUST**. The `hq:plan` issue number driving current work.
 - `source` — **optional**. The `hq:task` issue number this plan implements. Present when the plan has a parent `hq:task` (the normal case); **omitted when no parent exists** (plans created via `/hq:draft` without an `hq:task` argument).
 - `branch` — **MUST**. The original git branch name (with slashes). Lets tooling check out the correct branch given a plan number (the directory name has `/` → `-` transformation which is not reliably invertible).
+- `base_branch` — **MUST**. The branch this feature branch was created from, captured at `/hq:start` Phase 3 via `git symbolic-ref --short HEAD` immediately before `git checkout -b`. This is the **per-branch authoritative base record** consumed by the Base branch resolution chain in § Branch Rules — it survives global `.hq/settings.json` drift across worktrees / stacked PRs (the failure mode that motivates this field). When a `context.md` from a prior version of this rule lacks the field, consumers fall back to the next step in the resolution chain.
 - `gh` — paths to the local GitHub issue cache (see Cache-First Principle below). `gh.plan` is always present; `gh.task` is present only when `source` is set (i.e. the plan has a parent `hq:task`).
 
 **Lifecycle**:

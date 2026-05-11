@@ -166,13 +166,15 @@ Keep the plan payload (and the task payload, when a parent exists) in conversati
 
 **Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 3 start`
 
-1. **Resolve base branch** per workflow rule: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → `main`.
-2. **Create feature branch** from base:
+1. **Resolve base branch** per `hq:workflow § Branch Rules`. For a fresh start (no prior `context.md`), the chain reduces to: `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. Hold the resolved value as `<base>` for the next steps.
+2. **Create feature branch** from base, capturing the actual divergence point first:
    ```bash
    git checkout <base>
+   ACTUAL_BASE=$(git symbolic-ref --short HEAD)   # e.g., "main" / "develop" / "refactor/parent-feature"
    git checkout -b <branch-name>
    ```
-3. **Write `context.md`** — follow the frontmatter schema in `hq:workflow` § Focus. Path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch with `/` → `-`). When the plan has no parent `hq:task`, omit `source` and `gh.task` from the frontmatter (no task payload was fetched); when a parent exists, include all keys.
+   `ACTUAL_BASE` is the branch HEAD was on immediately before the new branch was cut — the authoritative per-branch base record. Step 3 writes it to `context.md`.
+3. **Write `context.md`** — follow the frontmatter schema in `hq:workflow` § Focus. Path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch with `/` → `-`). Set `base_branch: <ACTUAL_BASE>` (captured in step 2) — this is the per-branch authoritative base that Phase 8 / `pr` skill resolve from. When the plan has no parent `hq:task`, omit `source` and `gh.task` from the frontmatter (no task payload was fetched); when a parent exists, include all keys.
 4. **Write task cache** *(only when the plan has a parent `hq:task`)* — `.hq/tasks/<branch-dir>/gh/task.json` (the JSON fetched in Phase 2). When no parent exists, skip this step — no task JSON was fetched and there is no `gh.task` entry in `context.md`.
 5. **Pull plan cache** (checkpoint: Pull):
    ```bash

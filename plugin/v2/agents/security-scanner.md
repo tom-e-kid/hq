@@ -46,7 +46,7 @@ From the skill file, extract and follow:
 
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
-3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
+3. **Base branch**: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`
 4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers) for traceability. If plan context is needed, read from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md` — do NOT call `gh issue view`.
 
 ## Progress Reporting
