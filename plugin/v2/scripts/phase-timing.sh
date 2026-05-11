@@ -2,14 +2,19 @@
 # Phase timing helper for /hq:start.
 # Subcommands:
 #   stamp <phase> <event>   append a timing event to the branch-local JSONL
-#   summary                 print wall-clock duration per phase + total + session count
+#   summary                 print wall-clock duration per phase + total
 #
 # JSONL path: .hq/tasks/<branch-dir>/phase-timings.jsonl
 # Event format: {"phase":"<N>","event":"<start|end>","ts":<unix_secs>}
 #
+# Scope: Phase 4-9 only. Phase 1-3 are structurally unmeasurable on the feature
+# branch's JSONL (fresh start: Phase 1/2 stamps land in caller branch's JSONL,
+# Phase 3 stamp pair is split across the Phase 3 step 2 branch switch; auto-resume:
+# Phase 1's start lands in caller, end in feature, and Phase 2/3 are skipped).
+# Phase 10 (Report) emits the summary itself, so it does not self-stamp either.
+#
 # Durations are wall-clock and include any idle / interrupted time between
 # a `start` stamp and its matching `end` stamp across auto-resume sessions.
-# Session count = number of `{"phase":"1","event":"start",...}` events.
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -45,7 +50,7 @@ case "$cmd" in
     [[ $# -eq 2 ]] || usage
     phase="$1"
     event="$2"
-    [[ "$phase" =~ ^[1-7]$ ]] || { echo "error: <phase> must be 1-7" >&2; exit 2; }
+    [[ "$phase" =~ ^[4-9]$ ]] || { echo "error: <phase> must be 4-9 (Phase 1-3 / 10 are not measured — see file header)" >&2; exit 2; }
     [[ "$event" == "start" || "$event" == "end" ]] || { echo "error: <event> must be 'start' or 'end'" >&2; exit 2; }
     jsonl=$(resolve_jsonl)
     mkdir -p "$(dirname "$jsonl")"
@@ -62,7 +67,7 @@ case "$cmd" in
     awk '
       {
         # Skip lines that are not complete timing records (e.g., truncated writes).
-        if ($0 !~ /"phase":"[1-7]".*"event":"(start|end)".*"ts":[0-9]+/) next
+        if ($0 !~ /"phase":"[4-9]".*"event":"(start|end)".*"ts":[0-9]+/) next
 
         ph = $0
         sub(/.*"phase":"/, "", ph); sub(/".*/, "", ph)
@@ -72,7 +77,6 @@ case "$cmd" in
         sub(/.*"ts":/, "", ts); sub(/[^0-9].*/, "", ts)
         ts = ts + 0
 
-        if (ph == "1" && ev == "start") session++
         phase_seen[ph] = 1
 
         if (ev == "start") {
@@ -92,7 +96,7 @@ case "$cmd" in
         }
       }
       END {
-        for (i = 1; i <= 7; i++) {
+        for (i = 4; i <= 9; i++) {
           ph = i ""
           if (phase_seen[ph]) {
             printf "Phase %s: %s\n", ph, fmt(phase_dur[ph] + 0)
@@ -102,7 +106,6 @@ case "$cmd" in
         }
         print ""
         printf "Total: %s\n", fmt(total + 0)
-        printf "Sessions: %d\n", session + 0
       }
       function fmt(s,   h, m, r) {
         if (s <= 0) return "0s"

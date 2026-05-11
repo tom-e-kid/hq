@@ -12,8 +12,9 @@ covers_acceptance: <optional — unique substring of the `## Acceptance` item th
 - Populate it in FBs originating from `/hq:start` Phase 4 (Execute) or Phase 5 (Acceptance),
   where each FB maps 1:1 to a specific Acceptance item. The value is a short unique
   substring of that item's text, enough to disambiguate it within the plan body.
-- Leave it unset in FBs originating from `/hq:start` Phase 6 (Quality Review) — code-reviewer
-  and integrity-checker findings generally do not map 1:1 to Acceptance items.
+- Leave it unset in FBs originating from `/hq:start` Phase 6 (Self-Review minor-gap) or
+  Phase 7 (Quality Review) — Self-Review and code-reviewer / integrity-checker findings
+  generally do not map 1:1 to Acceptance items.
 - Leave it unset in FBs from external sources (`/hq:respond`, ad-hoc drops).
 
 See `plugin/v2/rules/workflow.md` § Feedback Loop for the rationale (linear audit trail

@@ -14,11 +14,11 @@ description: >
   </example>
 
   <example>
-  Context: User wants parallel quality checks before PR on a code or mixed diff
+  Context: User wants pre-PR quality review and the diff may include credential / external comm / config patterns
   user: "Run the pre-PR quality review on this feature branch."
-  assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel."
+  assistant: "Launching security-scanner as part of /hq:start Phase 7 Step 1 Agent Selection."
   <commentary>
-  Pre-PR quality checks on code / mixed diff: launch per the /hq:start Phase 6 Agent launch matrix. On doc-only diffs, security-scanner is skipped.
+  Phase 7 Step 1 Agent Selection picks the agent subset per `quality_review_mode`: in `judgment` mode (default) the orchestrator launches security-scanner whenever the diff plausibly touches credentials / external communication / config / dependency manifests — including doc diffs where README / `.env` examples / external URLs are common. Hard floor: any literal credential prefix in the diff forces security-scanner regardless of judgment. In `full` mode the matrix runs security-scanner on `code` / `mixed` / `doc` (security-relevant patterns can appear in doc files too).
   </commentary>
   </example>
 model: sonnet
@@ -46,7 +46,7 @@ From the skill file, extract and follow:
 
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
-3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
+3. **Base branch**: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`
 4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers) for traceability. If plan context is needed, read from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md` — do NOT call `gh issue view`.
 
 ## Progress Reporting

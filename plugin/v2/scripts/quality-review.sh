@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
-# Quality Review event recorder & summarizer for /hq:start Phase 6.
+# Quality Review event recorder & summarizer for /hq:start Phase 6 (Self-Review) and Phase 7 (Quality Review).
 # Subcommands:
 #   record <event-type> [key=val ...]   append a JSONL event line
-#   summary                              print Initial / Round N / Termination breakdown
+#   summary                              print Self-Review Gate / Agent Selection / Initial breakdown
 #
 # JSONL path: .hq/tasks/<branch-dir>/quality-review-events.jsonl
 #
-# Event types (6):
-#   initial_review  agent=<name> fb_count=<n> severity=C:n,H:n,M:n,L:n
-#   round_start     round=<N> fix_set_size=<n>
-#   relaunch        round=<N> agents=<comma-list>      (or skipped=all_low)
-#   round_end       round=<N> resolved=<n> persistent=<n> new=<n>
-#   cap_exit        low_count=<n> non_low_count=<n>
-#   terminated      reason=<fix_set_empty|all_low_skip|cap_exhausted|cap_exit_low_fix>
+# Event types (3):
+#   self_review_gate  result=<pass|minor_gap|significant_gap>
+#   agent_selection   mode=<judgment|full> launched=<comma-list> skipped=<comma-list>
+#   initial_review    agent=<name> fb_count=<n> severity=C:n,H:n,M:n,L:n
 #
 # All key=val pairs become JSON string fields. The schema is append-only —
 # unknown keys are preserved in the JSONL but ignored by `summary`.
@@ -90,7 +87,7 @@ case "$cmd" in
     event="$1"
     shift
     case "$event" in
-      initial_review|round_start|relaunch|round_end|cap_exit|terminated) ;;
+      self_review_gate|agent_selection|initial_review) ;;
       *) echo "error: unknown event type '$event'" >&2; exit 2 ;;
     esac
     jsonl=$(resolve_jsonl)
@@ -115,7 +112,6 @@ case "$cmd" in
     fi
     awk '
       function get(line, key,   v) {
-        # Anchor with [{,] so e.g. "low_count" cannot match inside "non_low_count".
         v = line
         if (match(v, "[{,]\"" key "\":\"[^\"]*\"")) {
           v = substr(v, RSTART + 1, RLENGTH - 1)
@@ -156,7 +152,15 @@ case "$cmd" in
       }
       {
         ev = event_of($0)
-        if (ev == "initial_review") {
+        if (ev == "self_review_gate") {
+          gate_result = get($0, "result")
+          gate_seen = 1
+        } else if (ev == "agent_selection") {
+          sel_mode = get($0, "mode")
+          sel_launched = get($0, "launched")
+          sel_skipped = get($0, "skipped")
+          sel_seen = 1
+        } else if (ev == "initial_review") {
           a = get($0, "agent")
           if (!(a in init_seen_agent)) {
             init_seen_agent[a] = 1
@@ -164,37 +168,22 @@ case "$cmd" in
           }
           init_sev[a] = get($0, "severity")
           init_fb[a] = get($0, "fb_count")
-        } else if (ev == "round_start") {
-          rnd = get($0, "round") + 0
-          if (rnd > max_round) max_round = rnd
-          round_seen[rnd] = 1
-          round_fix_set[rnd] = get($0, "fix_set_size")
-        } else if (ev == "relaunch") {
-          rnd = get($0, "round") + 0
-          if (rnd > max_round) max_round = rnd
-          round_seen[rnd] = 1
-          if (get($0, "skipped") != "") {
-            round_relaunch[rnd] = "skipped(" get($0, "skipped") ")"
-          } else {
-            round_relaunch[rnd] = get($0, "agents")
-          }
-        } else if (ev == "round_end") {
-          rnd = get($0, "round") + 0
-          if (rnd > max_round) max_round = rnd
-          round_seen[rnd] = 1
-          round_resolved[rnd] = get($0, "resolved")
-          round_persistent[rnd] = get($0, "persistent")
-          round_new[rnd] = get($0, "new")
-        } else if (ev == "cap_exit") {
-          cap_low = get($0, "low_count")
-          cap_non_low = get($0, "non_low_count")
-          cap_seen = 1
-        } else if (ev == "terminated") {
-          term_reason = get($0, "reason")
-          term_seen = 1
         }
       }
       END {
+        if (gate_seen) {
+          print "Self-Review Gate:"
+          printf "  result=%s\n", gate_result
+          print ""
+        }
+        if (sel_seen) {
+          print "Agent Selection:"
+          printf "  mode=%s", sel_mode
+          if (sel_launched != "") printf ", launched=%s", sel_launched
+          if (sel_skipped != "") printf ", skipped=%s", sel_skipped
+          print ""
+          print ""
+        }
         if (init_n > 0) {
           print "Initial:"
           for (i = 1; i <= init_n; i++) {
@@ -204,37 +193,6 @@ case "$cmd" in
             if (init_fb[a] != "") printf " (total=%s)", init_fb[a]
             printf "\n"
           }
-          print ""
-        }
-        for (r = 1; r <= max_round; r++) {
-          if (!round_seen[r]) continue
-          printf "Round %d:\n", r
-          parts_n = 0
-          if (round_fix_set[r] != "") parts[++parts_n] = "fix_set=" round_fix_set[r]
-          if (round_resolved[r] != "") parts[++parts_n] = "resolved=" round_resolved[r]
-          if (round_persistent[r] != "") parts[++parts_n] = "persistent=" round_persistent[r]
-          if (round_new[r] != "") parts[++parts_n] = "new=" round_new[r]
-          if (round_relaunch[r] != "") parts[++parts_n] = "relaunch=" round_relaunch[r]
-          out = ""
-          for (i = 1; i <= parts_n; i++) {
-            out = out (i == 1 ? "  " : ", ") parts[i]
-          }
-          if (parts_n > 0) print out
-          print ""
-        }
-        if (term_seen || cap_seen) {
-          print "Termination:"
-          tn = 0
-          if (term_reason != "") tparts[++tn] = "reason=" term_reason
-          if (cap_seen) {
-            tparts[++tn] = "low_count=" cap_low
-            tparts[++tn] = "non_low_count=" cap_non_low
-          }
-          out = ""
-          for (i = 1; i <= tn; i++) {
-            out = out (i == 1 ? "  " : ", ") tparts[i]
-          }
-          if (tn > 0) print out
         }
       }
     ' "$jsonl"

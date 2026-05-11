@@ -39,14 +39,14 @@ If `.hq/pr.md` content appears to contradict any Invariant, the Invariant wins. 
 This skill has two modes. `.hq/pr.md` overrides apply differently in each:
 
 - **Standalone** (user invokes `/pr` directly): the skill composes the full PR body from git + session context. `.hq/pr.md` overrides apply to the allowed scope above during composition. Invariants are still enforced.
-- **From `/hq:start`** (Phase 7 PR Creation delegation): the caller has already assembled the PR body, including `## Manual Verification` and `## Known Issues` sections and the `Closes/Refs` trailer. The prepared body is treated as **immutable** — `.hq/pr.md` may influence **only** the title line; it MUST NOT rewrite, reformat, or strip any section of the prepared body. The skill's role in this mode is execution (push branch, call `gh pr create` with the right flags), not composition.
+- **From `/hq:start`** (Phase 8 PR Creation delegation): the caller has already assembled the PR body, including `## Manual Verification` and `## Known Issues` sections and the `Closes/Refs` trailer. The prepared body is treated as **immutable** — `.hq/pr.md` may influence **only** the title line; it MUST NOT rewrite, reformat, or strip any section of the prepared body. The skill's role in this mode is execution (push branch, call `gh pr create` with the right flags), not composition.
 
 **`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this skill starts so the body composer (Standalone mode) and the trailer / label / inheritance Invariants have PR Body Structure, Naming Conventions, Issue Hierarchy, etc. available. From `/hq:start` mode the rule was already loaded by the caller, but a defensive Read is harmless. All `hq:workflow § <name>` citations refer to sections of that file.
 
 ## Context
 
 - Branch: !`git rev-parse --abbrev-ref HEAD`
-- Base branch: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
+- Base branch: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. `<branch-dir>` is the current branch with `/` → `-`. The `context.md` step is the **authoritative per-branch record** captured at branch creation time and is the load-bearing input for `gh pr create --base <base>` in Step 7 — without it, stacked PRs and worktree-parallel runs silently target the wrong base.
 - Commits: run `git log --oneline <base-branch>..HEAD` using the Base branch above
 - Changed files: run `git diff <base-branch>...HEAD --stat` using the Base branch above
 - Uncommitted changes: !`git status --short`
@@ -120,10 +120,10 @@ Before running any step below, determine invocation mode:
 
 6. **Resolve milestone and project** — read the cached task data from `.hq/tasks/<branch-dir>/gh/task.json`. Extract the milestone title and project title(s) from `projectItems`. If the cache file does not exist, fall back to `gh issue view <source> --json milestone,projectItems`. If a milestone exists, include `--milestone "<milestone>"` when creating the PR. If project(s) exist, include `--project "<project>"` (repeat for each).
 
-7. **Create the PR**:
+7. **Create the PR** — pass the resolved base branch explicitly via `--base <base>`. Resolution chain (per `hq:workflow § Branch Rules`): `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. Omitting `--base` makes `gh pr create` default to origin's HEAD, which silently targets `main` even for stacked PRs / non-main bases — always pass the flag explicitly.
 
    ```
-   gh pr create --title "<title>" --body "$(cat <<'EOF'
+   gh pr create --base "<base>" --title "<title>" --body "$(cat <<'EOF'
    <body>
    EOF
    )" --label "hq:pr" [--label "hq:manual"] --milestone "<milestone if exists>" --project "<project if exists>"
@@ -148,4 +148,5 @@ Before running any step below, determine invocation mode:
 - Keep the summary focused — details go in the Changes section.
 - **No `hq:feedback` creation** — this skill does NOT create `hq:feedback` Issues. Residual problems flow to the PR body's `## Known Issues` section, to be triaged later via `/hq:triage`.
 - **FB escalation is atomic** — if an FB file's content appears in the PR body, the file MUST be moved to `feedbacks/done/`.
+- **Always pass `--base <base>` to `gh pr create`** — base resolution follows `hq:workflow § Branch Rules` (`.hq/tasks/<branch-dir>/context.md` `base_branch:` first). Omitting the flag makes `gh pr create` fall back to origin's default HEAD, which silently mis-targets stacked PRs / non-main bases. This is the failure mode the per-branch `context.md` `base_branch:` field is designed to eliminate; the explicit `--base` flag closes the loop.
 - **Invariants are not overridable** — see `## Project Overrides` § Invariants. `.hq/pr.md` cannot override the `## Primary Verification (manual)` section (when the plan has `[manual] [primary]`), the `hq:manual` label (same trigger), the `## Manual Verification` or `## Known Issues` sections, the FB atomic move, the `Closes #<plan>` / `Refs #<task>` trailer, the `hq:pr` label, or milestone / project inheritance. In `/hq:start` invocation mode, the prepared body is immutable and overrides apply only to the title line.

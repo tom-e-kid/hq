@@ -15,11 +15,11 @@ description: >
   </example>
 
   <example>
-  Context: User wants parallel quality checks before PR
+  Context: User wants pre-PR quality review on a code or mixed diff
   user: "Run the pre-PR quality review."
-  assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel (or the doc-diff subset per the matrix)."
+  assistant: "Launching code-reviewer as part of /hq:start Phase 7 Step 1 Agent Selection."
   <commentary>
-  Pre-PR quality checks follow the /hq:start Phase 6 Agent launch matrix: code-reviewer and integrity-checker always run; security-scanner skips on doc-only diffs.
+  Phase 7 Step 1 Agent Selection picks the agent subset per `quality_review_mode`: in `judgment` mode (default) the orchestrator decides based on diff content; in `full` mode it follows the Diff Classification matrix (code-reviewer skips on doc-only diffs, runs on code / mixed). code-reviewer's Review Criteria target executable code, so it adds no signal on pure prose diffs.
   </commentary>
   </example>
 model: sonnet
@@ -38,7 +38,7 @@ The skill file defines the baseline review axes (readability / correctness / per
 - **Obvious duplicated helpers** — two near-identical helpers introduced (or retained) in the same diff where one would do.
 - **Dead branches** — conditional paths that provably cannot execute given the types / guards around them.
 
-These are the quality signals that used to come from `/simplify`. With `/simplify` retired from Phase 6, they now live in this agent's scope.
+These are the quality signals that used to come from `/simplify`. With `/simplify` retired from Phase 7, they now live in this agent's scope.
 
 ## Load-bearing code — DO NOT flag as redundant
 
@@ -69,7 +69,7 @@ From the skill file, extract and follow:
 
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
-3. **Base branch**: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → default `main`
+3. **Base branch**: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`
 4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers). Read the plan body from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md` — do NOT call `gh issue view`. If the cache file does not exist, proceed without plan context.
 5. **Requirements**: if `docs/requirements.md` exists, use as reference
 

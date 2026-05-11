@@ -48,6 +48,7 @@ Read `.hq/tasks/<branch-dir>/context.md` for the **current branch** (branch-dir 
 - `plan` — `hq:plan` Issue number
 - `source` — `hq:task` Issue number
 - `branch` — original branch name (should match current branch)
+- `base_branch` — the branch this feature branch was created from (captured at `/hq:start` Phase 3 — see `hq:workflow § Focus`). **Hold this in conversation state** — Phase 4 archives `context.md` away, and Phase 5 needs the base to check out of the feature branch.
 
 If `context.md` is not found, ABORT with a message explaining that no `.hq/tasks/` entry matches the current branch and that `/hq:archive` closes out the current branch's task folder — the user can switch to the correct branch and retry.
 
@@ -108,7 +109,7 @@ mv "$src" "$dst"
 
 ## Phase 5: Clean Up Branch
 
-1. Resolve the base branch: `.hq/settings.json` `base_branch` → `git symbolic-ref refs/remotes/origin/HEAD` → `main`.
+1. Use the `base_branch` value captured from `context.md` in Phase 1. If that field was absent (legacy `context.md` from before the field was introduced), fall back to the rest of the resolution chain per `hq:workflow § Branch Rules`: `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. The `context.md` path itself is no longer available at this point — Phase 4 archived the file.
 2. Switch to base:
    ```bash
    git checkout <base>

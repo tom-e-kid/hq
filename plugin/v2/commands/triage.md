@@ -6,7 +6,7 @@ allowed-tools: Read, Edit, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), Ta
 
 # TRIAGE — Sort Residual PR Known Issues
 
-This command processes the `## Known Issues` section of a PR body — the hand-off point for items `/hq:start` deliberately deferred. Under the default `/hq:start § Settings § fix-threshold` (`Low`), every clearly-actionable severity is fixed inside Phase 6 by the batch-fix loop, so `## Known Issues` is intentionally narrowed to **items needing separate consideration** — design-level concerns, scope-ambiguous findings, FBs that exhausted the per-round retry cap, and anything Phase 6 deliberately classified as out-of-band. For each item, you decide with the user one of three dispositions:
+This command processes the `## Known Issues` section of a PR body — the hand-off point for **every** FB `/hq:start` produced in Phase 6 (Self-Review) and Phase 7 (Quality Review). Per the post-refactor design (`hq:workflow § Feedback Loop`), both phases are pure review: all findings (Critical through Low, Self-Review minor-gaps and Quality Review agent-emitted alike) surface here without auto-fix. The PR body groups them by action priority — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)` — with a leading `**Triage summary**` line so the reviewer sees the workload at a glance. For each item, you decide with the user one of three dispositions:
 
 1. **Add to `hq:plan`** — enqueue as follow-up work; the user runs `/hq:start <plan>` afterward to resume
 2. **Leave as-is** — keep it in the PR body; accepted as a known limitation
@@ -58,23 +58,35 @@ gh pr view <pr> --json number,title,body,state,headRefName,milestone,projectItem
 
 Extract the `## Known Issues` section from the PR body. The section ends at the next `##` heading or end of body.
 
-Each bullet (`- ...`) in that section is one triage item. Preserve the exact original text.
+The post-refactor structure carries:
+
+- A `**Triage summary**` line at the top (e.g., `**Triage summary**: 2 must address, 1 recommended, 5 optional. Process via /hq:triage <PR>.`). Use it for sanity-check against the item counts you extract.
+- Up to three category sub-sections — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)` — emitted only when at least one item falls in them.
+- Within each category, bullets of the form `- [<Severity>] [<originating-agent>] <title> — <brief description>`.
+
+Each bullet is one triage item. Preserve the exact original text of the bullet (severity + agent tags + title + description) so the audit trail is intact.
 
 If the section is empty or absent, report "No Known Issues to triage." and end.
 
-List the items for the user, numbered, with brief context (lines, screenshots if present).
+List the items for the user, numbered **and grouped by category** so the action priority is obvious — Must Address first, then Recommended, then Optional. Within each category, preserve insertion order from the PR body.
 
 ## Phase 3: Triage Items (interactive)
 
 For each item, ask the user:
 
 ```
-Item <n>/<total>: <item text>
+Item <n>/<total> [<category>]: <item text>
   (1) add to hq:plan (follow-up work)
   (2) leave as-is
   (3) escalate to hq:feedback (carve out as separate Issue)
 ?
 ```
+
+`<category>` reflects the PR body's grouping — `Must Address` / `Recommended` / `Optional`. Default disposition leanings (the user is free to override per item):
+
+- **Must Address (Critical / High)** — strong lean toward `(1) add to hq:plan` or `(3) escalate to hq:feedback`. Leaving Critical / High as-is requires explicit user judgment ("this is acknowledged as a known limitation").
+- **Recommended (Medium)** — genuine judgment call. All three dispositions are routinely appropriate; user decides per item.
+- **Optional (Low)** — strong lean toward `(2) leave as-is` or `(3) escalate to hq:feedback`. Pulling Low items into `hq:plan` follow-up work risks the same scope creep that motivated the Phase 7 pure-review design.
 
 Record the user's choice per item. Allow the user to skim-then-decide: if they ask to see all items first, show the full list and revisit decisions in order.
 

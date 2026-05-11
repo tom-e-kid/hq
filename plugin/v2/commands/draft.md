@@ -218,7 +218,7 @@ Paths 1 and 3 are mechanical fix-ups that do not add new work or new commitments
 
 Only when every `(consumer: <name>)` suffix is consistent may Phase 3 emit.
 
-The `integrity-checker` agent at `/hq:start` Phase 6 reconciles declared consumers against the actual diff as a second net — a `(consumer: <name>)` suffix whose consumer does not appear in the diff is flagged there as `Declared-but-missing`.
+The `integrity-checker` agent at `/hq:start` Phase 7 reconciles declared consumers against the actual diff as a second net — a `(consumer: <name>)` suffix whose consumer does not appear in the diff is flagged there as `Declared-but-missing`.
 
 ### Required plan body shape
 
@@ -259,7 +259,7 @@ Marker rules (default path):
 - `[manual]` — only when one of the four domain conditions in `hq:workflow § ## Acceptance` applies.
 - `[primary]` — exactly one per plan. `[auto] [primary]` by default, `[manual] [primary]` under the escape hatch only.
 
-Under the escape hatch, the first `## Acceptance` line becomes `- [ ] [manual] [primary] <single observable target named verbatim from Phase 2>`; the PR body's `## Primary Verification (manual)` evidence block is produced by `/hq:start` Phase 7, not here.
+Under the escape hatch, the first `## Acceptance` line becomes `- [ ] [manual] [primary] <single observable target named verbatim from Phase 2>`; the PR body's `## Primary Verification (manual)` evidence block is produced by `/hq:start` Phase 8, not here.
 
 ## Phase 4: Create `hq:plan` Issue
 
