@@ -42,7 +42,7 @@ Every hq command, skill, and agent MAY consult a project-local override file und
 |---|---|---|
 | `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. always prefer `[manual]` primary on iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
 | `.hq/start.md` | `/hq:start` | Project-specific execution nuance (commit / build / test notes that the command's phases should layer in) |
-| `.hq/triage.md` | `/hq:triage` | Default disposition guidance per Known-Issue category |
+| `.hq/triage.md` | `/hq:triage` | Per-item briefing hints (project-specific FB patterns, false-positive callouts informing `Suggestion` rationale); MUST NOT pre-decide disposition by severity / category / agent |
 | `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |
 | `.hq/pr.md` | `pr` skill | PR body prose style, title conventions — scope-limited by the `pr` skill's own Invariants |
 | `.hq/code-review.md` | `code-reviewer` agent | Project-specific review axes |
