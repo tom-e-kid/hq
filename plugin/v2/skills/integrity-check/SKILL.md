@@ -2,9 +2,10 @@
 name: integrity-check
 description: >
   Detect end-to-end integrity gaps created by a diff — downstream references that were
-  not updated, half-shipped features, and hidden violations of the plan's `**Read-only surface**`.
-  Explicitly looks **beyond** the hunks: extracts changed symbols / file paths / command /
-  rule names from the diff and greps the whole repo for stale references.
+  not updated, half-shipped features, and diffs that touch surfaces absent from the plan's
+  `## Editable surface` (the single AI agent fence). Explicitly looks **beyond** the hunks:
+  extracts changed symbols / file paths / command / rule names from the diff and greps the
+  whole repo for stale references.
 ---
 
 ## Project Overrides
@@ -15,9 +16,9 @@ If `.hq/integrity-check.md` exists, its instructions take precedence over the de
 
 ## Why This Skill Exists
 
-`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. Plans try to guard this via `**Read-only surface**`, but scope carve-outs are frequently where the gaps hide: the plan says "X is read-only," the change depends on X, X is not updated, and no reviewer objects because reviewers honor scope too strictly.
+`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. The plan's `## Editable surface` is the **positive set** — the single agent fence — but its complement (implicit out of scope) is precisely where these gaps hide: the diff updates the surface listed in the plan, but a downstream file that depends on that surface is not on the list and stays stale, and no reviewer objects because reviewers honor scope.
 
-This skill's job is to break that blind spot. It reads the diff, pulls every referenceable token out of the changed side, and greps the repo to verify downstream consumers are consistent. Violations are reported as FBs even when they fall outside the plan's `**Editable surface**`.
+This skill's job is to break that blind spot. It reads the diff, pulls every referenceable token out of the changed side, and greps the repo to verify downstream consumers are consistent. Violations are reported as FBs even when they fall outside the plan's `## Editable surface` — completing a half-shipped feature is what matters, not honoring an under-declared positive set.
 
 ## Diff Scope
 
@@ -40,24 +41,24 @@ From the diff, extract every item that can be referenced from elsewhere. For eac
 - **Symbols** — function / method / type / constant / enum-variant names introduced, removed, or renamed. Include language-level identifiers from added/removed declarations on both sides of the hunk.
 - **File paths** — paths that were created, deleted, moved, or renamed. Include both the old and the new path for renames.
 - **Command / subcommand names** — new or removed slash-commands (`/hq:<name>`), CLI subcommands, npm/bun scripts, mise tasks, make targets.
-- **Rule / section names** — structural heading names (`## Plan Sketch`, `## Plan`, `## Acceptance`, `## Known Issues`, …), bold-labeled field names (`**Editable surface**`, `**Read-only surface**`, `**Impact**`, `**Core decision**`, …), Impact `Direction` column values (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`), FB field names, workflow-rule section names (`hq:workflow § <section>`), label names (`hq:plan`, `hq:pr`, …).
+- **Rule / section names** — structural heading names (`## Why`, `## Approach`, `## Editable surface`, `## Plan`, `## Acceptance`, `## Known Issues`, …), Editable surface inline tags (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`), Plan consumer suffix marker (`*(consumer: <name>)*`), FB field names, workflow-rule section names (`hq:workflow § <section>`), label names (`hq:plan`, `hq:pr`, …).
 - **Config keys** — JSON/YAML/TOML keys added or removed (e.g., `base_branch`, `allowed-tools`), environment variable names.
 - **Public API shape** — exported symbols whose signature (arguments, return type, frontmatter schema) changed. The token did not move, but its contract did — callers may silently break.
 
 ## Review Criteria
 
-The baseline criteria below capture the skill's historical three-class model. The `integrity-checker` agent overrides these at runtime with a narrower scope: reconciliation of the `hq:plan` `## Plan Sketch` (especially the `**Impact**` block) against the diff (declared-but-missing / diff-but-undeclared). When invoked interactively via `/integrity-check` without an active plan context, fall back to the three-class model below.
+The baseline criteria below capture the skill's historical three-class model. The `integrity-checker` agent overrides these at runtime with a narrower scope: reconciliation of the `hq:plan` `## Editable surface` + `## Plan` against the diff (declared-but-missing / diff-but-undeclared). When invoked interactively via `/integrity-check` without an active plan context, fall back to the three-class model below.
 
 ### 1. Plan / diff reconciliation (primary — agent override)
 
-When a plan's `## Plan Sketch` with an `**Impact**` block is available, evaluate these two failure modes:
+When a plan's `## Editable surface` (with inline tags) and `## Plan` are available, evaluate these two failure modes:
 
-- **Declared-but-missing** — an `**Impact**` sub-bullet under one of the 5 Direction lines (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`) lists a surface / consumer / contradiction, but the diff shows no corresponding change. Either the diff is incomplete or the sub-bullet was aspirational.
-- **Diff-but-undeclared** — the diff reaches a surface or consumer that the `**Impact**` block does not list, and no `**Read-only surface**` carve-out excuses it. Scope creep hiding in the implementation.
+- **Declared-but-missing** — a `## Editable surface` entry promises a change at a named surface (the inline tag `[新規]` / `[改修]` / `[削除]` / `[silent-break]` indicates the change class), but the diff shows no corresponding change. OR a `## Plan` item carries a `*(consumer: <name>)*` suffix, but the diff does not visit the named consumer. Either the diff is incomplete or the declaration was aspirational.
+- **Diff-but-undeclared** — the diff reaches a surface that does not appear in `## Editable surface`. The positive set is the single agent fence; the complement is implicit out of scope by definition, so any touched surface absent from the list is scope creep. (Per the Boundary expansion protocol in `hq:workflow § ## hq:plan § ## Editable surface`, stack-natural extensions must be added to `## Editable surface` *before* the diff touches them. An after-the-fact diff against an unmodified list is a defect, not a permitted expansion.)
 
-If the `**Impact**` block is absent from the `## Plan Sketch`, emit a single "missing Impact" FB (drafting defect) rather than silently skipping — reconciliation cannot proceed without declared reach.
+If the `## Editable surface` section is absent from the plan, the agent cannot perform reconciliation — apply § Without-plan fallback (exit cleanly with a "no plan context" report).
 
-If the `**Impact**` block is present but the `Downstream` Direction has **zero populated sub-bullets** AND its Direction line does not carry the fixed substring `Downstream** — none — confirmed by ` (em dash `—`, U+2014), emit a "missing Downstream declaration" FB at Medium severity. The sentinel now lives inside the Impact block on the `Downstream` Direction line itself (not under `**Constraints**`). The sentinel is defined in `hq:workflow § Plan Sketch § **Impact**` Downstream check directive: a zero-Downstream claim without the inline sentinel means the draft-time audit was skipped, and the plan reached Phase 6 via GitHub direct-edit or an un-answered `/hq:draft` prompt.
+If a `## Editable surface` entry is present but **lacks an inline tag**, emit a "tag-less surface entry" FB at Medium severity. The plan reached Phase 6 with a Phase 2 convergence defect — flag it so the author can either add the tag or remove the entry.
 
 ### 2. Downstream reference integrity (fallback)
 
@@ -88,7 +89,7 @@ If a feature cannot reach from its declared entrypoint to its declared effect us
 ## Fix Policy
 
 - **Do not modify code directly** — all issues are reported via FB files; the root agent decides what to fix
-- **Scope carve-outs are not a defense** — if the plan's `**Read-only surface**` is the reason a gap exists, report the gap and call out the scope violation explicitly
+- **Under-declared `## Editable surface` is not a defense** — if a gap exists at a downstream surface that the plan failed to list, report the gap and recommend updating `## Editable surface` (via the Boundary expansion protocol) to complete the feature, not narrowing the diff to honor the under-declared list
 - **Prefer under-reporting false positives over suppressing real gaps** — if integrity cannot be verified (grep is inconclusive), escalate to an FB with the evidence gathered
 
 ## Reporting Format
@@ -102,10 +103,10 @@ Each item must include:
 - **Description** — what is inconsistent, in one or two sentences
 - **Impact** — what breaks, or what misleads, because of this
 - **Severity** — Critical / High / Medium / Low
-- **Scope note** — if the gap falls inside a `**Read-only surface**` area of the plan, say so and recommend adjusting scope or completing the feature
+- **Scope note** — if the gap falls at a surface absent from the plan's `## Editable surface`, say so and recommend either updating `## Editable surface` (Boundary expansion protocol) or completing the missing downstream work
 
 End with a summary:
 
 - Total issues by severity
-- Count of `**Read-only surface**` boundary violations (subset of the above)
+- Count of diff-but-undeclared findings (subset of the above — surfaces touched without `## Editable surface` declaration)
 - Informational items (no action needed)
