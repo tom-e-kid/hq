@@ -17,9 +17,9 @@ If `.hq/integrity-check.md` exists, its instructions take precedence over the de
 
 ## Why This Skill Exists
 
-`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. Mechanical `## Editable surface` ↔ diff set-diff (orchestrator-side at Phase 6 Step 0) catches half of this — diff-but-undeclared and declared-but-missing within the diff file list — but the **other half** lives in external paths the diff never touches: a deleted symbol still referenced by a doc page, a named consumer in a Plan suffix that ought to have been visited but wasn't.
+`code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. Mechanical `## Editable surface` ↔ diff set-diff (orchestrator-side at Phase 6 Self-Review) catches half of this — diff-but-undeclared and declared-but-missing within the diff file list — but the **other half** lives in external paths the diff never touches: a deleted symbol still referenced by a doc page, a named consumer in a Plan suffix that ought to have been visited but wasn't.
 
-This skill's job is to break that blind spot via external grep. The agent-mode scope (under `/hq:start` Phase 6) is intentionally narrow — `[削除]` residuals + unmatched consumer verification — because the orchestrator's Step 0 already covers everything mechanical within the diff. The interactive `/integrity-check` mode (no plan context) falls back to a broader downstream-reference / feature-completeness sweep.
+This skill's job is to break that blind spot via external grep. The agent-mode scope (under `/hq:start` Phase 7) is intentionally narrow — `[削除]` residuals + unmatched consumer verification — because the orchestrator's Phase 6 Self-Review already covers everything mechanical within the diff. The interactive `/integrity-check` mode (no plan context) falls back to a broader downstream-reference / feature-completeness sweep.
 
 ## Diff Scope
 
@@ -48,16 +48,16 @@ From the diff, extract every item that can be referenced from elsewhere. For eac
 
 ## Review Criteria
 
-The baseline criteria below capture the skill's three-class model — used when `/integrity-check` is invoked interactively (no plan context). The `integrity-checker` agent overrides these at runtime with a narrower **external-grep-only** scope: `[削除]` residual grep + unmatched consumer external visits. Mechanical Editable surface ↔ diff reconciliation is no longer performed by the agent — it is owned by the `/hq:start` orchestrator at Phase 6 Step 0 (Pre-Quality Self-Review Gate).
+The baseline criteria below capture the skill's three-class model — used when `/integrity-check` is invoked interactively (no plan context). The `integrity-checker` agent overrides these at runtime with a narrower **external-grep-only** scope: `[削除]` residual grep + unmatched consumer external visits. Mechanical Editable surface ↔ diff reconciliation is no longer performed by the agent — it is owned by the `/hq:start` orchestrator at Phase 6 (Self-Review).
 
 ### 1. External grep gaps (agent override — primary)
 
-When invoked by `/hq:start` Phase 6 Step 2, the agent restricts itself to two failure modes that mechanical orchestrator-side checks cannot catch:
+When invoked by `/hq:start` Phase 7 Step 2, the agent restricts itself to two failure modes that mechanical orchestrator-side checks cannot catch:
 
 - **`[削除]` residuals** — for each `## Editable surface` entry tagged `[削除]`, whole-repo grep for residual references. Hits outside the diff = stale references.
 - **Unmatched consumer external visits** — for `*(consumer: <name>)*` suffixes whose named consumer is not in the diff file list, read / grep the named path to verify the coordinated update landed.
 
-Other tag classes (`[新規]` / `[改修]` / `[silent-break]`) and in-diff consumer presence are out of scope for the agent — orchestrator's Step 0 covers them.
+Other tag classes (`[新規]` / `[改修]` / `[silent-break]`) and in-diff consumer presence are out of scope for the agent — orchestrator's Phase 6 Self-Review covers them.
 
 ### 2. Downstream reference integrity (interactive fallback)
 

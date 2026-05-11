@@ -6,7 +6,7 @@ allowed-tools: Read, Edit, Glob, Grep, Bash(git:*), Bash(gh:*), Bash(bash:*), Ta
 
 # TRIAGE — Sort Residual PR Known Issues
 
-This command processes the `## Known Issues` section of a PR body — the hand-off point for **every** FB `/hq:start` produced in Phase 6. Per the post-refactor design (`hq:workflow § Feedback Loop`), Phase 6 is pure review: all Quality Review findings (Critical through Low, agent-emitted and Self-Review-Gate-emitted alike) surface here without auto-fix. The PR body groups them by action priority — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)` — with a leading `**Triage summary**` line so the reviewer sees the workload at a glance. For each item, you decide with the user one of three dispositions:
+This command processes the `## Known Issues` section of a PR body — the hand-off point for **every** FB `/hq:start` produced in Phase 6 (Self-Review) and Phase 7 (Quality Review). Per the post-refactor design (`hq:workflow § Feedback Loop`), both phases are pure review: all findings (Critical through Low, Self-Review minor-gaps and Quality Review agent-emitted alike) surface here without auto-fix. The PR body groups them by action priority — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)` — with a leading `**Triage summary**` line so the reviewer sees the workload at a glance. For each item, you decide with the user one of three dispositions:
 
 1. **Add to `hq:plan`** — enqueue as follow-up work; the user runs `/hq:start <plan>` afterward to resume
 2. **Leave as-is** — keep it in the PR body; accepted as a known limitation
@@ -86,7 +86,7 @@ Item <n>/<total> [<category>]: <item text>
 
 - **Must Address (Critical / High)** — strong lean toward `(1) add to hq:plan` or `(3) escalate to hq:feedback`. Leaving Critical / High as-is requires explicit user judgment ("this is acknowledged as a known limitation").
 - **Recommended (Medium)** — genuine judgment call. All three dispositions are routinely appropriate; user decides per item.
-- **Optional (Low)** — strong lean toward `(2) leave as-is` or `(3) escalate to hq:feedback`. Pulling Low items into `hq:plan` follow-up work risks the same scope creep that motivated the Phase 6 pure-review design.
+- **Optional (Low)** — strong lean toward `(2) leave as-is` or `(3) escalate to hq:feedback`. Pulling Low items into `hq:plan` follow-up work risks the same scope creep that motivated the Phase 7 pure-review design.
 
 Record the user's choice per item. Allow the user to skim-then-decide: if they ask to see all items first, show the full list and revisit decisions in order.
 
