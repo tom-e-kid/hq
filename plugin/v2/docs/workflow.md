@@ -133,29 +133,31 @@ Phase 5: Acceptance (sweep only — no fixing)
 │                         + toggle [x] + push, Phase 6
 │  Retry cap = FB retry cap (§ Settings, default 2)
 │
-Phase 6: Quality Review (diff-kind aware)
-│  Classify diff: code / doc / mixed → DIFF_KIND
-│  code / mixed:
-│    ┌──────────────────────────────────────────────────────────┐
-│    │  code-reviewer  ║  security-scanner  ║  integrity-checker │
-│    └────────┬────────╨──────────┬─────────╨─────────┬──────────┘
-│             ▼                   ▼                   ▼
-│  doc:
-│    ┌────────────────────────────────────────┐
-│    │  code-reviewer  ║  integrity-checker   │
-│    └────────┬────────╨──────────┬───────────┘
-│             ▼                   ▼
-│  integrity-checker prompt carries plan ## Editable surface + ## Plan —
-│  NOT ## Why, NOT ## Approach (caller framing kept out of agent's lens)
-│  Fix clearly-actionable FBs via batch-fix + per-round re-review:
-│    fix every FB in fix_set → re-launch originating agents once
-│    (skipped when fix_set is all-Low; severity gate is open at default Low)
-│    → partition output into resolved / persistent / new → next round
-│  Round count capped by § Settings FB retry cap (per-round, default 2;
-│    total reviews = cap + 1 = initial review + N re-launches)
-│  Cap-exit: Low subset → 1 inline fix pass + done/ (Low cap-exit fix rule),
-│            non-Low subset → ## Known Issues
-│  (working tree must be clean at end)
+Phase 6: Quality Review (pure review — judgment-based agent selection)
+│  Step 0: Pre-Quality Self-Review Gate
+│    orchestrator self-assesses across 3 axes:
+│      (1) Plan alignment   (2) Out-of-scope impact   (3) Tunnel vision check
+│    result: pass | minor-gap (FB → Known Issues) | significant-gap (pause-consult)
+│    decision report MUST be written; .hq/start-memory.md consulted
+│
+│  Step 1: Agent Selection
+│    mode = judgment (default) | full (matrix fallback)
+│    judgment: "third-party senior engineer" picks agent subset to launch
+│      hard floor: literal credential prefix → security-scanner forced
+│    full: apply Diff Classification matrix deterministically
+│      (doc → code-reviewer skip; security-scanner runs on doc too)
+│    decision report MUST be written
+│
+│  Step 2: Initial Review + FB Collection (no fix loop)
+│    launch selected agents in parallel
+│    integrity-checker prompt carries plan ## Editable surface + ## Plan —
+│      NOT ## Why, NOT ## Approach (caller framing kept out of agent's lens)
+│    integrity-checker scope = external grep only:
+│      [削除] residuals + unmatched consumer external visits
+│      (mechanical reconciliation moved to orchestrator Step 0)
+│    All FBs (any severity, any origin) flow directly to ## Known Issues
+│    No commits, no batch-fix loop, no severity gate — pure review
+│    (working tree unchanged across Phase 6)
 │
 Phase 7: PR Creation
 │  Gate: all Plan + Acceptance [auto] checked
@@ -185,12 +187,14 @@ Phase 9: Report
 - **Cache-first** — Phases 4–7 touch `.hq/tasks/<branch-dir>/gh/plan.md` only; GitHub is hit at sync checkpoints (after Phase 4 Execute, after Phase 5 Acceptance, and before PR creation).
 - **Commit as you go** — each Plan item and fix lands as its own commit. Working tree is clean by Phase 7.
 - **Acceptance → Quality Review** — Phase 5 confirms the implementation works first (sweep only, looping back to Phase 4 to fix), Phase 6 then reviews quality on a known-working baseline. Reviewing quality before Acceptance would waste effort on code that may not work.
-- **Diff-kind aware Phase 6** — Phase 6 classifies the diff into `code` / `doc` / `mixed`. `security-scanner` skips on `doc`-only diffs (credential / injection patterns structurally cannot appear there). `code-reviewer` and `integrity-checker` always run.
-- **Three-agent Phase 6 with non-overlapping scopes** — `code-reviewer` covers quality / correctness / `/simplify`-era signals with a load-bearing guard against redundant-looking concurrency / lifecycle / subscription / cache / SSR / module-level-mutable-state code. `security-scanner` enumerates alert patterns (runs on `sonnet`). `integrity-checker` reconciles the plan's `## Editable surface` + `## Plan` against the diff — its invocation prompt carries exactly those two sections (`## Why` and `## Approach` are deliberately omitted), to keep its external lens uncontaminated by the author's solution framing.
-- **Phase 4 ↔ Phase 5 mini-loop** — Phase 5 is a pure sweep; fixes live in Phase 4 (loopback entry). Capped by § Settings FB retry cap per item. This batch-fix model surfaces shared root causes across multiple failing items.
+- **Phase 6 is pure review** — no auto-fix. Every FB from Quality Review (Self-Review Gate Step 0 minor gaps + agent-emitted findings from Step 2) flows directly to the PR's `## Known Issues`, regardless of severity. The prior batch-fix loop / severity gate / per-round retry cap are retired — leaving fix decisions to humans aligns with the Karpathy-loop bounded-scope principle. Phase 6 makes no commits.
+- **Pre-Quality Self-Review Gate (Step 0)** — before any agent runs, the orchestrator self-assesses across 3 axes (Plan alignment / Out-of-scope impact / Tunnel vision). Significant gaps surface via the new `pause-consult` Stop Policy (the single permitted exception to "autonomous after Phase 1"); minor gaps become FBs that join the Phase 6 pool. Decision reports under `.hq/tasks/<branch-dir>/reports/`.
+- **Agent Selection — `judgment` mode default** — the orchestrator picks the Quality Review agent subset as "a third-party senior engineer reviewing the PR" (framing defuses self-marking bias). `full` mode applies the Diff Classification matrix deterministically as a fallback. Hard floor: literal credential-prefix patterns force `security-scanner`. `.hq/start-memory.md` (per-clone, gitignored) accumulates user corrections about prior Self-Review Gate and Agent Selection calls to tighten future judgments.
+- **Three-agent set with non-overlapping scopes** — `code-reviewer` covers quality / correctness / `/simplify`-era signals with a load-bearing guard against redundant-looking concurrency / lifecycle / subscription / cache / SSR / module-level-mutable-state code. `security-scanner` enumerates alert patterns (runs on `sonnet`). `integrity-checker` is narrowed to **external grep**: `[削除]` residual sweep + unmatched-consumer external visits. Mechanical Editable surface ↔ diff set-diff is now orchestrator-side at Phase 6 Step 0 — `integrity-checker`'s invocation prompt still carries plan `## Editable surface` + `## Plan` (NOT `## Why` / `## Approach`) so the agent has the symbols / consumer names it needs to grep.
+- **Phase 4 ↔ Phase 5 mini-loop** — Phase 5 is a pure sweep; fixes live in Phase 4 (loopback entry). Capped by § Settings Phase 5 retry cap per item. This batch-fix model surfaces shared root causes across multiple failing items.
 - **Phase 5 1-by-1 toggle** — per failing `[auto]` item, write the FB (with `covers_acceptance` pointing back to the item) and toggle the checkbox in a single `plan-check-item.sh` tool call. Batch toggles are prohibited.
-- **Phase 6 batch-fix + per-round re-review** — clearly-actionable FBs are collected into a single `fix_set`, fixed in a batch each round, then verified by one re-launch of the originating agents at round end. The retry cap is **per-round** (one stubborn FB forces another fix-and-review pass for everyone in the set) and counts fix rounds only — `total reviews = cap + 1 = initial review + N re-launches`. When `fix_set` is all-Low, the round skips the re-launch entirely — Low's narrow blast radius makes the safety-net cost unjustified, and at the default `fix-threshold` (`Low`) every clearly-actionable severity passes the gate so Low FBs are absorbed inside Phase 6 instead of escalating to `## Known Issues`. The **Low cap-exit fix rule** is the symmetric cap-exhaustion counterpart: when the round loop exits with FBs still in `fix_set`, the Low subset receives one inline fix pass and moves to `done/` (no re-launch) while the non-Low subset escalates to `## Known Issues` — guaranteeing Low never reaches `## Known Issues` regardless of cap value. Cross-agent regression is not re-verified; PR review / `/hq:triage` are the safety net.
-- **PR body is the source of truth for residual problems** — unresolved FBs flow into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically.
+- **PR body Known Issues — action-priority grouped** — `## Known Issues` carries a leading `**Triage summary**` line + three category sub-sections: `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)`, with each entry tagged `[<Severity>] [<originating-agent>]` so the reviewer triages at a glance. Empty categories are omitted.
+- **PR body is the source of truth for residual problems** — every FB flows into `## Known Issues` and the local FB files move to `feedbacks/done/` atomically at PR creation. `/hq:triage` then handles dispositions per category.
 - **No `hq:feedback` creation** — escalation to `hq:feedback` is a `/hq:triage` responsibility, not `/hq:start`.
 - **Strict PR creation gate** — all `## Plan` items and all `[auto]` Acceptance items must be checked. `[manual]` items carry over to the PR body for the user to verify.
 
@@ -388,8 +392,7 @@ feedbacks/screenshots/  # evidence (optional)
 
 An FB moves to `done/` when:
 
-1. **Resolved in-branch** — fix committed, originating skill re-run clean.
-2. **Escalated to PR body** — at `/hq:start` Phase 7 PR creation, unresolved FBs are written into `## Known Issues` and the files are moved to `done/` atomically.
+1. **Escalated to PR body** — at `/hq:start` Phase 7 PR creation, every pending FB is written into `## Known Issues` (under the appropriate action-priority category) and its file is moved to `done/` atomically. This is the single path to `done/` under the post-refactor pure-review Phase 6.
 
 Local `feedbacks/` should be empty of pending files after PR creation. `/hq:archive` defensively checks this.
 
@@ -411,7 +414,16 @@ Escalation to `hq:feedback` Issues happens only through `/hq:triage` during PR r
 <unchecked [manual] Acceptance items, verbatim>
 
 ## Known Issues
-<unresolved FBs: title + brief description>
+**Triage summary**: N must address, M recommended, K optional. Process via `/hq:triage <PR>`.
+
+### Must Address (Critical / High)
+- [<Severity>] [<originating-agent>] <title> — <brief description>
+
+### Recommended (Medium)
+- [<Severity>] [<originating-agent>] <title> — <brief description>
+
+### Optional (Low)
+- [<Severity>] [<originating-agent>] <title> — <brief description>
 
 ---
 Closes #<hq:plan>
