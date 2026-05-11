@@ -57,10 +57,10 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 |-------|-------------|
 | `code-reviewer`           | Reads `code-review` skill criteria; outputs report + FB files to `.hq/tasks/` |
 | `security-scanner`        | Reads `security-scan` skill criteria (Sonnet); outputs report to `.hq/tasks/` |
-| `integrity-checker`       | Reconciles `hq:plan` `## Plan Sketch` (esp. `**Impact**`) against the diff |
+| `integrity-checker`       | Reconciles `hq:plan` `## Editable surface` + `## Plan` against the diff (external grep: `[削除]` residuals, unmatched consumers) |
 | `review-comment-analyzer` | Read-only classification of PR review comments — Fix / Feedback / Dismiss |
 
-`/hq:start` Phase 6 (Quality Review) is **diff-kind aware**: `code-reviewer` and `integrity-checker` always run; `security-scanner` skips on doc-only diffs (credential / injection patterns structurally cannot appear there).
+`/hq:start` splits review into **Phase 6 (Self-Review)** — the orchestrator's pre-Quality-Review self-assessment across 3 axes (Plan alignment / Out-of-scope impact / Tunnel vision) — and **Phase 7 (Quality Review)** — pure review with **judgment-mode agent selection** by default (the orchestrator picks the agent subset as a third-party senior engineer; `full` mode applies the Diff Classification matrix as a fallback). Phase 7 FBs flow directly to `## Known Issues` without auto-fix.
 
 ## Issue Labels
 
