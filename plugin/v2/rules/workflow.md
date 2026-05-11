@@ -83,11 +83,13 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
 
 - **English (fixed)**:
   - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `[primary]`, `Closes #<plan>`, `Refs #<task>`
-  - Prescribed headings: `## Plan Sketch`, `## Plan`, `## Acceptance`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - Prescribed headings: `## Why`, `## Approach`, `## Editable surface`, `## Plan`, `## Acceptance`, `## Primary Verification (manual)`, `## Manual Verification`, `## Known Issues`, `## Summary`, `## Changes`, `## Notes`
+  - Editable surface inline tags: `[新規]` / `[改修]` / `[削除]` / `[silent-break]` (the brackets and tag values are fixed; the latter three are romaji-free fixed strings even in English-only repos — they are structural markers, not translatable prose)
+  - Plan item consumer suffix: `*(consumer: <name>)*` (the literal `consumer:` keyword is fixed; `<name>` is the consumer identifier)
   - File paths, identifiers, code fences, shell commands
 - **Conversation language (content)**:
   - `hq:task` body content — prose inside `## Background` / `## What` / `## Scope` / `## Success Criteria`, plus the optional `## Phase Split` (see `## hq:task` below)
-  - `hq:plan` body content — `## Plan Sketch` prose (Problem / Editable surface / Read-only surface / Impact Direction notes / Core decision / Constraints), each `## Plan` step description, each `## Acceptance` condition
+  - `hq:plan` body content — prose inside `## Why` / `## Approach`, each `## Editable surface` entry note (after the inline tag), each `## Plan` step description, each `## Acceptance` condition
   - PR body prose — text inside `## Summary` / `## Changes` / `## Notes` and free-form narrative under `## Known Issues`
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
 
@@ -105,14 +107,14 @@ With a parent hq:task:
                 └── (or escalated during PR review via /hq:triage)
 
 Without a parent hq:task:
-  hq:plan Issue  — implementation plan ("how"); top-level, requirement captured in ## Plan Sketch / **Problem**
+  hq:plan Issue  — implementation plan ("how"); top-level, requirement captured in ## Why
     ├── ← Closes → PR  (no Refs trailer)
     │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
     └── (or escalated during PR review via /hq:triage)
 ```
 
 - `hq:task` and `hq:plan` are separate issues (separation of concerns)
-- **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` by invoking `/hq:draft` with no issue number. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. When no parent exists, the plan's `## Plan Sketch` / `**Problem**` becomes the sole source of truth for the requirement.
+- **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` by invoking `/hq:draft` with no issue number. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. When no parent exists, the plan's `## Why` section becomes the sole source of truth for the requirement.
 - `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API) only when a parent `hq:task` exists. Plans without a parent are top-level Issues.
 - PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
 - PR uses `Refs #<hq:task>` to maintain a link to the requirement — only when the plan has a parent `hq:task`; omitted when absent
@@ -164,7 +166,7 @@ The body's required sections are `## What` and `## Success Criteria` — the min
 
 ### `## Background` *(optional)*
 
-Include when motivation is non-obvious, or when later readers (including `/hq:draft`) benefit from knowing why now. Avoid architectural rationale — that belongs in `hq:plan` `**Core decision**`. Skip on tasks whose `## What` already implies the motivation.
+Include when motivation is non-obvious, or when later readers (including `/hq:draft`) benefit from knowing why now. Avoid architectural rationale — that belongs in `hq:plan` `## Approach`. Skip on tasks whose `## What` already implies the motivation.
 
 ### `## What` *(required)*
 
@@ -216,81 +218,99 @@ Every `hq:task` must:
 
 An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body IS the source of truth for what needs to be done and how completion is verified.
 
-The `hq:plan` body follows a 3-section structure: `## Plan Sketch` + `## Plan` + `## Acceptance`. Emission rules:
+The `hq:plan` body follows a **flat 5-section structure**: `## Why` + `## Approach` + `## Editable surface` + `## Plan` + `## Acceptance`. Emission rules:
 
 - Angle-bracket `<placeholder>` tokens are substituted with real content.
 - The `Parent:` line is emitted only when the plan has a parent `hq:task`; omit it entirely otherwise.
-- Optional fields with no substantive content are **omitted entirely** — no label, no placeholder line. Never write `_None._` / `Not applicable` / padded prose as filler.
+- Optional sub-content (figure / sample code in `## Approach`) is omitted entirely when empty. Never write `_None._` / `Not applicable` / padded prose as filler.
 
 ```markdown
 Parent: #<hq:task issue number>
 
-## Plan Sketch
+## Why
+<1-3 sentences: pain and why now>
 
-**Problem** — <1-3 sentences: pain and why now>
+## Approach
+<chosen design + at least one rejected alternative with reason. Optional: Mermaid / ASCII figure, or sample code ≤10 lines.>
 
-**Change Map** *(optional — Mermaid or ASCII figure showing before/after shape; include only when a figure clarifies structure more than prose)*
-
-**Editable surface**
-- <file / symbol that this plan MAY modify>
-
-**Read-only surface**
-- <file / symbol that this plan MUST NOT modify>
-
-**Impact**
-
-- **Add** — <purpose, or `none`>
-  - `<new surface>` — <short note>
-- **Update** — <purpose, or `none`>
-  - `<changed surface>` — <what changes>
-- **Delete** — <purpose, or `none`>
-  - `<removed surface>` — <note>
-- **Contradict** — <purpose, or `none`>
-  - `<semantically-shifted surface>` — <how existing callers may break silently>
-- **Downstream** — <purpose, or `none — confirmed by <specific check>`>
-  - `<consumer needing coordinated update in this diff>` — <coordinated update>
-
-**Core decision** — <1-2 sentences: the key architectural choice>
-
-**Constraints** *(optional)*
-- <hard dependency / prerequisite / assumption>
+## Editable surface
+- `<file / symbol>` — `[新規]` <≤1行 note: what happens here>
+- `<file / symbol>` — `[改修]` <≤1行 note>
+- `<file / symbol>` — `[削除]` <≤1行 note>
+- `<file / symbol>` — `[silent-break]` <≤1行 note: signature stable, semantics shift>
 
 ## Plan
-- [ ] <implementation step — single meaningful commit unit>
+- [ ] <implementation step — single meaningful commit unit> *(consumer: <name>)*
 
 ## Acceptance
-- [ ] [auto] [primary] <the single concrete pass/fail signal that tells the plan succeeded>
+- [ ] [auto] [primary] <single concrete pass/fail signal>
 - [ ] [auto] <secondary verifiable check>
 - [ ] [manual] <human-eye check, used sparingly>
 ```
 
-### `## Plan Sketch`
+### `## Why` *(required)*
 
-`## Plan Sketch` is the single scannable section that captures motivation, scope boundaries, surface-level impact, and the core design decision. All fields below are bold-labeled blocks within this one heading.
+The pain and why now. Gives the reader the "what problem is this solving" answer in seconds.
 
-- **`**Problem**`** *(required)* — the pain and why now. 1-3 sentences.
-- **`**Change Map**`** *(optional)* — a Mermaid or ASCII figure showing the before/after shape, included only when the structure of the change reads better as a figure than as prose. GitHub renders Mermaid natively in issue bodies. Omit when a figure would be forced.
-- **`**Editable surface**`** *(required)* — files or symbols this plan MAY modify. Declared explicitly so the implementation phase has an unambiguous "may touch" list.
-- **`**Read-only surface**`** *(required)* — files or symbols this plan MUST NOT modify. The symmetric counterpart to `**Editable surface**` — together they close the set of "what's in play" vs "what stays put". Include adjacent surfaces a reader might assume are in scope but are not.
-- **`**Impact**`** *(required whenever any non-trivial surface is touched)* — a Direction-keyed sub-list block. Each of the 5 Directions gets its own bullet line; under each, zero or more sub-bullets enumerate the affected surfaces with a short note. The 5 Directions are a **closed set** and every Direction MUST appear — empty Directions are written as `- **<Direction>** — none` so "deliberately empty" is structurally distinguishable from "forgotten". The 5 values:
-  - **`Add`** — a new surface is introduced (new function / field / command / config key / section / label / file path). Boundary: a new section added inside an existing file is `Add` (the *section* is the new surface), not `Update`.
-  - **`Update`** — an existing surface's contract changes (arguments, return shape, emission rules, accepted values). Boundary: rewording a directive without altering accepted inputs / outputs is `Update` only when the rewording carries a semantic load callers might rely on; pure prose polish without semantic shift is not Impact-worthy.
-  - **`Delete`** — an existing surface is removed.
-  - **`Contradict`** — the surface's signature is stable but its semantics shift, potentially breaking existing callers silently. These are the highest-risk entries — flag the breakage mechanism explicitly in the note. Boundary vs `Update`: an `Update` row's signature changes call sites have to *react* to (compile / lint / runtime error if ignored); a `Contradict` row's signature is unchanged so call sites *cannot* react — they continue to compile and run, returning subtly different results. Default to `Contradict` when in doubt; the worst case for `Update` is verbose, the worst case for `Contradict` is silent breakage.
-  - **`Downstream`** — a consumer that requires a **coordinated update *within this diff*** — docs, tests, templates, README, distribution artifacts (in this plugin, also other commands / skills / agents). Strict scope: a consumer that was *investigated* but deliberately not modified does NOT belong here; it belongs in `**Read-only surface**`. The `Downstream coverage hard rule` (below) ties every populated `Downstream` sub-bullet to a `## Plan` item, so an entry without a matching Plan item is a defect — not a status note about "things I checked".
+**Content rules**:
 
-  Empty Directions are written `- **<Direction>** — none`. `Downstream` has a stricter empty form: `- **Downstream** — none — confirmed by <specific check>` (e.g., `confirmed by grep -rn "<identifier>" .` or `confirmed by reading all call sites`). This **Downstream check directive** is structural — the sentinel `Downstream** — none — confirmed by ` (em dash `—`, U+2014; the trailing `**` closes the bold marker on the actual Direction line) lives inside the Impact block itself, not under `**Constraints**`, so reconciliation tools can locate it deterministically.
+- Required: (a) the pain or opportunity, (b) why now / what triggers this plan.
+- Anti-content (move to `## Approach` if present): file:line citations, error code enumerations, design judgment, comparison of alternatives, implementation hints.
+- Volume guidance: a few sentences. The test is not a sentence count but whether every sentence answers (a) or (b) — if it doesn't, it is content type leak and belongs elsewhere.
 
-  If every Direction would be `none` (no `confirmed by` check needed for `Downstream` because there is nothing else to declare either), the change is trivial and the `**Impact**` block itself can be skipped.
+### `## Approach` *(required)*
 
-  **Downstream coverage hard rule** — every populated `Downstream` sub-bullet in the `**Impact**` block MUST be covered by at least one corresponding `## Plan` item that performs the coordinated update on the named consumer. This is enforced as a **pre-emit check** by `/hq:draft` Phase 4: if a Downstream sub-bullet has no covering Plan item, the plan is not emitted — either the sub-bullet is aspirational / merely-investigated (move it to `**Read-only surface**`) or the Plan is incomplete (return to brainstorm). `/hq:start` Phase 6 `integrity-checker` reconciles declared-but-missing against the diff as a second net.
+The chosen design + at least one rejected alternative with reason. This section is the single load-bearing field for "why this implementation" — generic phrasing here is the failure mode that wastes PR-reviewer cycles.
 
-- **`**Core decision**`** *(required)* — 1-2 sentences on the key architectural choice. If there is no genuine decision to highlight, the plan probably does not need a `## Plan Sketch` at all.
-- **`**Constraints**`** *(optional)* — hard dependencies, prerequisites, or assumptions. Omit when genuinely empty. Note: the `Downstream check directive` no longer routes through `**Constraints**` — it lives in the `**Impact**` block itself (see above).
+**Content rules**:
 
-### `## Plan`
+- Required: (a) chosen design summary, (b) at least one rejected alternative named and dismissed with a one-line reason. "We considered alternatives" without naming any is not enough.
+- Optional figure: Mermaid or ASCII diagram, when the structural change reads better as a figure than as prose. GitHub renders Mermaid natively inside Issue bodies.
+- Optional sample code: ≤ 10 lines, intent-conveying only. Use when the shape of the change is faster to communicate as code than as prose.
+- Anti-content (move out): full implementation listings, complete signature enumerations, attribute-by-attribute spec dumps. Implementation detail belongs in the actual code, not in the plan.
+- Volume guidance: prose ≤ 5 sentences (figure / sample code excluded from the count). If more independent decisions need to be articulated, see **plan-split signal** below.
+
+**plan-split signal** — when `## Approach` is forced to enumerate multiple **independent** decisions, the plan is probably trying to do too much. Judge by **coupling**, not raw count:
+
+- **3 parallel decisions in coupled vertical features** (e.g., UI / API / data model for a single feature) → **acceptable in one plan** — splitting would create coordinated multi-PR work which is usually worse than a single cohesive PR.
+- **4+ parallel decisions** → stop and reconsider — is this really one feature, or has scope crept?
+- **Even with 3 or fewer decisions**, if the decisions could be **released independently** (one can ship without the others), split into separate `hq:plan`s (e.g., "logging revamp" + "error screen addition" living together → split).
+
+The count is a secondary warning indicator; the load-bearing criterion is whether the decisions are couplings-of-one-feature or independent shippables.
+
+### `## Editable surface` *(required)*
+
+Files or symbols this plan may modify. The single positive set — anything not on this list is **implicit out of scope**.
+
+**Format**: one bullet per entry. Each entry: `` `<path / symbol>` — `[<tag>]` <≤1行 note> ``. The `<≤1行 note>` is mandatory and describes the concrete change at that surface.
+
+**Inline tags (closed set)**:
+
+- **`[新規]`** — a new surface is introduced (new function / field / command / config key / section / label / file path). Boundary: a new section added inside an existing file is `[新規]` (the *section* is the new surface), not `[改修]`.
+- **`[改修]`** — an existing surface's contract changes (arguments, return shape, emission rules, accepted values). The note must indicate what callers need to react to.
+- **`[削除]`** — an existing surface is removed.
+- **`[silent-break]`** — the surface's signature is stable but its semantics shift, potentially breaking existing callers silently. The highest-risk tag — name the breakage mechanism in the note. **Default to `[silent-break]` when in doubt over `[改修]`**: the worst case for `[改修]` is verbose, the worst case for `[silent-break]` is callers continuing to compile / run while returning subtly different results.
+
+**Volume bound (strict)**: each entry's note is ≤ 1 line. Method signatures, attribute lists, complete type annotations, exact pattern specifications are **anti-content** — they belong in the actual code, not here. If a note overflows, either split the entry (different concerns → different entries) or move detail to `## Approach`.
+
+**Boundary scope** — this list IS the **AI agent fence**:
+
+- The `integrity-checker` agent flags any diff that touches a file / symbol not on this list as `Diff-but-undeclared` — scope creep hiding in the implementation.
+- Every diff hunk must trace back to a `## Editable surface` entry; entries without a corresponding diff are flagged as `Declared-but-missing`.
+
+**Boundary expansion protocol** — when implementation reveals that a stack-natural extension requires touching a surface not on this list (canonical examples: Swift Concurrency `async` propagation that drags `await` annotation across an actor boundary, a unit test file co-located with a production surface that gained a new public symbol):
+
+1. Add the new entry to `## Editable surface` with its tag and note **before** touching it.
+2. Note the rationale in `## Approach` (one line is enough: "X also required because Y").
+3. Then proceed with the modification.
+
+This converts the boundary from a rigid fence into an explicit expansion channel — the Karpathy-loop fence invariant is preserved, while the failure mode of mechanically rejecting stack-correct implementations is eliminated.
+
+### `## Plan` *(required)*
 
 Implementation steps as a checkbox list. Every item must be `[x]` before PR creation.
+
+**Format**: `` - [ ] <step description — ≤1行> *(consumer: <name>)* `` — the `*(consumer: <name>)*` suffix is appended when the step performs a coordinated update on a named downstream consumer (docs, tests, templates, README, distribution artifacts, other commands / skills / agents in this plugin). The suffix is the single mechanism for declaring "this step touches consumer X for coordinated update."
 
 **Granularity — single meaningful commit unit.** Each item is something that reads as one independent change in `git log` afterward:
 
@@ -298,6 +318,10 @@ Implementation steps as a checkbox list. Every item must be `[x]` before PR crea
 - If an item would produce a half-working intermediate state, it is split wrong — merge upward with its neighbor.
 - 1-item plans are valid (atomic change).
 - No numeric cap on item count. Motive-driven bloat — adding items because "while we're at it" rather than because the change genuinely needs them — is not bounded by a count ceiling; it is challenged by `/hq:draft` Phase 2 Simplicity gatekeeper before the plan is composed. When a brainstorm produces a naturally broad scope, `/hq:draft` Phase 2 raises the question of whether it should split into multiple plans rather than being padded as one.
+
+**Volume bound (strict)**: ≤ 1 line per item. Implementation-level signatures, method names, attribute lists are anti-content — they belong in the actual code.
+
+**Consumer coverage check** — `/hq:draft` enforces a coverage check before emitting the plan: every Plan item carrying a `(consumer: <name>)` suffix must name a consumer that is consistent with the change described by the step. The `integrity-checker` agent reconciles declared consumers against the diff as a second net — a `(consumer: <name>)` suffix whose consumer does not appear in the diff is flagged as `Declared-but-missing`.
 
 ### `## Acceptance`
 
@@ -335,7 +359,7 @@ The default rule forbids `[manual] [primary]`. This subsection is the sole excep
 
 - **(a) `[auto]` outcome measurement is structurally infeasible** — the plan's domain has no `[auto]` signal that measures the feature's intended outcome. Build success, lint, and unit tests cover structural correctness but not the outcome. Canonical cases: native mobile UI behavior (iOS / Android touch interactions, platform-specific animations), subjective UX or visual design targets, multi-session scenarios outside Playwright's reach. **Web features where `/hq:e2e-web` can drive the outcome do NOT qualify** — the default rule stands.
 - **(b) Primary names exactly one observable event with a concrete target** — the `[manual] [primary]` description MUST name one observable target (UI state name, interaction terminus, visual / sound target, named artifact). Abstract phrases ("works correctly", "user is satisfied", "feature is complete", "app launches") are rejected **even under the escape hatch** — they dissolve the primary/secondary distinction as much as a lazy `[auto]` would.
-- **(c) `**Impact**` block is structurally bounded** — the `**Impact**` block is fully declared (every Direction line present, populated sub-bullets enumerate every affected surface). Under-declared Impact lets an unmeasured primary hide behind unmeasured scope; the escape hatch requires the surface to be tight.
+- **(c) `## Editable surface` is structurally bounded** — every entry has its inline tag (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and a concrete one-line note. Under-declared surface lets an unmeasured primary hide behind unmeasured scope; the escape hatch requires the surface to be tight.
 
 **Compensating controls (required whenever the escape hatch fires)**:
 
@@ -365,7 +389,7 @@ When the plan has no parent `hq:task`, skip sub-issue registration entirely.
 Every `hq:plan` must:
 
 - Be **self-contained** — it survives session clears (it lives on GitHub, not locally).
-- Define **`## Plan`** (implementation steps) and **`## Acceptance`** (completion criteria, including exactly one `[primary]` item — `[auto] [primary]` by default, `[manual] [primary]` permitted under the escape hatch).
+- Define **`## Why`** (pain + why now), **`## Approach`** (chosen design + ≥1 rejected alternative with reason), **`## Editable surface`** (positive scope set with inline tags `[新規]` / `[改修]` / `[削除]` / `[silent-break]`), **`## Plan`** (implementation steps, single-commit-grain), and **`## Acceptance`** (completion criteria, including exactly one `[primary]` item — `[auto] [primary]` by default, `[manual] [primary]` permitted under the escape hatch).
 - Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English.
 - Keep Acceptance checks atomic and verifiable — each `[auto]` item maps to a single concrete signal (pass/fail).
 
@@ -419,15 +443,15 @@ An `hq:plan` must survive a benefit/complexity tradeoff check before it is compo
 
 > All else being equal, simpler is better. A small improvement that adds ugly complexity is not worth it. A 0.001 val_bpb improvement that adds 20 lines of hacky code? Probably not worth it. An improvement of ~0 but much simpler code? Keep.
 
-`hq:doc #40` frames this as a **limit of formal plan constraints**: rules like the `**Impact**` block, granularity guidance, or a hypothetical `## Plan` item count cap stop the *result* of motive-driven bloat (many small "while-we're-at-it" additions) but not the *motive* itself. The motive has to be challenged during drafting, where a proposal is still malleable.
+`hq:doc #40` frames this as a **limit of formal plan constraints**: rules like the `## Editable surface` inline-tag set, granularity guidance, or a hypothetical `## Plan` item count cap stop the *result* of motive-driven bloat (many small "while-we're-at-it" additions) but not the *motive* itself. The motive has to be challenged during drafting, where a proposal is still malleable.
 
-This limit is **mitigated** by `/hq:draft` **Phase 2** Simplicity gatekeeper, which challenges reuse vs new-build, minimum-solution comparison, and spread cost before the plan is composed. Pushback is one-round (Claude raises the concern, the user decides, the tradeoff — if accepted — is recorded in `**Core decision**`). Plans reaching `/hq:start` have already passed this gate.
+This limit is **mitigated** by `/hq:draft` **Phase 2** Simplicity gatekeeper, which challenges reuse vs new-build, minimum-solution comparison, and spread cost before the plan is composed. Pushback is one-round (Claude raises the concern, the user decides, the tradeoff — if accepted — is recorded in `## Approach`). Plans reaching `/hq:start` have already passed this gate.
 
 Consequences for plan structure:
 
 - `## Plan` has **no numeric item cap**. Formal caps target the result (how many items) rather than the motive (why each was added); they were deprecated once the gatekeeper role was introduced. The quality rules on `## Plan` (single meaningful commit unit, same-file consecutive items merge, no half-working intermediate state) remain because they are about the *grain* of each item, not its *necessity*.
-- Naturally broad scopes should be split into multiple `hq:plan`s at the gatekeeper stage rather than padded into one. `/hq:draft` Phase 2 raises this split decision explicitly when the brainstorm produces a large scope.
-- The `**Impact**` block and `[auto] [primary]` 1-per-plan rule are retained as formal constraints; they pass the Simplicity criterion test by being low-burden and tightly targeted at specific gaming patterns (undeclared surface change, success-signal dissolution).
+- Naturally broad scopes should be split into multiple `hq:plan`s at the gatekeeper stage rather than padded into one. `/hq:draft` Phase 2 raises this split decision explicitly when the brainstorm produces a large scope (see `## hq:plan` § Approach § plan-split signal for the coupling-based criterion).
+- The `## Editable surface` inline-tag set and `[auto] [primary]` 1-per-plan rule are retained as formal constraints; they pass the Simplicity criterion test by being low-burden and tightly targeted at specific gaming patterns (undeclared surface change, success-signal dissolution).
 
 ## Cache-First Principle
 

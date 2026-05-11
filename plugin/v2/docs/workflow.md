@@ -50,44 +50,48 @@ Response tools (invoked between intervention #2 and merge, at the user's discret
 
 ### `/hq:draft`
 
-Input: optional `hq:task` Issue number (+ optional supplementary context). When omitted, the plan is created top-level and the requirement is captured in `## Plan Sketch § **Problem**`.
+Input: optional `hq:task` Issue number (+ optional supplementary context). When omitted, the plan is created top-level and the requirement is captured in `## Why`.
 
 ```
-Phase 1: Intake (hq:task + pre-session context)
+Phase 1: Intake (hq:task + pre-session context + wide-impact survey)
 │  Fetch hq:task when provided (verify label, warn on hq:wip)
 │  Carry pre-session conversation context forward as brainstorm material
+│  Run mandatory wide-impact survey:
+│    git log --oneline -- <paths>    → past design decisions / abandoned approaches
+│    gh pr list --state merged --search <keyword>  → related merged PRs
+│    grep -rn <main symbol>          → impact radius before declaring Editable surface
+│  Surface outcomes (including zero-hits) at Phase 2 opening
 │
 Phase 2: Brainstorm + Simplicity gatekeeper (interactive — user intervention)
 │  Exploration-led dialogue; internal checklist tracks required fields
 │  Simplicity gate: reuse vs new-build / minimum-solution / spread cost / marker domain judgment
-│  Plan split judgment (one plan vs several)
-│  Convergence: Problem / Core decision / surfaces / primary w/marker committable
+│  Plan-split judgment: coupling test (4+ parallel decisions OR independently-shippable → split)
+│  Convergence: Why / Approach / Editable surface entries with inline tags /
+│               Plan items with consumer suffixes / primary w/marker committable
+│  Exit: commit-or-pushback message (single in-chat commitment line)
+│         User endorses "go" → Phase 3, or raises 違和感 → continue brainstorm
 │
-Phase 3: Point-check (Claude's decisive recommendation — user intervention)
-│  3-block position presented once:
-│    Editable surface / Adjacent surface / Primary acceptance (with marker)
-│  User endorses "go" → Phase 4, or raises 違和感 → Phase 2
+Phase 3: Compose plan body + consumer coverage check (autonomous)
+│  Compose body from Phase 2 conversation state — no further user prompt
+│  Pre-emit check: every Plan item's (consumer: <name>) suffix is consistent
 │
-Phase 4: Compose plan body + Downstream pre-emit check (autonomous)
-│  Compose body from Phase 2 state + Phase 3 point-check
-│  Pre-emit check: every Impact Downstream row has a covering ## Plan item
-│
-Phase 5: Create hq:plan Issue
+Phase 4: Create hq:plan Issue
 │  gh issue create --label hq:plan
 │  Register as sub-issue, inherit milestone + projects (when a parent hq:task exists)
 │
-Phase 6: Report
+Phase 5: Report
    Issue URL → "edit on GitHub, then /hq:start <plan>"
 ```
 
 **Key decisions**:
 
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
-- The orchestrator composes the exact `## Plan Sketch` + `## Plan` + `## Acceptance` structure inline from Phase 2 conversation state and the Phase 3 point-check, with exactly one `[auto] [primary]` item in `## Acceptance` (or `[manual] [primary]` under the escape hatch).
-- Phase 2 enforces `Editable surface` / `Read-only surface` symmetric declaration and the `**Impact**` block (5 Directions as a closed set, each Direction emitted as its own bullet line — empty Directions written `- **<Direction>** — none` so "deliberately empty" is structurally distinct from "forgotten"). Each populated Impact sub-bullet is contractually tied to a `## Plan` / `## Acceptance` item so downstream drift is caught at drafting time, not deferred to Phase 6 quality review. The `Downstream` sub-bullet → `## Plan` item binding is enforced as a hard pre-emit check in Phase 4 (see `hq:workflow § ## Plan Sketch § **Impact** § Downstream coverage hard rule`).
+- The orchestrator composes the exact `## Why` + `## Approach` + `## Editable surface` + `## Plan` + `## Acceptance` flat 5-section structure inline from Phase 2 conversation state, with exactly one `[auto] [primary]` item in `## Acceptance` (or `[manual] [primary]` under the escape hatch).
+- `## Editable surface` IS the single AI agent fence — each entry carries an inline tag (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and the complement is implicit out of scope. Stack-natural extensions follow the Boundary expansion protocol (add the entry to `## Editable surface` *before* touching the surface, note the rationale in `## Approach`).
+- Downstream coordination lives in `## Plan` items via the `*(consumer: <name>)*` suffix; the consumer coverage check at Phase 3 enforces consistency before the Issue emits.
 - Phase 2 is the mitigation checkpoint for `hq:workflow § Simplicity Criterion` — it challenges benefit/complexity tradeoffs before the plan is composed rather than after.
 - `## Plan` granularity: each item is a single meaningful commit unit. No numeric cap — motive-driven bloat is challenged by the Phase 2 Simplicity gatekeeper, not by a count ceiling.
-- Review surface is the **GitHub Issue** only. The Phase 3 point-check is a one-shot commitment checkpoint, not a Recap review; full plan-body review happens on the Issue after Phase 5.
+- Review surface is the **GitHub Issue** only. The Phase 2 commit-or-pushback message is a one-shot commitment checkpoint, not a Recap review; full plan-body review happens on the Issue after Phase 4.
 - The handoff is intentional — user reviews / edits the `hq:plan` Issue before `/hq:start` is invoked.
 
 ### `/hq:start`
@@ -141,9 +145,8 @@ Phase 6: Quality Review (diff-kind aware)
 │    │  code-reviewer  ║  integrity-checker   │
 │    └────────┬────────╨──────────┬───────────┘
 │             ▼                   ▼
-│  integrity-checker prompt carries plan ## Plan Sketch (Problem / Editable
-│  surface / Read-only surface / Impact block / Constraints) —
-│  NOT Core decision, NOT Change Map
+│  integrity-checker prompt carries plan ## Editable surface + ## Plan —
+│  NOT ## Why, NOT ## Approach (caller framing kept out of agent's lens)
 │  Fix clearly-actionable FBs via batch-fix + per-round re-review:
 │    fix every FB in fix_set → re-launch originating agents once
 │    (skipped when fix_set is all-Low; severity gate is open at default Low)
@@ -183,7 +186,7 @@ Phase 9: Report
 - **Commit as you go** — each Plan item and fix lands as its own commit. Working tree is clean by Phase 7.
 - **Acceptance → Quality Review** — Phase 5 confirms the implementation works first (sweep only, looping back to Phase 4 to fix), Phase 6 then reviews quality on a known-working baseline. Reviewing quality before Acceptance would waste effort on code that may not work.
 - **Diff-kind aware Phase 6** — Phase 6 classifies the diff into `code` / `doc` / `mixed`. `security-scanner` skips on `doc`-only diffs (credential / injection patterns structurally cannot appear there). `code-reviewer` and `integrity-checker` always run.
-- **Three-agent Phase 6 with non-overlapping scopes** — `code-reviewer` covers quality / correctness / `/simplify`-era signals with a load-bearing guard against redundant-looking concurrency / lifecycle / subscription / cache / SSR / module-level-mutable-state code. `security-scanner` enumerates alert patterns (runs on `sonnet`). `integrity-checker` reconciles the plan's `## Plan Sketch` / `**Impact**` block against the diff — its invocation prompt carries the full `## Plan Sketch` block (minus `**Core decision**` and `**Change Map**`), to keep its external lens uncontaminated by the author's solution framing.
+- **Three-agent Phase 6 with non-overlapping scopes** — `code-reviewer` covers quality / correctness / `/simplify`-era signals with a load-bearing guard against redundant-looking concurrency / lifecycle / subscription / cache / SSR / module-level-mutable-state code. `security-scanner` enumerates alert patterns (runs on `sonnet`). `integrity-checker` reconciles the plan's `## Editable surface` + `## Plan` against the diff — its invocation prompt carries exactly those two sections (`## Why` and `## Approach` are deliberately omitted), to keep its external lens uncontaminated by the author's solution framing.
 - **Phase 4 ↔ Phase 5 mini-loop** — Phase 5 is a pure sweep; fixes live in Phase 4 (loopback entry). Capped by § Settings FB retry cap per item. This batch-fix model surfaces shared root causes across multiple failing items.
 - **Phase 5 1-by-1 toggle** — per failing `[auto]` item, write the FB (with `covers_acceptance` pointing back to the item) and toggle the checkbox in a single `plan-check-item.sh` tool call. Batch toggles are prohibited.
 - **Phase 6 batch-fix + per-round re-review** — clearly-actionable FBs are collected into a single `fix_set`, fixed in a batch each round, then verified by one re-launch of the originating agents at round end. The retry cap is **per-round** (one stubborn FB forces another fix-and-review pass for everyone in the set) and counts fix rounds only — `total reviews = cap + 1 = initial review + N re-launches`. When `fix_set` is all-Low, the round skips the re-launch entirely — Low's narrow blast radius makes the safety-net cost unjustified, and at the default `fix-threshold` (`Low`) every clearly-actionable severity passes the gate so Low FBs are absorbed inside Phase 6 instead of escalating to `## Known Issues`. The **Low cap-exit fix rule** is the symmetric cap-exhaustion counterpart: when the round loop exits with FBs still in `fix_set`, the Low subset receives one inline fix pass and moves to `done/` (no re-launch) while the non-Low subset escalates to `## Known Issues` — guaranteeing Low never reaches `## Known Issues` regardless of cap value. Cross-agent regression is not re-verified; PR review / `/hq:triage` are the safety net.
@@ -302,38 +305,25 @@ Phase 5: Report
 
 ### Plan Structure
 
-Every `hq:plan` Issue body follows a 3-section structure:
+Every `hq:plan` Issue body follows a **flat 5-section structure**:
 
 ```markdown
 Parent: #<hq:task issue number>
 
-## Plan Sketch
+## Why
+<1-3 sentences: pain and why now>
 
-**Problem** — <pain / why now>
+## Approach
+<chosen design + at least one rejected alternative with reason. Optional: Mermaid / ASCII figure, or sample code ≤10 lines.>
 
-**Editable surface**
-- <file / symbol that this plan MAY modify>
-
-**Read-only surface**
-- <file / symbol that this plan MUST NOT modify>
-
-**Impact**
-
-- **Add** — <purpose, or `none`>
-  - `<new surface>` — <note>
-- **Update** — <purpose, or `none`>
-  - `<changed surface>` — <what changes>
-- **Delete** — <purpose, or `none`>
-  - `<removed surface>` — <note>
-- **Contradict** — <purpose, or `none`>
-  - `<semantically-shifted surface>` — <how callers may break>
-- **Downstream** — <purpose, or `none — confirmed by <specific check>`>
-  - `<consumer needing coordinated update in this diff>` — <coordinated update>
-
-**Core decision** — <key architectural choice>
+## Editable surface
+- `<file / symbol>` — `[新規]` <≤1行 note: what happens here>
+- `<file / symbol>` — `[改修]` <≤1行 note>
+- `<file / symbol>` — `[削除]` <≤1行 note>
+- `<file / symbol>` — `[silent-break]` <≤1行 note: signature stable, semantics shift>
 
 ## Plan
-- [ ] <implementation step — single meaningful commit unit>
+- [ ] <implementation step — single meaningful commit unit> *(consumer: <name>)*
 
 ## Acceptance
 - [ ] [auto] [primary] <single concrete pass/fail signal>
@@ -343,14 +333,16 @@ Parent: #<hq:task issue number>
 
 Highlights:
 
-- **`## Plan Sketch`** — one scannable section replacing the old `Context` + `Approach` split. `**Editable surface**` / `**Read-only surface**` are both required and symmetric. The `**Impact**` block keys 5 Directions as a closed set (`Add` / `Update` / `Delete` / `Contradict` / `Downstream`) — every Direction emits its own bullet line; empty Directions are written `- **<Direction>** — none` (or `- **Downstream** — none — confirmed by <check>`) so deliberate emptiness is structurally distinct from omission. `**Change Map**` (Mermaid / ASCII figure) and `**Constraints**` are optional — omit entirely when empty.
-- **`## Plan`** — implementation steps. Each item is a single meaningful commit unit; adjacent edits to the same file collapse into one item. No numeric cap — broad scopes are challenged at `/hq:draft` Phase 2 (Simplicity gatekeeper) and typically split into multiple `hq:plan`s rather than packed into one. All must be checked before PR creation.
+- **`## Why`** — pain + why now. Anti-content (file:line citations, error code dumps, design judgment, comparison of alternatives) belongs in `## Approach`.
+- **`## Approach`** — chosen design + ≥1 rejected alternative with reason. Optional figure (Mermaid / ASCII) and sample code (≤10 lines, intent-conveying only) when structure-conveying. **plan-split signal**: 4+ parallel independent decisions, or ≤3 decisions that could be released independently, means the plan should split.
+- **`## Editable surface`** — the single positive set, and **the AI agent fence**. Each entry has an inline tag (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and a ≤1行 note. The complement is implicit out of scope; the `integrity-checker` flags any diff touching a surface absent from this list. **Boundary expansion protocol**: when implementation reveals a stack-natural extension (e.g., Swift Concurrency async propagation, co-located test file), add the entry *before* touching the surface and note the rationale in `## Approach`.
+- **`## Plan`** — implementation steps. Each item is a single meaningful commit unit; adjacent edits to the same file collapse into one item. No numeric cap. `*(consumer: <name>)*` suffix is appended when the step performs a coordinated update on a named downstream consumer; the consumer coverage check at `/hq:draft` Phase 3 enforces consistency. All items must be checked before PR creation.
 - **`## Acceptance`** — completion criteria tagged by execution mode and role:
   - `[auto]` — Claude executes and toggles (unit tests, API calls, file checks, Playwright). Prefer `[auto]`.
   - `[manual]` — flows to PR body for user verification.
-  - `[primary]` — role marker; combines with `[auto]` only. Exactly one `[auto] [primary]` per plan, designating the single pass/fail signal that tells the plan succeeded. All other `[auto]` items are secondary.
+  - `[primary]` — role marker; combines with `[auto]` only by default. Exactly one `[auto] [primary]` per plan, designating the single pass/fail signal that tells the plan succeeded. All other `[auto]` items are secondary. The `[manual] [primary]` escape hatch is permitted only under strict conditions (`hq:workflow § ## Acceptance § #### [manual] [primary] escape hatch`).
 
-See `hq:workflow § hq:plan` for the authoritative schema, anti-filler policy, and the `[primary]` / granularity rules.
+See `hq:workflow § ## hq:plan` for the authoritative schema, anti-content rules per section, volume bounds, and the `[primary]` / granularity rules.
 
 ### Naming Conventions (Conventional Commits)
 
