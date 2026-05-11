@@ -56,9 +56,9 @@ If `Project Overrides` is not `none`, apply the content as project-specific guid
 
 **`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v2/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this command starts so all subsequent phases have the rule available. All `hq:workflow § <name>` citations below refer to sections of that file.
 
-## Phase 1: Intake (hq:task + pre-session context)
+## Phase 1: Intake (hq:task + pre-session context + wide-impact survey)
 
-Two inputs feed the brainstorm:
+Three inputs feed the brainstorm:
 
 **`hq:task` Issue (optional)** — when `$ARGUMENTS` is provided:
 
@@ -68,11 +68,21 @@ Two inputs feed the brainstorm:
 - Verify the `hq:task` label. If absent, warn the user but continue.
 - If the `hq:wip` label is present, warn: "This issue has the `hq:wip` label — it seems to be still under discussion. Do you want to proceed anyway?" — if the user declines, stop.
 
-When `$ARGUMENTS` is empty, do **not** ask the user for an Issue number. Skip the fetch entirely; the requirement will be captured in Phase 2 and materialize as the plan's `## Plan Sketch § **Problem**`.
+When `$ARGUMENTS` is empty, do **not** ask the user for an Issue number. Skip the fetch entirely; the requirement will be captured in Phase 2 and materialize as the plan's `## Why` section.
 
 **Pre-session conversation context** — the conversation history that precedes the `/hq:draft` invocation (files read, code investigated, topics discussed) is carried forward into Phase 2 as brainstorm material. This matters most when no `hq:task` is provided — the user has often already done the working session's exploration, and Phase 2 should not restart from a blank slate by asking "what's your topic?". Instead, open Phase 2 by summarizing what you understood from the pre-session context and asking the user to confirm or correct it.
 
-Keep the fetched task data (title, body, milestone, labels, projects), any supplementary text from `$ARGUMENTS`, and your read of the pre-session context in conversation state. **Do not** write the local cache yet — the cache is created after the feature branch exists (which happens in `/hq:start`, not here).
+**Wide-impact survey (mandatory)** — before entering Phase 2, run a purpose-driven repository scan to surface what the brainstorm would otherwise miss. The aim is to **bring prior design decisions, abandoned approaches, and related-but-merged work into Phase 2 from the start**, instead of discovering them during PR review.
+
+Run all three sub-surveys; report each one's outcome inline at the start of Phase 2 — including explicit zero-hits ("Past commits: 過去 N 件、本件関連なし") so the user can see the survey actually ran.
+
+1. **Past commits** — `git log --oneline -- <related paths>` on the file paths the brainstorm is likely to touch. **No commit-count flag** — let the orchestrator scroll until the last relevant change is in view. Goal: surface prior design decisions, abandoned approaches, and recent directly-related changes.
+2. **Related PRs** — `gh pr list --state merged --search "<keyword>"` on the dominant keywords from the task body or pre-session context. Goal: trace which PRs solidified earlier decisions so the new plan does not silently contradict them.
+3. **Symbol grep** — `grep -rn "<main symbol or identifier>"` (or `rg`) on the central symbol / identifier of the change. Goal: map the impact radius before declaring `## Editable surface` — finding call sites, downstream consumers, and parallel structures the brainstorm should account for.
+
+Ranges are **orchestrator judgment**, not pre-specified — the orchestrator's job is to scan until the relevant signal is exhausted, not to satisfy a numeric quota. A survey that hits zero rows for a query is still a valid survey; report the zero explicitly.
+
+Keep the fetched task data (title, body, milestone, labels, projects), any supplementary text from `$ARGUMENTS`, your read of the pre-session context, and the survey outcomes in conversation state. **Do not** write the local cache yet — the cache is created after the feature branch exists (which happens in `/hq:start`, not here).
 
 ## Phase 2: Brainstorm + Simplicity gatekeeper (interactive — MUST pause for user)
 
