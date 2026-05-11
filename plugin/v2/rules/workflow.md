@@ -44,7 +44,7 @@ Every hq command, skill, and agent MAY consult a project-local override file und
 |---|---|---|
 | `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. always prefer `[manual]` primary on iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
 | `.hq/start.md` | `/hq:start` | Project-specific execution nuance (commit / build / test notes that the command's phases should layer in) |
-| `.hq/triage.md` | `/hq:triage` | Briefing tone / Suggestion wording hints / project-specific lean cues for individual findings. MUST NOT contain category-level or severity-level disposition pre-decisions — the command's Phase 3 invariant forbids applying any disposition without an explicit per-item user response. |
+| `.hq/triage.md` | `/hq:triage` | Briefing tone / Suggestion wording hints / project-specific lean cues for individual findings |
 | `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |
 | `.hq/pr.md` | `pr` skill | PR body prose style, title conventions — scope-limited by the `pr` skill's own Invariants |
 | `.hq/code-review.md` | `code-reviewer` agent | Project-specific review axes |
@@ -56,7 +56,7 @@ Override files are optional. Absence means "apply defaults"; missing files are n
 
 ### Scope rules
 
-- **Overrides augment, Invariants govern.** A consumer's Invariants are NOT overridable. If override content appears to contradict an Invariant, the Invariant wins; the consumer SHOULD flag the conflict to the user after execution so the override file can be corrected.
+- **Overrides augment, Invariants govern.** A consumer's Invariants are NOT overridable. If override content appears to contradict an Invariant, the Invariant wins; the consumer SHOULD flag the conflict to the user after execution so the override file can be corrected. Concrete example: `.hq/triage.md` MUST NOT contain category-level or severity-level disposition pre-decisions (e.g. "always escalate Critical", "leave all Low as-is"), because the `/hq:triage` Phase 3 invariant — "No disposition may be APPLIED without an explicit per-item response from the user" — forbids any pre-applied disposition. Briefing tone, Suggestion wording, and per-finding lean cues are permissible; pre-decisions are not.
 - **Local to the consuming command / skill / agent.** An override file affects only its own consumer. It cannot introduce new phases, gates, or mandatory checks that alter another command's behavior. Cross-command behavior changes go through this rule file, not through overrides.
 - **Per-clone by default.** `.hq/` is included in `.gitignore` by `hq:bootstrap` Task 4, so override files are **per-clone / per-worktree** and NOT team-shared out of the box. Teams that want shared policy either (a) un-ignore specific override files and commit them, or (b) upstream the policy into this rule file. The former is experimental and risks per-member drift; the latter is the canonical path for team-wide rules.
 - **Worktree propagation.** `plugin/v2/skills/worktree-setup/scripts/worktree-setup.sh` copies existing override files into a newly created worktree so the worktree inherits the same behavior without re-setup. New override file names introduced here MUST be added to that script's copy list.
