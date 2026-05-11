@@ -540,7 +540,7 @@ Generate the retrospective artifact at `.hq/retro/<branch-dir>/<plan>.md` per `h
 
 Read these existing artifacts; do not modify them:
 
-- `.hq/tasks/<branch-dir>/feedbacks/done/*.md` — every FB processed during this run. By Phase 8 entry time both classes live here: FBs resolved in branch (moved to `done/` during Phase 5 / Phase 6) AND FBs escalated to the PR body's `## Known Issues` (Phase 7's atomic write+move per `hq:workflow` § Feedback Loop).
+- `.hq/tasks/<branch-dir>/feedbacks/done/*.md` — every FB processed during this run. Under pure-review Phase 6, FBs land in `done/` exclusively via Phase 7's atomic `## Known Issues` write + `done/` move (per `hq:workflow § Feedback Loop`) — no in-branch resolution path.
 - `.hq/tasks/<branch-dir>/quality-review-events.jsonl` — Phase 6 round-by-round outcomes (consume via `quality-review.sh summary`).
 - `.hq/tasks/<branch-dir>/phase-timings.jsonl` — wall-clock durations (consume via `phase-timing.sh summary`).
 - `.hq/tasks/<branch-dir>/gh/plan.md` — plan body for context.
@@ -559,7 +559,7 @@ mkdir -p .hq/retro/<branch-dir>
 
 Three top-level Markdown sections in this exact order — the fixed structure is the primary acceptance gate per `hq:workflow` § Retrospective:
 
-1. **`## Run Summary`** — facts only (no LLM judgment). Fields: plan id / branch / run timestamp (UTC, ISO 8601) / phase wall-clock durations / total commits / Phase 6 termination reason and round outcomes / FB counts (initial / resolved / persistent / cap-exited) and severity breakdown / `feedbacks/done/` and `feedbacks/` (residual) counts.
+1. **`## Run Summary`** — facts only (no LLM judgment). Fields: plan id / branch / run timestamp (UTC, ISO 8601) / phase wall-clock durations / total commits / Phase 6 Self-Review Gate result + Agent Selection mode and launched / skipped agents / per-agent initial FB counts and severity breakdown / `feedbacks/done/` count.
 2. **`## FB Analysis`** — one entry per FB file under `feedbacks/done/` at Phase 8 entry time. Entry format and the 3 YAML axes (`detection_validity` / `preventable_at_implementation` / `prevention_lever`) plus the free-form `**Notes**` Markdown field are specified in `hq:workflow` § Retrospective. **Zero-FB case**: when `feedbacks/done/` has no FB files, emit the literal body `(no FBs to analyze)` under the section header. Do NOT omit the section — the primary acceptance gate counts the three section headers.
 3. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries (or, in the zero-FB case, comment on the run's signal/noise: did `## Acceptance` actually exercise the implementation?). Self-praise without a concrete pattern citation is the failure mode this section guards against.
 
