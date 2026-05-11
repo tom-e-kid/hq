@@ -21,7 +21,7 @@ The command accepts an optional `hq:task` Issue number. When provided, the resul
 - **Exploration-led brainstorm** — the Phase 2 conversation follows the user's framing of the problem (what they want, what needs solving), not the `hq:plan` schema shape. Internal checklists track what is required for composition; they do not dictate the turn-by-turn dialogue.
 - **Simplicity gatekeeper** — Phase 2 actively challenges benefit/complexity tradeoffs before the plan is composed. Reuse vs new-build, minimum-solution comparison, spread cost, `[auto]` / `[manual]` marker judgment from domain — these are gate questions Claude raises, not topics the user is expected to surface unprompted. See `hq:workflow § Simplicity Criterion` for the rationale (it is the mitigation for the limit documented in `hq:doc #40`).
 
-Review surface is the **GitHub Issue** only. There is no in-chat "Recap approval" step — see Phase 3 (Point-check).
+Review surface is the **GitHub Issue** only. There is no in-chat "Recap approval" step — see Phase 2's commit-or-pushback exit message.
 
 User intervention points: (1) the exploratory dialogue in Phase 2, (2) a single "go" on the Phase 2 **commit-or-pushback** message at the end of the brainstorm. After "go", everything runs to Issue creation without further prompts.
 
