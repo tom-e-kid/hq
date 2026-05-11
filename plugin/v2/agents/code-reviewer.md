@@ -15,11 +15,11 @@ description: >
   </example>
 
   <example>
-  Context: User wants parallel quality checks before PR
+  Context: User wants pre-PR quality review on a code or mixed diff
   user: "Run the pre-PR quality review."
-  assistant: "Launching code-reviewer, security-scanner, and integrity-checker in parallel (or the doc-diff subset per the matrix)."
+  assistant: "Launching code-reviewer as part of /hq:start Phase 6 Step 2 Agent Selection."
   <commentary>
-  Pre-PR quality checks follow the /hq:start Phase 6 Agent launch matrix: code-reviewer and integrity-checker always run; security-scanner skips on doc-only diffs.
+  Phase 6 Step 1 Agent Selection picks the agent subset per `quality_review_mode`: in `judgment` mode (default) the orchestrator decides based on diff content; in `full` mode it follows the Diff Classification matrix (code-reviewer skips on doc-only diffs, runs on code / mixed). code-reviewer's Review Criteria target executable code, so it adds no signal on pure prose diffs.
   </commentary>
   </example>
 model: sonnet
