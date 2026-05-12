@@ -1,6 +1,6 @@
 ---
 name: archive
-description: Safely close the current work branch — done mode (PR merged → tasks/done/) or cancel mode (PR closed without merge → tasks/cancel/)
+description: Safely close the current work branch — done mode (PR merged → tasks/done/) or cancel mode (PR closed without merge → tasks/canceled/)
 allowed-tools: Read, Glob, Bash(git:*), Bash(gh:*), Bash(bash:*), Bash(ls:*), Bash(mv:*), Bash(mkdir:*), TaskCreate, TaskUpdate
 ---
 
@@ -11,9 +11,9 @@ This command closes out the current work branch in one of two modes:
 | Mode | Trigger | Precondition | Folder destination | Issue close |
 |---|---|---|---|---|
 | **done** (default) | `/hq:archive` | PR is `MERGED` | `.hq/tasks/done/<branch-dir>/` | Auto (via PR `Closes #<plan>`) |
-| **cancel** | `/hq:archive cancel` | PR is `OPEN` / `CLOSED` / absent (anything except `MERGED`) | `.hq/tasks/cancel/<branch-dir>/` | Explicit `gh issue close --reason "not planned"` |
+| **cancel** | `/hq:archive cancel` | PR is `OPEN` / `CLOSED` / absent (anything except `MERGED`) | `.hq/tasks/canceled/<branch-dir>/` | Explicit `gh issue close --reason "not planned"` |
 
-In **done mode** the command verifies the PR is merged, then archives + cleans up. In **cancel mode** the command closes the PR (if still open) without merging, explicitly closes the `hq:plan` Issue with reason `not planned`, archives the task folder to `cancel/`, then cleans up the local branch.
+In **done mode** the command verifies the PR is merged, then archives + cleans up. In **cancel mode** the command closes the PR (if still open) without merging, explicitly closes the `hq:plan` Issue with reason `not planned`, archives the task folder to `canceled/`, then cleans up the local branch.
 
 If the pre-checks for the selected mode fail, the command **stops** and reports what remains. The explicit `cancel` argument is itself the confirmation — once pre-checks pass, the command proceeds unconditionally in either mode.
 
@@ -111,7 +111,7 @@ find .hq/tasks/<branch-dir>/feedbacks -maxdepth 1 -type f -name 'FB*.md' 2>/dev/
 **Cancel mode**:
 
 - No pending FBs → proceed silently.
-- Pending FBs exist → **do not abort**. Record the list and include it in the Phase 7 report. Rationale: when the work is being canceled, unresolved FBs are part of the abandoned state — they will travel with the folder to `cancel/` for the audit trail. The user has already signaled cancel intent via the explicit argument.
+- Pending FBs exist → **do not abort**. Record the list and include it in the Phase 7 report. Rationale: when the work is being canceled, unresolved FBs are part of the abandoned state — they will travel with the folder to `canceled/` for the audit trail. The user has already signaled cancel intent via the explicit argument.
 
 ## Phase 4: Close PR + Issue (cancel mode only)
 
@@ -151,12 +151,12 @@ The parent `hq:task` Issue is **not** touched — task-level requirements may st
 Pick the archive root based on mode:
 
 - done mode → `.hq/tasks/done`
-- cancel mode → `.hq/tasks/cancel`
+- cancel mode → `.hq/tasks/canceled`
 
 Ensure the destination exists and move:
 
 ```bash
-archive_root=".hq/tasks/<done|cancel>"   # selected by mode
+archive_root=".hq/tasks/<done|canceled>"   # selected by mode
 mkdir -p "$archive_root"
 
 src=".hq/tasks/<branch-dir>"
@@ -220,12 +220,12 @@ Mode-aware summary.
 **Cancel mode**:
 
 - **Mode**: `cancel`
-- **Archived**: `.hq/tasks/<branch-dir>/` → `.hq/tasks/cancel/<branch-dir>[-timestamp]/`
+- **Archived**: `.hq/tasks/<branch-dir>/` → `.hq/tasks/canceled/<branch-dir>[-timestamp]/`
 - **Branch force-deleted**: `<feature-branch>`
 - **Now on**: `<base-branch>`
 - **hq:plan**: #<plan> (closed with reason "not planned")
 - **PR**: #<pr> (closed without merging, <url>) — or `(no PR was created)` if Phase 2 found none
-- **Pending FBs at cancel time** (if any): list filenames from Phase 3 with a note that they live under `.hq/tasks/cancel/<branch-dir>/feedbacks/` for the audit trail.
+- **Pending FBs at cancel time** (if any): list filenames from Phase 3 with a note that they live under `.hq/tasks/canceled/<branch-dir>/feedbacks/` for the audit trail.
 
 ## Rules
 
@@ -238,6 +238,6 @@ Mode-aware summary.
 - **Never use `git branch -D` on the base branch** — always switch off the feature branch first.
 - **Never touch the parent `hq:task` Issue** — task-level requirements outlive a single canceled plan.
 - **Never use `--no-verify`** — not applicable here, but the general hook-bypass prohibition stands.
-- **Timestamp collisions** — if `.hq/tasks/<done|cancel>/<branch-dir>/` already exists, append a timestamp suffix rather than overwriting.
+- **Timestamp collisions** — if `.hq/tasks/<done|canceled>/<branch-dir>/` already exists, append a timestamp suffix rather than overwriting.
 - **Cancel mode aborts on `MERGED` PR** — a merged PR cannot be "canceled"; the user must run plain `/hq:archive` to finalize.
 - **Done mode aborts on any non-`MERGED` state** — including `CLOSED` (not merged), which is redirected to `/hq:archive cancel`.

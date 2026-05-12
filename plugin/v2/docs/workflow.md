@@ -22,14 +22,14 @@ These two review points are the workflow's center of gravity. Everything downstr
                   review hq:plan       review hq:pr
                          ↓                   ↓
  hq:task ─/hq:draft─→ hq:plan ─/hq:start─→ hq:pr ──┬─ merge ──────────/hq:archive────────→ (tasks/done/)
-                                                   ├─ close w/o merge ─/hq:archive cancel→ (tasks/cancel/)
+                                                   ├─ close w/o merge ─/hq:archive cancel→ (tasks/canceled/)
                                                    │
                                                    ├─ /hq:triage   (Known Issues from PR body)
                                                    └─ /hq:respond  (external review comments)
 ```
 
 - **Creation path** (produces artifacts): `/hq:draft` → `/hq:start` → (merge) → `/hq:archive`.
-- **Cancel path**: when the produced PR is closed without merging (decision after intervention #2), `/hq:archive cancel` closes PR + `hq:plan` Issue and archives the task folder under `.hq/tasks/cancel/` for the audit trail.
+- **Cancel path**: when the produced PR is closed without merging (decision after intervention #2), `/hq:archive cancel` closes PR + `hq:plan` Issue and archives the task folder under `.hq/tasks/canceled/` for the audit trail.
 - **Response tools** (invoked at the user's discretion after intervention #2, zero or more times, in any order): `/hq:triage` for in-PR Known Issues, `/hq:respond` for external review comments.
 
 ## Lifecycle Overview
@@ -43,7 +43,7 @@ Creation path:
 3. **Merge the `hq:pr`** — GitHub auto-closes `hq:plan` via `Closes #<plan>`.
 4. **`/hq:archive`** — safety-checked close-out in one of two modes:
    - **done mode** (`/hq:archive`): requires PR merged + no pending FBs, then archives `.hq/tasks/<branch-dir>/` → `.hq/tasks/done/` and deletes the local feature branch. The `hq:plan` Issue was already closed by the merge.
-   - **cancel mode** (`/hq:archive cancel`): for the case where the PR is being abandoned (closed without merging). Closes the PR if still open, explicitly closes the `hq:plan` Issue with reason `not planned`, archives the task folder → `.hq/tasks/cancel/`, and force-deletes the local feature branch. The parent `hq:task` Issue is untouched.
+   - **cancel mode** (`/hq:archive cancel`): for the case where the PR is being abandoned (closed without merging). Closes the PR if still open, explicitly closes the `hq:plan` Issue with reason `not planned`, archives the task folder → `.hq/tasks/canceled/`, and force-deletes the local feature branch. The parent `hq:task` Issue is untouched.
 
 Response tools (invoked between intervention #2 and merge, at the user's discretion):
 
@@ -278,7 +278,7 @@ Phase 2: Pre-check PR
 Phase 3: Pre-check FBs
 │  Any pending files in feedbacks/ (not done/)?
 │  done   → yes → ABORT with list ; no → proceed
-│  cancel → record list (do NOT abort); travels with folder to cancel/
+│  cancel → record list (do NOT abort); travels with folder to canceled/
 │
 Phase 4: Close PR + Issue        ← cancel mode only (done mode skips)
 │  if PR state was OPEN:
@@ -288,7 +288,7 @@ Phase 4: Close PR + Issue        ← cancel mode only (done mode skips)
 │
 Phase 5: Archive folder
 │  done   → mv .hq/tasks/<branch-dir> → .hq/tasks/done/<branch-dir>[-timestamp]
-│  cancel → mv .hq/tasks/<branch-dir> → .hq/tasks/cancel/<branch-dir>[-timestamp]
+│  cancel → mv .hq/tasks/<branch-dir> → .hq/tasks/canceled/<branch-dir>[-timestamp]
 │
 Phase 6: Branch cleanup
 │  git checkout <base>
@@ -308,8 +308,8 @@ Phase 8: Report  (mode-aware)
 - **Explicit `cancel` argument is the confirmation** — no additional interactive prompt. The strict argument parser (only empty or `cancel` accepted) catches typos.
 - **Mode-symmetric remote-branch policy** — neither mode deletes remote branches. `gh pr close` runs without `--delete-branch`; remote cleanup is left to repo settings / manual action.
 - **Cancel touches GitHub state**: closes the PR (if open) and explicitly closes the `hq:plan` Issue with reason `not planned`. The parent `hq:task` Issue is untouched — task-level requirements outlive a single canceled plan attempt.
-- **Folder structure is parallel**: `.hq/tasks/done/<branch-dir>/` and `.hq/tasks/cancel/<branch-dir>/` live side-by-side. `find-plan-branch.sh` scans only depth-2 `context.md` files, so archived contexts in either bucket do not collide with live contexts.
-- **Pending-FB handling diverges by mode**: done aborts (defensive — pending FBs are an abnormal post-`/hq:start` state); cancel records and proceeds (the FBs are part of the abandoned state and ride along to `cancel/` for the audit trail).
+- **Folder structure is parallel**: `.hq/tasks/done/<branch-dir>/` and `.hq/tasks/canceled/<branch-dir>/` live side-by-side. `find-plan-branch.sh` scans only depth-2 `context.md` files, so archived contexts in either bucket do not collide with live contexts.
+- **Pending-FB handling diverges by mode**: done aborts (defensive — pending FBs are an abnormal post-`/hq:start` state); cancel records and proceeds (the FBs are part of the abandoned state and ride along to `canceled/` for the audit trail).
 - **Never pushes / force-pushes** — all git operations are local.
 - **No `hq:feedback` escalation** — escalation lives in `/hq:triage` during PR review, before merge.
 
