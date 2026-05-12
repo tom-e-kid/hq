@@ -30,7 +30,7 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 
 | Command  | Description |
 |----------|-------------|
-| `draft`   | Interactive brainstorm → create an `hq:plan` Issue from an `hq:task` |
+| `draft`   | Exploration-led brainstorm + Simplicity gatekeeper → create an `hq:plan` Issue (optionally from an `hq:task`) |
 | `start`   | Autonomous: branch → execute → acceptance → quality review → PR |
 | `triage`  | Triage PR body `## Known Issues` — add to plan / leave / escalate to `hq:feedback` |
 | `respond` | Respond to external PR review comments — fix / escalate / dismiss |
@@ -57,10 +57,10 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 |-------|-------------|
 | `code-reviewer`           | Reads `code-review` skill criteria; outputs report + FB files to `.hq/tasks/` |
 | `security-scanner`        | Reads `security-scan` skill criteria (Sonnet); outputs report to `.hq/tasks/` |
-| `integrity-checker`       | Reconciles `hq:plan` `## Plan Sketch` (esp. `**Impact**`) against the diff |
+| `integrity-checker`       | Reconciles `hq:plan` `## Editable surface` + `## Plan` against the diff (external grep: `[削除]` residuals, unmatched consumers) |
 | `review-comment-analyzer` | Read-only classification of PR review comments — Fix / Feedback / Dismiss |
 
-`/hq:start` Phase 6 (Quality Review) is **diff-kind aware**: `code-reviewer` and `integrity-checker` always run; `security-scanner` skips on doc-only diffs (credential / injection patterns structurally cannot appear there).
+`/hq:start` splits review into **Phase 6 (Self-Review)** — the orchestrator's pre-Quality-Review self-assessment across 3 axes (Plan alignment / Out-of-scope impact / Tunnel vision) — and **Phase 7 (Quality Review)** — pure review with **judgment-mode agent selection** by default (the orchestrator picks the agent subset as a third-party senior engineer; `full` mode applies the Diff Classification matrix as a fallback). Phase 7 FBs flow directly to `## Known Issues` without auto-fix.
 
 ## Issue Labels
 
@@ -69,6 +69,7 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 | `hq:task`     | Requirement (trigger)      | **What** needs to be done. Created by the user; consumed by `/hq:draft`. |
 | `hq:plan`     | Implementation plan        | **How** to do it. Created by `/hq:draft` as a sub-issue of `hq:task`. Drives `/hq:start`. |
 | `hq:pr`       | PR marker                  | Applied automatically by `/hq:start` on PR creation. |
+| `hq:manual`   | PR primary verification    | Applied alongside `hq:pr` when the plan carries `[manual] [primary]` (escape hatch) — reviewer must complete the PR's `## Primary Verification (manual)` block before merge. |
 | `hq:feedback` | Unresolved problem         | Carved out by `/hq:triage` (PR Known Issues) or `/hq:respond` (external comments). |
 | `hq:doc`      | Informational note         | Research findings worth preserving. Created manually. |
 | `hq:wip`      | Drafting / automation gate | Issue is being drafted; automation skips, manual commands pause and confirm. |
@@ -87,29 +88,23 @@ Prerequisite: `gh` CLI authenticated (`gh auth status`).
 
 ## Bootstrap
 
-Run `/hq:bootstrap` once when initializing a new project. Pass `agents.md` as argument to also install `AGENTS.md`. Idempotent — safe to re-run.
+Run `/hq:bootstrap` once when initializing a new project. The skill **never silently skips or overwrites** — every change is confirmed with the user before applying. Safe to re-run; the HQ-managed block in `CLAUDE.md` is the only piece that bootstrap owns end-to-end, and even there a one-line diff summary is surfaced before write.
 
-| Target | Action | Note |
-|--------|--------|------|
-| `CLAUDE.md` | Create if missing | Filled from template with project info |
-| `AGENTS.md` | Create if missing | **Only when `agents.md` argument is given** |
-| `.claude/settings.local.json` | Deep-merge | Adds template keys + auto-detected platform permissions |
-| `.gitignore` | Append if missing | Adds `**/*.local.*` and `.hq/` |
+**Interactive build / test config** — the skill detects the project type (`*.xcodeproj` / `Package.swift` / `package.json` / `go.mod`) and proposes the matching install / dev / build / test / lint / format commands. The user then picks a **test strategy** — Unit (Claude runs tests autonomously) / E2E (Playwright via `hq:e2e-web`) / Manual (human-verified) — which is recorded into the HQ block.
 
-**Platform detection** for permissions:
-
-| Project type | Permissions added |
-|--------------|-------------------|
-| Xcode (`*.xcodeproj` / `*.xcworkspace`) | `swift-format`, `xcodebuild`, `xcrun` |
-| TypeScript (`package.json` / `tsconfig.json`) | `bun` |
-| Go (`go.mod`) | `go build`, `go vet` |
+| Target | What bootstrap does |
+|--------|---------------------|
+| `CLAUDE.md` | Create from template if missing. If present with `<!-- BEGIN HQ --> ... <!-- END HQ -->` markers, refresh only that block (Verification / Build / Test Strategy sub-sections); the rest is user territory. If present without markers, ask before appending the HQ block. |
+| `.claude/settings.local.json` | Add `attribution: { commit: "", pr: "" }` (suppresses Claude Code's default commit / PR footer). Existing values are never overwritten. |
+| `.gitignore` | Append `.hq/` (the HQ working directory — task context, FB files, scan reports) if missing. |
+| `.hq/xcodebuild-config.md` *(Xcode projects only)* | Delegated to the `hq:xcodebuild-config` skill — interactively captures Build / Run commands. |
 
 ## Design Philosophy
 
 The plugin is designed to **leave no trace in the target repository**:
 
-- **Committed** (only when missing): `CLAUDE.md`, `AGENTS.md` (opt-in), `.gitignore` entries (`**/*.local.*`, `.hq/`).
-- **Never committed** (gitignored): `.claude/settings.local.json`, `.hq/` (tasks, feedbacks, reports).
+- **Committed** (only when missing): `CLAUDE.md` (with the bootstrap-managed `<!-- BEGIN HQ --> ... <!-- END HQ -->` block), `.gitignore` entry (`.hq/`).
+- **Never committed** (gitignored): `.claude/settings.local.json`, `.hq/` (tasks, feedbacks, reports, retro).
 
 The workflow rule itself lives at `plugin/v2/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command. Nothing is copied into the consumer project — editing that one file is the change.
 
