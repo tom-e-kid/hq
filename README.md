@@ -88,29 +88,23 @@ Prerequisite: `gh` CLI authenticated (`gh auth status`).
 
 ## Bootstrap
 
-Run `/hq:bootstrap` once when initializing a new project. Pass `agents.md` as argument to also install `AGENTS.md`. Idempotent — safe to re-run.
+Run `/hq:bootstrap` once when initializing a new project. The skill **never silently skips or overwrites** — every change is confirmed with the user before applying. Safe to re-run; the HQ-managed block in `CLAUDE.md` is the only piece that bootstrap owns end-to-end, and even there a one-line diff summary is surfaced before write.
 
-| Target | Action | Note |
-|--------|--------|------|
-| `CLAUDE.md` | Create if missing | Filled from template with project info |
-| `AGENTS.md` | Create if missing | **Only when `agents.md` argument is given** |
-| `.claude/settings.local.json` | Deep-merge | Adds template keys + auto-detected platform permissions |
-| `.gitignore` | Append if missing | Adds `**/*.local.*` and `.hq/` |
+**Interactive build / test config** — the skill detects the project type (`*.xcodeproj` / `Package.swift` / `package.json` / `go.mod`) and proposes the matching install / dev / build / test / lint / format commands. The user then picks a **test strategy** — Unit (Claude runs tests autonomously) / E2E (Playwright via `hq:e2e-web`) / Manual (human-verified) — which is recorded into the HQ block.
 
-**Platform detection** for permissions:
-
-| Project type | Permissions added |
-|--------------|-------------------|
-| Xcode (`*.xcodeproj` / `*.xcworkspace`) | `swift-format`, `xcodebuild`, `xcrun` |
-| TypeScript (`package.json` / `tsconfig.json`) | `bun` |
-| Go (`go.mod`) | `go build`, `go vet` |
+| Target | What bootstrap does |
+|--------|---------------------|
+| `CLAUDE.md` | Create from template if missing. If present with `<!-- BEGIN HQ --> ... <!-- END HQ -->` markers, refresh only that block (Verification / Build / Test Strategy sub-sections); the rest is user territory. If present without markers, ask before appending the HQ block. |
+| `.claude/settings.local.json` | Add `attribution: { commit: "", pr: "" }` (suppresses Claude Code's default commit / PR footer). Existing values are never overwritten. |
+| `.gitignore` | Append `.hq/` (the HQ working directory — task context, FB files, scan reports) if missing. |
+| `.hq/xcodebuild-config.md` *(Xcode projects only)* | Delegated to the `hq:xcodebuild-config` skill — interactively captures Build / Run commands. |
 
 ## Design Philosophy
 
 The plugin is designed to **leave no trace in the target repository**:
 
-- **Committed** (only when missing): `CLAUDE.md`, `AGENTS.md` (opt-in), `.gitignore` entries (`**/*.local.*`, `.hq/`).
-- **Never committed** (gitignored): `.claude/settings.local.json`, `.hq/` (tasks, feedbacks, reports).
+- **Committed** (only when missing): `CLAUDE.md` (with the bootstrap-managed `<!-- BEGIN HQ --> ... <!-- END HQ -->` block), `.gitignore` entry (`.hq/`).
+- **Never committed** (gitignored): `.claude/settings.local.json`, `.hq/` (tasks, feedbacks, reports, retro).
 
 The workflow rule itself lives at `plugin/v2/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command. Nothing is copied into the consumer project — editing that one file is the change.
 
