@@ -10,7 +10,8 @@ HQ separates a feature from idea to merge into a small set of command-scoped ope
                  (intervention #1)   (intervention #2)
                   review hq:plan       review hq:pr
                          ↓                   ↓
- hq:task ─/hq:draft─→ hq:plan ─/hq:start─→ hq:pr ──┬─ merge ─/hq:archive─→
+ hq:task ─/hq:draft─→ hq:plan ─/hq:start─→ hq:pr ──┬─ merge ──────────/hq:archive────────→ (tasks/done/)
+                                                   ├─ close w/o merge ─/hq:archive cancel→ (tasks/cancel/)
                                                    │
                                                    ├─ /hq:triage   (Known Issues from PR body)
                                                    └─ /hq:respond  (external review comments)
@@ -34,7 +35,7 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 | `start`   | Autonomous: branch → execute → acceptance → quality review → PR |
 | `triage`  | Triage PR body `## Known Issues` — add to plan / leave / escalate to `hq:feedback` |
 | `respond` | Respond to external PR review comments — fix / escalate / dismiss |
-| `archive` | Safely close a merged PR's branch — verify + archive task folder + delete local branch |
+| `archive` | Safely close the current branch — **done** (PR merged → `tasks/done/`) or **cancel** (`archive cancel`: closes PR without merging → `tasks/cancel/`) |
 | `swift-protocol-shadow` | Detect protocol default implementation shadowing in Swift ([flow](plugin/v2/docs/swift-protocol-shadow-flow.md)) |
 
 ### Skills (analysis criteria)
