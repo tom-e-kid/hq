@@ -69,6 +69,7 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 | `hq:task`     | Requirement (trigger)      | **What** needs to be done. Created by the user; consumed by `/hq:draft`. |
 | `hq:plan`     | Implementation plan        | **How** to do it. Created by `/hq:draft` as a sub-issue of `hq:task`. Drives `/hq:start`. |
 | `hq:pr`       | PR marker                  | Applied automatically by `/hq:start` on PR creation. |
+| `hq:manual`   | PR primary verification    | Applied alongside `hq:pr` when the plan carries `[manual] [primary]` (escape hatch) — reviewer must complete the PR's `## Primary Verification (manual)` block before merge. |
 | `hq:feedback` | Unresolved problem         | Carved out by `/hq:triage` (PR Known Issues) or `/hq:respond` (external comments). |
 | `hq:doc`      | Informational note         | Research findings worth preserving. Created manually. |
 | `hq:wip`      | Drafting / automation gate | Issue is being drafted; automation skips, manual commands pause and confirm. |
