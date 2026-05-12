@@ -30,7 +30,7 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 
 | Command  | Description |
 |----------|-------------|
-| `draft`   | Interactive brainstorm → create an `hq:plan` Issue from an `hq:task` |
+| `draft`   | Exploration-led brainstorm + Simplicity gatekeeper → create an `hq:plan` Issue (optionally from an `hq:task`) |
 | `start`   | Autonomous: branch → execute → acceptance → quality review → PR |
 | `triage`  | Triage PR body `## Known Issues` — add to plan / leave / escalate to `hq:feedback` |
 | `respond` | Respond to external PR review comments — fix / escalate / dismiss |
