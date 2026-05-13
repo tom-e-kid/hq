@@ -508,23 +508,26 @@ Before creating the PR, verify:
 
 If any of the first two fail, ABORT per Stop Policy. If the working tree is dirty, create a `chore: residual changes prior to PR` commit to absorb the leftovers and continue — this is a safety net for upstream Commit Policy slips, not an invitation to skip commits during earlier phases.
 
-### Assemble PR Body & Escalate FBs
+### Assemble Workflow Sections Pack & Escalate FBs
 
-Build the body per `hq:workflow` § PR Body Structure. When the plan carries a `[manual] [primary]` item (escape hatch), assemble `## Primary Verification (manual)`: copy the primary item verbatim, add an evidence link placeholder for screenshot / video (the reviewer fills it in during PR review if the executor could not attach it from the run), and list a reviewer checklist of ≥3 observations decomposing the primary's single observable into concrete verifiable parts. Copy remaining unchecked `[manual]` items (excluding the `[manual] [primary]` item, which lives in `## Primary Verification (manual)`) from Acceptance into `## Manual Verification` verbatim. For each pending FB under `.hq/tasks/<branch-dir>/feedbacks/`, read the FB's frontmatter `severity:` and `skill:` fields and emit a line of the form `- [<Severity>] [<originating-agent>] <title> — <brief description>` under the appropriate action-priority category (`### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)`) **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Emit a leading `**Triage summary**` line counting the items per category. Category sub-sections are emitted **only when at least one FB falls in them** — empty categories are omitted (no empty headings). Within each category, entries preserve insertion order. This 3-category structure and the dual `[<Severity>] [<originating-agent>]` tagging are invariant — see `hq:workflow § ## PR Body Structure § Invariants`. Omit empty top-level sections.
+Phase 8 builds the **workflow sections pack** — the English-fixed, auto-injected / parse-targeted half of the PR body (see `hq:workflow § PR Body Structure` for the 2-layer model). The narrative layer is **not** assembled here; the `pr` skill renders it from `.hq/pr.md` (or defaults) when Phase 8 delegates the PR creation.
 
-The trailer depends on whether the plan has a parent `hq:task` (per `hq:workflow` § PR Body Structure § Invariants):
+The pack has these blocks; each is built only when its trigger condition holds, and each is passed verbatim to the `pr` skill in the Create the PR step below.
 
-- **With a parent** — trailer has both `Closes #<plan>` and `Refs #<task>` lines.
-- **Without a parent** — trailer has only `Closes #<plan>`; omit the `Refs` line entirely (there is no parent `hq:task`).
+1. **`## Primary Verification (manual)` block** *(only when the plan has `[manual] [primary]` — escape hatch)* — copy the primary item verbatim, add an evidence link placeholder for screenshot / video (the reviewer fills it in during PR review if the executor could not attach it from the run), and list a reviewer checklist of ≥3 observations decomposing the primary's single observable into concrete verifiable parts.
+2. **`## Manual Verification` block** *(only when unchecked `[manual]` items remain, excluding the `[manual] [primary]` item which lives in block 1)* — copy each remaining unchecked `[manual]` item from `## Acceptance` verbatim.
+3. **`## Known Issues` block** *(only when pending FBs exist under `.hq/tasks/<branch-dir>/feedbacks/`)* — for each pending FB, read the frontmatter `severity:` and `skill:` fields and emit a line of the form `- [<Severity>] [<originating-agent>] <title> — <brief description>` under the appropriate action-priority category (`### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)`) **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Emit a leading `**Triage summary**` line counting the items per category. Category sub-sections are emitted **only when at least one FB falls in them** — empty categories are omitted (no empty headings). Within each category, entries preserve insertion order. This 3-category structure and the dual `[<Severity>] [<originating-agent>]` tagging are invariant — see `hq:workflow § ## PR Body Structure § Invariants`.
+4. **Trailer lines** — `Closes #<plan>` is always present; `Refs #<task>` follows only when the plan has a parent `hq:task` (per `hq:workflow § ## PR Body Structure § Invariants`).
+5. **Label / flag set** — always include `--label "hq:pr"`. Add `--label "hq:manual"` when block 1 was emitted (escape hatch). Add `--milestone` / `--project` only when the plan has a parent `hq:task` and the task carries those (resolved in Create the PR below).
 
-Title: `<type>: <description>` — plan title with the `(plan)` scope removed.
+Title: `<type>: <description>` — plan title with the `(plan)` scope removed. The `pr` skill is the executor of the title flag; `.hq/pr.md` MAY adjust title-line conventions per its Override scope.
 
 ### Post-assembly verification (escape hatch only)
 
-When the plan carries a `[manual] [primary]` item (flagged by the Gate above), verify the assembled PR body before proceeding:
+When the plan carries a `[manual] [primary]` item (flagged by the Gate above), verify the workflow sections pack before delegating to the `pr` skill:
 
-- `## Primary Verification (manual)` section exists in the body with (a) the primary item verbatim, (b) an evidence link (screenshot / video — a placeholder is acceptable, the reviewer fills it during PR review), and (c) a reviewer checklist of ≥3 concrete observations.
-- The `pr` skill invocation below will include `--label "hq:manual"` in addition to `--label "hq:pr"`.
+- The `## Primary Verification (manual)` block is present in the pack with (a) the primary item verbatim, (b) an evidence link (screenshot / video — a placeholder is acceptable, the reviewer fills it during PR review), and (c) a reviewer checklist of ≥3 concrete observations.
+- The label set includes `--label "hq:manual"` in addition to `--label "hq:pr"`.
 
 If either check fails, ABORT — the escape hatch's rigor rests on these controls; shipping without them silently degrades the primary signal. Do not proceed to the Final Sync Checkpoint.
 
@@ -536,7 +539,13 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 ### Create the PR
 
-Delegate to the `pr` skill with the prepared body, title, and — **only when the plan has a parent `hq:task`** — milestone / project inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`). When no parent exists, skip milestone / project resolution entirely — there is no `task.json` cache file and no parent `hq:task` to inherit from, so no `--milestone` / `--project` flags are passed. The `pr` skill is the single path to `gh pr create` and applies any `.hq/pr.md` overrides within its own documented scope. Do not call `gh pr create` directly.
+Delegate to the `pr` skill, passing:
+
+- The **workflow sections pack** (the four blocks 1–4 assembled above — escape-hatch / Manual Verification / Known Issues / trailer).
+- The **title** (`<type>: <description>` from the plan title, `(plan)` scope removed).
+- The **label / flag set** — `--label "hq:pr"`, plus `--label "hq:manual"` when the escape hatch fired. **Only when the plan has a parent `hq:task`**, add `--milestone` / `--project` inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`); when no parent exists, no `task.json` cache file is present and no `--milestone` / `--project` flags are passed.
+
+The `pr` skill renders the **narrative layer** from `.hq/pr.md` (or defaults) and appends the workflow sections pack verbatim, then runs `gh pr create` with the labels and flags. The `pr` skill is the single path to `gh pr create`; do not call `gh pr create` directly from `/hq:start`.
 
 **Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 8 end`
 
