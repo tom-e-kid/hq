@@ -166,13 +166,14 @@ Phase 7: Quality Review (pure review — judgment-based agent selection)
 │
 Phase 8: PR Creation
 │  Gate: all Plan + Acceptance [auto] checked
-│  Assemble PR body:
-│    ## Summary / ## Changes / ## Notes
+│  Assemble workflow sections pack (English-fixed half):
 │    ## Manual Verification (unchecked [manual] items)
 │    ## Known Issues (unresolved FBs + move to done/)
 │    Closes #<plan> / Refs #<task>
+│  Delegate to `pr` skill → renders narrative layer from .hq/pr.md
+│    (or defaults: ## Summary / ## Changes / ## Notes), appends pack
 │  Final plan-cache-push.sh <plan>               [Sync: Push]
-│  gh pr create --label hq:pr (inherit milestone + projects)
+│  pr skill runs gh pr create --label hq:pr (inherit milestone + projects)
 │
 Phase 9: Retrospective
 │  Read feedbacks/done/ + JSONL events + git log + plan cache + decision reports
@@ -443,20 +444,24 @@ Escalation to `hq:feedback` Issues happens only through `/hq:triage` during PR r
 
 ### PR Body Structure
 
+The PR body is composed in **two layers**: a **narrative layer** (`.hq/pr.md`-overridable — heading names, language, structure, and prose all author-controlled) and a **workflow sections layer** (auto-injected by `/hq:start` Phase 8, English-fixed). The `pr` skill renders the narrative; `/hq:start` builds the workflow sections pack. See `hq:workflow § PR Body Structure` for the authoritative spec and `pr` skill § Project Overrides for the override scope.
+
+Default full body:
+
 ```markdown
-## Summary
+## Summary           <!-- narrative layer — overridable via .hq/pr.md -->
 <1-3 sentences explaining what and why>
 
-## Changes
+## Changes           <!-- narrative -->
 <bullet list>
 
-## Notes
+## Notes             <!-- narrative -->
 <optional>
 
-## Manual Verification
+## Manual Verification          <!-- workflow section — English-fixed -->
 <unchecked [manual] Acceptance items, verbatim>
 
-## Known Issues
+## Known Issues                 <!-- workflow section — English-fixed, /hq:triage parse target -->
 **Triage summary**: N must address, M recommended, K optional. Process via `/hq:triage <PR>`.
 
 ### Must Address (Critical / High)
@@ -469,11 +474,13 @@ Escalation to `hq:feedback` Issues happens only through `/hq:triage` during PR r
 - [<Severity>] [<originating-agent>] <title> — <brief description>
 
 ---
-Closes #<hq:plan>
-Refs #<hq:task>
+Closes #<hq:plan>                <!-- trailer — English-fixed -->
+Refs #<hq:task>                  <!-- trailer — only when plan has parent -->
 ```
 
 Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` is mandatory. `Refs` is mandatory **only when the plan has a parent `hq:task`** — when no parent exists, omit the `Refs` line entirely.
+
+Projects MAY define `.hq/pr.md` to override the narrative layer in full (e.g., `## 概要` / `## 変更` / `## メモ` in Japanese, or any project-specific section set). The workflow sections layer is invariant — `.hq/pr.md` cannot rename / suppress / reorder `## Manual Verification` / `## Known Issues` / trailer or `## Primary Verification (manual)` when the escape hatch applies.
 
 ### Project Overrides
 
