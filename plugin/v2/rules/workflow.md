@@ -14,6 +14,16 @@
   - Set `.hq/settings.json` `{ "base_branch": "<branch>" }` only when an explicit project-wide override is needed (e.g., a repo whose default base is `develop`, not `main`).
   - The resolution order is **invariant** across all consumers (`/hq:start`, `pr` skill, `worktree-rebase` skill). Consumers MUST NOT skip the `context.md` step.
 
+## Before Edit
+
+Before modifying an existing surface, take **one bounded read pass** over the context the edit depends on — the pre-edit counterpart to the post-edit § Before Commit blast-radius self-check. The two are complementary, not redundant: this pass prevents a contradiction from being written in the first place (it fires *before* the edit); the blast-radius self-check detects stale references already written (it fires *after*). One pass per surface, not a defect-exhaustion loop:
+
+1. **The whole target surface** — read the entire function / section / config block being changed end-to-end, not just the lines at the edit point, so the change fits the surface's existing shape and invariants.
+2. **Same-concept occurrences in the same file + adjacent context** — scan the file for the concept being edited appearing elsewhere (the same key / heading / marker / helper / branch) and read the lines immediately around the edit, so parallel occurrences stay consistent and neighbouring logic is not broken.
+3. **The change target's signature / contract + nearest callers** — confirm the exact signature, arguments, return shape, and emission contract of what is being changed, then read the closest call sites that depend on it, so the edit matches the contract its callers expect.
+
+This is a read discipline, not a fix loop: when the three reads surface no conflict, proceed straight to the edit. It exists because the dominant lever for defects that are preventable at implementation time is reading the surrounding code before writing — see `## Retrospective` § `prevention_lever` (`better-pre-read`).
+
 ## Before Commit
 
 1. Run `format` command (see Commands table in CLAUDE.md)
