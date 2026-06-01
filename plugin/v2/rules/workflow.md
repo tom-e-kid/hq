@@ -22,7 +22,7 @@ Before modifying an existing surface, take **one bounded read pass** over the co
 2. **Same-concept occurrences in the same file + adjacent context** — scan the file for the concept being edited appearing elsewhere (the same key / heading / marker / helper / branch) and read the lines immediately around the edit, so parallel occurrences stay consistent and neighbouring logic is not broken.
 3. **The change target's signature / contract + nearest callers** — confirm the exact signature, arguments, return shape, and emission contract of what is being changed, then read the closest call sites that depend on it, so the edit matches the contract its callers expect.
 
-This is a read discipline, not a fix loop: when the three reads surface no conflict, proceed straight to the edit. It exists because the dominant lever for defects that are preventable at implementation time is reading the surrounding code before writing — see `## Retrospective` § `prevention_lever` (`better-pre-read`).
+This is a read discipline, not a fix loop: when the three reads surface no conflict, proceed straight to the edit. It exists to test the retrospective hypothesis that the dominant lever for defects preventable at implementation time is reading the surrounding code before writing — the `better-pre-read` lever tracked in `## Retrospective` § `prevention_lever`, whose accumulated `prevention_lever` distribution is the evidence that will confirm or revise the hypothesis.
 
 ## Before Commit
 
