@@ -195,15 +195,16 @@ Phase 4 runs in two modes depending on how it was entered:
 
 Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-dir>/gh/plan.md`. For **each** item:
 
-1. Implement the step.
-2. Follow `hq:workflow` § Before Commit.
-3. Toggle the checkbox in the cache:
+1. Follow `hq:workflow` § Before Edit — take the bounded pre-edit read pass over the surface this step touches **before** writing any change. This is the implementation-time defect-prevention step; do not skip it.
+2. Implement the step.
+3. Follow `hq:workflow` § Before Commit.
+4. Toggle the checkbox in the cache:
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-check-item.sh" "<unique substring of the item>"
    ```
-4. **Commit** the item's changes per § Commit Policy (one commit per Plan item, Conventional Commits subject).
-5. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 8.
-6. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, commit the partial work, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
+5. **Commit** the item's changes per § Commit Policy (one commit per Plan item, Conventional Commits subject).
+6. If a step is blocked or ambiguous, apply the Stop Policy (continue-report): proceed with a reasonable assumption, write an FB under `.hq/tasks/<branch-dir>/feedbacks/` recording the assumption + open question, toggle the checkbox, commit what was done, and move on. The FB escalates to `## Known Issues` in Phase 8.
+7. If an error occurs, fix it. After 2 failed attempts on the same issue, write an FB describing the failure and what remains, toggle the checkbox, commit the partial work, and continue. The unfinished work surfaces in `## Known Issues` and is resolved post-PR via `/hq:triage`.
 
 **At the end of fresh entry** (all `## Plan` items checked and committed):
 ```bash
@@ -215,9 +216,10 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 Phase 5 has just recorded one or more failing `[auto]` items and handed them back. For each failing item:
 
 1. Analyze across **all** failing items first — shared root causes (common helper bug, missing migration, etc.) are common. Group them where possible.
-2. Apply the fix(es). Follow `hq:workflow` § Before Commit.
-3. Commit per group or per fix with a `fix: ...` subject (Commit Policy).
-4. Do NOT toggle Plan checkboxes — they are already `[x]`. The Phase 5 `[auto]` checkboxes will be toggled by Phase 5 when it re-sweeps.
+2. Follow `hq:workflow` § Before Edit on the surface each fix touches — take the bounded pre-edit read pass **before** applying the fix, so the correction does not introduce a fresh contradiction.
+3. Apply the fix(es). Follow `hq:workflow` § Before Commit.
+4. Commit per group or per fix with a `fix: ...` subject (Commit Policy).
+5. Do NOT toggle Plan checkboxes — they are already `[x]`. The Phase 5 `[auto]` checkboxes will be toggled by Phase 5 when it re-sweeps.
 
 Then return to Phase 5 for the next sweep. The retry cap (§ Settings) limits how many times a given `[auto]` item can cycle back here before being recorded as an FB.
 
