@@ -7,11 +7,11 @@
 # JSONL path: .hq/tasks/<branch-dir>/phase-timings.jsonl
 # Event format: {"phase":"<N>","event":"<start|end>","ts":<unix_secs>}
 #
-# Scope: Phase 4-9 only. Phase 1-3 are structurally unmeasurable on the feature
+# Scope: Phase 4-10 only. Phase 1-3 are structurally unmeasurable on the feature
 # branch's JSONL (fresh start: Phase 1/2 stamps land in caller branch's JSONL,
 # Phase 3 stamp pair is split across the Phase 3 step 2 branch switch; auto-resume:
 # Phase 1's start lands in caller, end in feature, and Phase 2/3 are skipped).
-# Phase 10 (Report) emits the summary itself, so it does not self-stamp either.
+# Phase 11 (Report) emits the summary itself, so it does not self-stamp either.
 #
 # Durations are wall-clock and include any idle / interrupted time between
 # a `start` stamp and its matching `end` stamp across auto-resume sessions.
@@ -50,7 +50,7 @@ case "$cmd" in
     [[ $# -eq 2 ]] || usage
     phase="$1"
     event="$2"
-    [[ "$phase" =~ ^[4-9]$ ]] || { echo "error: <phase> must be 4-9 (Phase 1-3 / 10 are not measured — see file header)" >&2; exit 2; }
+    [[ "$phase" =~ ^([4-9]|10)$ ]] || { echo "error: <phase> must be 4-10 (Phase 1-3 / 11 are not measured — see file header)" >&2; exit 2; }
     [[ "$event" == "start" || "$event" == "end" ]] || { echo "error: <event> must be 'start' or 'end'" >&2; exit 2; }
     jsonl=$(resolve_jsonl)
     mkdir -p "$(dirname "$jsonl")"
@@ -67,7 +67,7 @@ case "$cmd" in
     awk '
       {
         # Skip lines that are not complete timing records (e.g., truncated writes).
-        if ($0 !~ /"phase":"[4-9]".*"event":"(start|end)".*"ts":[0-9]+/) next
+        if ($0 !~ /"phase":"([4-9]|10)".*"event":"(start|end)".*"ts":[0-9]+/) next
 
         ph = $0
         sub(/.*"phase":"/, "", ph); sub(/".*/, "", ph)
@@ -96,7 +96,7 @@ case "$cmd" in
         }
       }
       END {
-        for (i = 4; i <= 9; i++) {
+        for (i = 4; i <= 10; i++) {
           ph = i ""
           if (phase_seen[ph]) {
             printf "Phase %s: %s\n", ph, fmt(phase_dur[ph] + 0)
