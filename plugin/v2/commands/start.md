@@ -31,6 +31,7 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as ta
 | Quality review | Reviewing code quality |
 | Create PR | Creating pull request |
 | Retrospective | Writing retrospective |
+| Distillation | Distilling learnings |
 | Report results | Reporting results |
 
 Set each to `in_progress` when starting and `completed` when done. If a phase is skipped during auto-resume, mark it `completed` immediately.
@@ -57,7 +58,9 @@ Tunables for `/hq:start`. Change the value here and every referencing phase foll
 
   Override the default project-wide via `.hq/start.md` (per-clone).
 
-- **Memory file** — `.hq/start-memory.md` (per-clone, gitignored). Accumulates user corrections about Phase 6 Self-Review decisions and Phase 7 Agent Selection decisions — the orchestrator reads it at Phase 6 entry (Self-Review) and Phase 7 entry (Agent Selection) to inform current judgment. The file does not exist by default; it is created on first user correction and grows over time. See § Phase 6 and § Phase 7 for the consumption pattern.
+- **Memory file** — `.hq/start-memory.md` (per-clone, gitignored). A **char-bounded compressed instruction** of repo-specific learnings, **auto-distilled from retrospectives by Phase 10 (Distillation)** and consumed at **Phase 4 entry** (pre-implementation cautions, complementing § Before Edit) as well as Phase 6 entry (Self-Review) and Phase 7 entry (Agent Selection) for judgment. It is forward-looking instruction text — "next time in this repo, do X" — **not** an incident log of past problems. The char budget (**start-memory char limit** below) is itself the curation mechanism: Phase 10 re-distills to stay within budget rather than letting the file grow unbounded. User corrections MAY be appended directly; the next Phase 10 distillation folds them into the budget. The file does not exist until the first distillation (or correction) lands; treat absence as "no learnings yet, judge fresh". See § Phase 4, § Phase 6, § Phase 7, and § Phase 10 for the consumption / production pattern.
+
+- **start-memory char limit** = **`1500`** — maximum character length of `.hq/start-memory.md`. Phase 10 (Distillation) MUST keep the file at or under this budget by merging / generalizing / evicting lower-leverage entries when new learnings arrive. The cap is the curation mechanism — it forces re-distillation and prevents incident-log bloat. A file over budget at Phase 10 exit is a defect. Tune per-clone via `.hq/start.md`.
 
 ## Commit Policy
 
@@ -77,14 +80,14 @@ If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix
 
 ## Phase Timing
 
-`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 10 can report where the run spent its time. **Stamp scope is Phase 4–9 only.** For each of Phase 4 through Phase 9, stamp once at the top of the phase and once at the bottom:
+`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 11 can report where the run spent its time. **Stamp scope is Phase 4–10 only.** For each of Phase 4 through Phase 10, stamp once at the top of the phase and once at the bottom:
 
 ```
 bash plugin/v2/scripts/phase-timing.sh stamp <N> start
 bash plugin/v2/scripts/phase-timing.sh stamp <N> end
 ```
 
-Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Phase 10 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
+Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Phase 11 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
 
 **Phase 1/2/3 are deliberately not stamped** — they cannot be measured on the feature branch's JSONL:
 
@@ -92,7 +95,7 @@ Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_
 - **Phase 2 (Load Plan)** fresh start: still on the caller's branch. Auto-resume: phase is skipped entirely.
 - **Phase 3 (Execution Prep)** fresh start: the Phase 3 step that runs `git checkout -b <branch>` sits between `start` and `end`, splitting the stamp pair across two JSONL files. Auto-resume: phase is skipped.
 
-Phase 10 (Report) is also not stamped — it is the consumer of the summary and self-stamping would not add measurable signal (the report-emission time is a few tool calls).
+Phase 11 (Report) is also not stamped — it is the consumer of the summary and self-stamping would not add measurable signal (the report-emission time is a few tool calls).
 
 The concrete stamp invocation for each phase is placed at that phase's top and bottom below.
 
@@ -191,6 +194,8 @@ Phase 4 runs in two modes depending on how it was entered:
 - **Fresh entry (from Phase 3)** — iterate unchecked `## Plan` items.
 - **Loopback entry (from Phase 5 with Acceptance failures)** — diagnose the failing `[auto]` items, treat them as implementation gaps, and apply targeted fixes. No new Plan items are created; commits are `fix: ...`-typed and reference what was wrong. Once the fixes are in, Phase 5 re-runs its sweep.
 
+**Read repo learnings (both entry modes, once at Phase 4 entry)** — before implementing or fixing, read `.hq/start-memory.md` if present: the char-bounded compressed instruction of repo-specific cautions distilled from past runs by Phase 10 (§ Settings Memory file). Treat its lines as pre-implementation cautions that complement `hq:workflow § Before Edit`. Absent file → no accumulated learnings yet; proceed. This is the reader side of the retro learning loop — Phase 10 (Distillation) is the writer.
+
 ### Fresh-entry steps
 
 Iterate through unchecked items in the `## Plan` section of `.hq/tasks/<branch-dir>/gh/plan.md`. For **each** item:
@@ -263,9 +268,9 @@ This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and
 
 If the retry cap is `0`, the first sweep's failures go straight to FB + `[x]` with no loopback.
 
-**`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (`[auto] [primary]` — `[manual] [primary]` items are deferred, not failed; see the paragraph below), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 8 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 10 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
+**`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (`[auto] [primary]` — `[manual] [primary]` items are deferred, not failed; see the paragraph below), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 8 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 11 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
 
-**`[primary]` deferred — escape hatch sibling.** When the plan carries a `[manual] [primary]` item (`hq:workflow § #### [manual] [primary] escape hatch`), the Phase 5 sweep does not execute it — same rule as any `[manual]` item, the sweep skips `[manual]`. Do NOT convert it into a failure or an FB; it has not failed, it is **deferred** to reviewer judgment at PR time. Phase 8 gate enforces the compensating controls (`## Primary Verification (manual)` section presence + `hq:manual` label); final pass/fail judgment belongs to the PR reviewer. Phase 10 (Report) MUST surface this item as **`[primary deferred]`** — the sibling notice to `[primary failure]` — so the user sees immediately that the plan's single most important signal is pending reviewer review, not failed.
+**`[primary]` deferred — escape hatch sibling.** When the plan carries a `[manual] [primary]` item (`hq:workflow § #### [manual] [primary] escape hatch`), the Phase 5 sweep does not execute it — same rule as any `[manual]` item, the sweep skips `[manual]`. Do NOT convert it into a failure or an FB; it has not failed, it is **deferred** to reviewer judgment at PR time. Phase 8 gate enforces the compensating controls (`## Primary Verification (manual)` section presence + `hq:manual` label); final pass/fail judgment belongs to the PR reviewer. Phase 11 (Report) MUST surface this item as **`[primary deferred]`** — the sibling notice to `[primary failure]` — so the user sees immediately that the plan's single most important signal is pending reviewer review, not failed.
 
 Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which surface to `## Known Issues` without inline fix). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
 
@@ -374,7 +379,7 @@ Read `.hq/start-memory.md` (per-clone, gitignored) **before** judgment — it ac
 **Decision rationale**: <single paragraph — what was weighed, what tipped the call>
 ```
 
-The **Decision rationale** paragraph is the load-bearing input for Phase 9 (Retrospective) judgment review and Phase 10 (Report) Self-Review summary. Write it as if a reviewer is going to ask "why did you call it `<result>`?" — name the concrete signals, not generic phrases.
+The **Decision rationale** paragraph is the load-bearing input for Phase 9 (Retrospective) judgment review and Phase 11 (Report) Self-Review summary. Write it as if a reviewer is going to ask "why did you call it `<result>`?" — name the concrete signals, not generic phrases.
 
 **Event record**:
 
@@ -449,7 +454,7 @@ Write `.hq/tasks/<branch-dir>/reports/agent-selection-<YYYY-MM-DD-HHMM>.md`:
 **Overall rationale**: <single paragraph — why this particular subset, not the matrix-default, was the right call for this diff>
 ```
 
-Skip-decision rationale MUST be **explicit per agent** — bare "not needed" is rejected. The **Overall rationale** paragraph is the load-bearing input for Phase 9 (Retrospective) judgment review and Phase 10 (Report) Agent Selection summary. The decision report goes to the PR's audit trail; subsequent user correction (appended to `.hq/start-memory.md`) tightens future decisions.
+Skip-decision rationale MUST be **explicit per agent** — bare "not needed" is rejected. The **Overall rationale** paragraph is the load-bearing input for Phase 9 (Retrospective) judgment review and Phase 11 (Report) Agent Selection summary. The decision report goes to the PR's audit trail; subsequent user correction (appended to `.hq/start-memory.md`) tightens future decisions.
 
 **Event record**:
 
@@ -467,7 +472,7 @@ Launch the agents selected in Step 1 in parallel via a single Agent-tool call ba
 bash plugin/v2/scripts/quality-review.sh record initial_review agent=<name> fb_count=<n> severity=C:<n>,H:<n>,M:<n>,L:<n>
 ```
 
-`<name>` is the agent name; `<n>` after `fb_count=` is that agent's total finding count (FB files written for `code-reviewer` / `integrity-checker`; scan-report findings for `security-scanner`); the `severity=` breakdown counts findings by frontmatter `severity:` (FB-file agents) or scan-report severity (`security-scanner` — defaulting to `Medium` when the report omits one). Agents not launched produce no event. The events feed Phase 10's `### Quality Review` summary.
+`<name>` is the agent name; `<n>` after `fb_count=` is that agent's total finding count (FB files written for `code-reviewer` / `integrity-checker`; scan-report findings for `security-scanner`); the `severity=` breakdown counts findings by frontmatter `severity:` (FB-file agents) or scan-report severity (`security-scanner` — defaulting to `Medium` when the report omits one). Agents not launched produce no event. The events feed Phase 11's `### Quality Review` summary.
 
 `security-scanner` does not write FB files — findings live in its scan report. For each scan-report finding the orchestrator deems an actionable risk, synthesize one FB file (severity from scan report, default `Medium`; `skill: /security-scan` frontmatter). These FBs participate in the standard Phase 8 atomic write+move flow.
 
@@ -584,7 +589,7 @@ Four top-level Markdown sections in this exact order — the fixed structure is 
 
 1. **`## Run Summary`** — facts only (no LLM judgment). **All fields are MUST — omitting any of them breaks the primary acceptance gate.** Fields:
    - plan id / branch / run timestamp (UTC, ISO 8601)
-   - **Phase wall-clock durations** — emit `phase-timing.sh summary` output **verbatim** under a `**Phase timing**:` subheading. Phase 4–9 lines + total (Phase 1–3 / Phase 10 are out of scope — see `/hq:start § Phase Timing`). When the helper prints `No timing data recorded.`, emit that line verbatim with a one-line cause note (stamp invocations never landed for this run) — **never silently skip the field**. Any Phase 4–9 showing `(no data)` is a workflow defect signal and MUST be called out in `## Reflection`.
+   - **Phase wall-clock durations** — emit `phase-timing.sh summary` output **verbatim** under a `**Phase timing**:` subheading. Phase 4–10 lines + total (Phase 1–3 / Phase 11 are out of scope — see `/hq:start § Phase Timing`). **Phase 10 (Distillation) runs after this artifact is written, so it shows `(no data)` here — expected, not a defect; its real duration appears only in the Phase 11 Report.** When the helper prints `No timing data recorded.`, emit that line verbatim with a one-line cause note (stamp invocations never landed for this run) — **never silently skip the field**. Any Phase 4–9 showing `(no data)` is a workflow defect signal and MUST be called out in `## Reflection` (Phase 10's `(no data)` here is exempt per the above).
    - total commits made on the branch (`git rev-list --count <base>..HEAD`)
    - Phase 6 Self-Review result
    - Phase 7 Agent Selection mode + launched / skipped agents
@@ -595,7 +600,7 @@ Four top-level Markdown sections in this exact order — the fixed structure is 
    - **`### Phase 7 Agent Selection`** — quote the **Overall rationale** paragraph from the Phase 7 Agent Selection decision report and list which agents were launched / skipped (with their one-line reasons). Then add a `**Hindsight**:` line (≤ 2 sentences) on whether the subset was right — did a launched agent return nothing useful (over-launch), or did a skipped axis surface as an FB from somewhere else / from the user later (under-launch)? Cite concrete FB ids or severity counts where applicable.
    - When the source decision report is missing (resumed runs, prior-version artifacts), emit `(decision report not found — judgment review unavailable)` in place of the quoted rationale and skip the **Hindsight** line.
 3. **`## FB Analysis`** — one entry per FB file under `feedbacks/done/` at Phase 9 entry time. Entry format and the 3 YAML axes (`detection_validity` / `preventable_at_implementation` / `prevention_lever`) plus the free-form `**Notes**` Markdown field are specified in `hq:workflow` § Retrospective. **Zero-FB case**: when `feedbacks/done/` has no FB files, emit the literal body `(no FBs to analyze)` under the section header. Do NOT omit the section — the primary acceptance gate counts the four section headers.
-4. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries, the Judgment Review section, **or the `## Run Summary` Phase timing block** (e.g., "Phase 7 dominated wall-clock at 18m — agent re-launches inflated it; consider judgment-mode skip for `integrity-checker` next run"). When `## Run Summary` shows any Phase 4–9 as `(no data)` or `No timing data recorded.`, the Reflection MUST surface this as a workflow defect signal — it indicates the timing helper failed silently and the next run cannot be compared until it is fixed. Self-praise without a concrete pattern citation is the failure mode this section guards against.
+4. **`## Reflection`** — free-form prose, ≤ 8 sentences. Cite at least one concrete pattern visible across the FB Analysis entries, the Judgment Review section, **or the `## Run Summary` Phase timing block** (e.g., "Phase 7 dominated wall-clock at 18m — agent re-launches inflated it; consider judgment-mode skip for `integrity-checker` next run"). When `## Run Summary` shows any Phase 4–9 as `(no data)` or `No timing data recorded.`, the Reflection MUST surface this as a workflow defect signal — it indicates the timing helper failed silently and the next run cannot be compared until it is fixed. (The defect trigger is **Phase 4–9**, not 4–10: Phase 10 (Distillation)'s expected `(no data)` at retro-write time is exempt — see the `## Run Summary` Phase timing field above.) Self-praise without a concrete pattern citation is the failure mode this section guards against.
 
 ### Stop Policy
 
@@ -604,7 +609,30 @@ Four top-level Markdown sections in this exact order — the fixed structure is 
 
 **Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 9 end`
 
-## Phase 10: Report
+## Phase 10: Distillation
+
+**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 10 start`
+
+Phase 10 closes the retro learning loop. It consumes the Phase 9 retrospective artifact and distills this run's **repo-specific** learnings into the char-bounded compressed instruction at `.hq/start-memory.md`, so the next `/hq:start` reads them at Phase 4 entry. This is the reader-feeding counterpart to Phase 9's otherwise write-only artifact (`hq:workflow § Retrospective` § Distillation (Phase 10) — the canonical contract this section implements).
+
+### Inputs
+
+- `.hq/retro/<branch-dir>/<plan>.md` — this run's retrospective (FB Analysis `prevention_lever` + Notes, Judgment Review hindsight, Reflection). The primary distillation source.
+- `.hq/start-memory.md` — the existing compressed instruction (absent on first run).
+
+### Distill
+
+1. From the retro's `## FB Analysis` and `## Reflection`, extract **repo-specific, forward-looking** cautions — phrased as imperative instruction lines ("next time in this repo, do X"), **not** as incident descriptions. A caution is repo-specific when it changes *how to work in this repo*. Learnings whose fix would change the **plugin itself** (workflow rules / commands) are **not** distilled here — surfacing those for plugin improvement is a separate output owned by a future plan; do not route them into `start-memory.md`.
+2. Merge the new cautions into `.hq/start-memory.md`, deduplicating against existing lines and generalizing where two cautions collapse into one.
+3. **Enforce the char budget** (§ Settings start-memory char limit): if the merged file exceeds the limit, re-distill — combine related lines, drop the lowest-leverage entries — until it fits. The budget is a hard cap; a file over budget at Phase 10 exit is a defect.
+
+When the run produced no distillable repo-specific learning (e.g., zero-FB clean run with no reflection-level pattern), Phase 10 leaves `.hq/start-memory.md` unchanged — an empty or unchanged file is a valid outcome, not a defect.
+
+Phase 10 makes no commits — `.hq/start-memory.md` is a per-clone gitignored artifact (like the retro and timing files), not a tracked source file.
+
+**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 10 end`
+
+## Phase 11: Report
 
 Summarize:
 
@@ -625,7 +653,7 @@ The **Self-Review (Phase 6)** and **Agent Selection (Phase 7)** lines are the us
 
 ### Timing *(MUST)*
 
-The Phase Timing block is a **required output** of every `/hq:start` run — emit it on every Phase 10 invocation, regardless of run outcome (zero-FB, all-FB-Optional, escape hatch, etc.). The block exists so the user can see where the run actually spent time and so future runs can compare wall-clock distributions. Skipping or shortening this block is a real gap, not a continue-report.
+The Phase Timing block is a **required output** of every `/hq:start` run — emit it on every Phase 11 invocation, regardless of run outcome (zero-FB, all-FB-Optional, escape hatch, etc.). The block exists so the user can see where the run actually spent time and so future runs can compare wall-clock distributions. Skipping or shortening this block is a real gap, not a continue-report.
 
 Run the phase-timing summary and include its **verbatim output** under a `### Timing` subsection in the report:
 
@@ -633,11 +661,11 @@ Run the phase-timing summary and include its **verbatim output** under a `### Ti
 bash plugin/v2/scripts/phase-timing.sh summary
 ```
 
-The summary prints per-phase wall-clock duration for **Phase 4–9** and a total. Phase 1–3 / Phase 10 are out of scope (see § Phase Timing for the rationale) and do NOT appear in the output. Durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work — annotate this once in the Report so the user does not over-interpret.
+The summary prints per-phase wall-clock duration for **Phase 4–10** and a total. Phase 1–3 / Phase 11 are out of scope (see § Phase Timing for the rationale) and do NOT appear in the output. Durations are wall-clock and include any idle / interrupted time between matching stamps; they are not a proxy for active work — annotate this once in the Report so the user does not over-interpret.
 
 **If the helper prints `No timing data recorded.`** — emit that line verbatim under `### Timing` along with a one-line cause note (stamps were never recorded for this run, e.g., the timing script was broken or the branch's JSONL file was wiped). Do NOT silently omit the section — absence of data is itself a reportable signal.
 
-Any Phase 4–9 showing `(no data)` is a **workflow defect** — that means the stamp invocation failed (e.g., the script rejected the phase number, the JSONL write failed, the phase was skipped). Flag this in the Report as a defect so it gets fixed.
+Any Phase 4–10 showing `(no data)` is a **workflow defect** — that means the stamp invocation failed (e.g., the script rejected the phase number, the JSONL write failed, the phase was skipped). Flag this in the Report as a defect so it gets fixed.
 
 ### Quality Review
 
@@ -655,7 +683,7 @@ This data — combined with `.hq/start-memory.md` corrections over time — feed
 
 - **Autonomous after Phase 1** — once past pre-flight, do not pause for user input. Residuals flow to the PR's `## Known Issues` via FB files, not mid-flight prompts. **Single exception**: Phase 6 Self-Review may emit `pause-consult` when the implementer's self-assessment surfaces a `significant-gap` outside the plan's scope (see § Stop Policy `pause-consult` and § Phase 6). No other phase may stop autonomously.
 - **Cache-first** — during Phases 4–8, plan body reads/writes target `.hq/tasks/<branch-dir>/gh/plan.md` only. Never call `gh issue edit <plan>` directly. All GitHub pushes go through `plan-cache-push.sh` at the checkpoints defined in `hq:workflow` § Cache-First Principle.
-- **Do not skip Phase 5, Phase 6, Phase 7, or Phase 9** — acceptance, self-review, quality review, and retrospective are mandatory. Phase 9 (Retrospective) runs even on a zero-FB Phase 7; the artifact's fixed four-section structure is the primary acceptance gate.
+- **Do not skip Phase 5, Phase 6, Phase 7, Phase 9, or Phase 10** — acceptance, self-review, quality review, retrospective, and distillation are mandatory. Phase 9 (Retrospective) runs even on a zero-FB Phase 7; the artifact's fixed four-section structure is the primary acceptance gate. Phase 10 (Distillation) runs every time to keep the learning loop closed — an unchanged `start-memory.md` (no distillable repo-specific learning this run) is a valid outcome, not a skip.
 - **Commit as you go** — follow § Commit Policy. The working tree must be clean by Phase 8.
 - **FB escalation to PR body is atomic** — listing in the body and moving to `done/` happen together (see `hq:workflow` § Feedback Loop).
 - **No `hq:feedback` creation** — this command does NOT create `hq:feedback` Issues. That happens via `/hq:triage` during PR review.
