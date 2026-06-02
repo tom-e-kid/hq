@@ -80,11 +80,11 @@ If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix
 
 ## Phase Timing
 
-`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 11 can report where the run spent its time. **Stamp scope is Phase 4–10 only.** For each of Phase 4 through Phase 10, stamp once at the top of the phase and once at the bottom:
+`/hq:start` records a wall-clock timestamp at every phase boundary so Phase 11 can report where the run spent its time. **Stamp scope is Phase 4–10 only.** Each measured phase opens with an **entry stamp** and closes with an **exit stamp**. These are mandatory **executed steps**, not optional annotations: the entry stamp is the phase's **first** action (run it before any other work in the phase), the exit stamp its **last** (run it after all the phase's work). Binding the stamp to the phase's execution — rather than treating it as a side note that reads past — is what keeps it from being skipped when the phase opens with heavy work.
 
 ```
-bash plugin/v2/scripts/phase-timing.sh stamp <N> start
-bash plugin/v2/scripts/phase-timing.sh stamp <N> end
+bash plugin/v2/scripts/phase-timing.sh stamp <N> start   # entry stamp — first action of Phase <N>
+bash plugin/v2/scripts/phase-timing.sh stamp <N> end     # exit stamp  — last action of Phase <N>
 ```
 
 Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_secs>}` — to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Phase 11 summarizes the file via `phase-timing.sh summary`. Durations are wall-clock and include any idle or interrupted time between matching stamps — the plan tolerates this; it measures real elapsed time, not active work.
@@ -97,7 +97,7 @@ Each call appends one line — `{"phase":"<N>","event":"<start|end>","ts":<unix_
 
 Phase 11 (Report) is also not stamped — it is the consumer of the summary and self-stamping would not add measurable signal (the report-emission time is a few tool calls).
 
-The concrete stamp invocation for each phase is placed at that phase's top and bottom below.
+Each measured phase below carries its entry stamp as the first step and its exit stamp as the last step, in the uniform form shown above.
 
 ## Phase 1: Pre-flight Check (non-interactive)
 
@@ -187,7 +187,7 @@ Keep the plan payload (and the task payload, when a parent exists) in conversati
 
 ## Phase 4: Execute
 
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 4 start`
+**Entry stamp — run first, before any other Phase 4 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 4 start`
 
 Phase 4 runs in two modes depending on how it was entered:
 
@@ -228,11 +228,11 @@ Phase 5 has just recorded one or more failing `[auto]` items and handed them bac
 
 Then return to Phase 5 for the next sweep. The retry cap (§ Settings) limits how many times a given `[auto]` item can cycle back here before being recorded as an FB.
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 4 end`
+**Exit stamp — run last, after every other Phase 4 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 4 end`
 
 ## Phase 5: Acceptance
 
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 5 start`
+**Entry stamp — run first, before any other Phase 5 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 5 start`
 
 Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in Phase 4 (loopback entry). Keeping "does the implementation meet the plan?" and "what needs to change to meet it?" in separate phases makes root-cause analysis easier — a batch of failures often points to a shared cause that's obvious only when all of them are visible at once.
 
@@ -287,7 +287,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>   # che
 
 The `Phase 4 → Phase 5` loopback does NOT push between iterations — pushing happens once Phase 5 finally exits.
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 5 end`
+**Exit stamp — run last, after every other Phase 5 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 5 end`
 
 ## Diff Classification
 
@@ -349,7 +349,7 @@ The classification drives which agents run in Phase 7 (Quality Review). Each age
 
 ## Phase 6: Self-Review
 
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 start`
+**Entry stamp — run first, before any other Phase 6 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 start`
 
 Phase 6 is the **orchestrator's pre-Quality-Review self-assessment** — the equivalent of "would a senior engineer let this through without external review?" The gate is **judgment-based**, not mechanical. It evaluates the diff + plan body across 3 axes:
 
@@ -389,11 +389,11 @@ bash plugin/v2/scripts/quality-review.sh record self_review_gate result=<pass|mi
 
 Phase 6 makes no commits. The working tree at Phase 6 exit equals the working tree at Phase 6 entry.
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 end`
+**Exit stamp — run last, after every other Phase 6 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 6 end`
 
 ## Phase 7: Quality Review
 
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 7 start`
+**Entry stamp — run first, before any other Phase 7 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 7 start`
 
 Phase 7 is **pure review** — every FB produced here flows directly to `## Known Issues` at Phase 8 without auto-fix (`hq:workflow § Feedback Loop`). The phase has two sequential steps:
 
@@ -498,11 +498,11 @@ The set of FBs in `.hq/tasks/<branch-dir>/feedbacks/` — comprising Phase 6 min
 
 Quality Review is independent of cache state — no checkpoint push here. The working tree at Phase 7 exit equals the working tree at Phase 7 entry.
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 7 end`
+**Exit stamp — run last, after every other Phase 7 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 7 end`
 
 ## Phase 8: PR Creation
 
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 8 start`
+**Entry stamp — run first, before any other Phase 8 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 8 start`
 
 ### Gate
 
@@ -554,11 +554,11 @@ Delegate to the `pr` skill, passing:
 
 The `pr` skill renders the **narrative layer** from `.hq/pr.md` (or defaults) and appends the workflow sections pack verbatim, then runs `gh pr create` with the labels and flags. The `pr` skill is the single path to `gh pr create`; do not call `gh pr create` directly from `/hq:start`.
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 8 end`
+**Exit stamp — run last, after every other Phase 8 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 8 end`
 
 ## Phase 9: Retrospective
 
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 9 start`
+**Entry stamp — run first, before any other Phase 9 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 9 start`
 
 Generate the retrospective artifact at `.hq/retro/<branch-dir>/<plan>.md` per `hq:workflow` § Retrospective. The artifact captures (a) factual run summary derivable from JSONL events / git log / plan cache, (b) per-FB categorical analysis answering whether each Quality Review FB was a valid detection and whether it was preventable at implementation time, and (c) a judgment review of the Phase 6 Self-Review and Phase 7 Agent Selection decisions made during this run. The hypothesis under test, run after run, is that Phase 7 time can be shortened by catching preventable defects in Phase 4 and by tuning Phase 6/7 judgment with accumulated corrections — the retro artifact accumulates the evidence for both axes.
 
@@ -607,11 +607,11 @@ Four top-level Markdown sections in this exact order — the fixed structure is 
 - Phase 9 runs only when Phase 8 completed. On any ABORT path the run terminates earlier and Phase 9 is not reached — no special handling needed here.
 - Errors composing the artifact (missing JSONL events, FB file with malformed frontmatter, missing decision report etc.) are continue-report: emit what's available, leave a clearly-labeled gap in the affected section (e.g., `(decision report not found)` in `## Judgment Review`), and continue. Do NOT block once the PR is already created.
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 9 end`
+**Exit stamp — run last, after every other Phase 9 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 9 end`
 
 ## Phase 10: Distillation
 
-**Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 10 start`
+**Entry stamp — run first, before any other Phase 10 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 10 start`
 
 Phase 10 closes the retro learning loop. It consumes the Phase 9 retrospective artifact and distills this run's **repo-specific** learnings into the char-bounded compressed instruction at `.hq/start-memory.md`, so the next `/hq:start` reads them at Phase 4 entry. This is the reader-feeding counterpart to Phase 9's otherwise write-only artifact (`hq:workflow § Retrospective` § Distillation (Phase 10) — the canonical contract this section implements).
 
@@ -630,7 +630,7 @@ When the run produced no distillable repo-specific learning (e.g., zero-FB clean
 
 Phase 10 makes no commits — `.hq/start-memory.md` is a per-clone gitignored artifact (like the retro and timing files), not a tracked source file.
 
-**Stamp end:** `bash plugin/v2/scripts/phase-timing.sh stamp 10 end`
+**Exit stamp — run last, after every other Phase 10 action:** `bash plugin/v2/scripts/phase-timing.sh stamp 10 end`
 
 ## Phase 11: Report
 
