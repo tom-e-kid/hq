@@ -613,7 +613,7 @@ Four top-level Markdown sections in this exact order — the fixed structure is 
 
 **Stamp start:** `bash plugin/v2/scripts/phase-timing.sh stamp 10 start`
 
-Phase 10 closes the retro learning loop. It consumes the Phase 9 retrospective artifact and distills this run's **repo-specific** learnings into the char-bounded compressed instruction at `.hq/start-memory.md`, so the next `/hq:start` reads them at Phase 4 entry. This is the reader-feeding counterpart to Phase 9's otherwise write-only artifact (`hq:workflow § Retrospective` § Future active loop — the consumer this section implements).
+Phase 10 closes the retro learning loop. It consumes the Phase 9 retrospective artifact and distills this run's **repo-specific** learnings into the char-bounded compressed instruction at `.hq/start-memory.md`, so the next `/hq:start` reads them at Phase 4 entry. This is the reader-feeding counterpart to Phase 9's otherwise write-only artifact (`hq:workflow § Retrospective` § Distillation (Phase 10) — the canonical contract this section implements).
 
 ### Inputs
 

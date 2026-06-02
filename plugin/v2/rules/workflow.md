@@ -382,7 +382,7 @@ The default rule forbids `[manual] [primary]`. This subsection is the sole excep
 
 **Runtime behavior**:
 
-- `/hq:start` Phase 5 does NOT execute `[manual] [primary]` (same as other `[manual]` items — the Phase 5 sweep ignores `[manual]`). Phase 10 Report surfaces the item as **`[primary deferred]`** — the sibling notice to `[primary failure]`, signalling the single most important signal is pending reviewer judgment rather than failed.
+- `/hq:start` Phase 5 does NOT execute `[manual] [primary]` (same as other `[manual]` items — the Phase 5 sweep ignores `[manual]`). Phase 11 Report surfaces the item as **`[primary deferred]`** — the sibling notice to `[primary failure]`, signalling the single most important signal is pending reviewer judgment rather than failed.
 - Final pass/fail judgment happens at PR review. Reviewer uses the evidence block to verify the observable was actually achieved; merge approval is the explicit ack gate.
 
 **Rollback path**: if `[manual] [primary]` usage drifts beyond the domains above (e.g., selected for web features where `/hq:e2e-web` was available), tighten condition (a) to enumerate permitted domains explicitly. No automated drift monitor is built into this workflow version — PR review is the safety net.
@@ -611,7 +611,7 @@ FB handling is **phase-dependent** — different phases generate FBs for differe
 
 ## Retrospective
 
-Per-run reflective analysis written by `/hq:start` Phase 9 (Retrospective) to a Markdown artifact at `.hq/retro/<branch-dir>/<plan>.md`. The artifact lets the run be re-examined after the fact along two axes — *was each Phase 7 (Quality Review) FB a valid detection? Could it have been prevented at implementation time? If so, by what lever?* AND *was the Phase 6 (Self-Review) call and the Phase 7 Agent Selection call appropriate given what subsequently surfaced?* — without re-reading session transcripts. The hypotheses are that (a) a non-trivial fraction of Phase 7 FBs are preventable at implementation time, exposed by structured per-FB analysis, and (b) the Phase 6/7 judgment calls drift over runs in ways that accumulated user corrections in `.hq/start-memory.md` should tighten.
+Per-run reflective analysis written by `/hq:start` Phase 9 (Retrospective) to a Markdown artifact at `.hq/retro/<branch-dir>/<plan>.md`. The artifact lets the run be re-examined after the fact along two axes — *was each Phase 7 (Quality Review) FB a valid detection? Could it have been prevented at implementation time? If so, by what lever?* AND *was the Phase 6 (Self-Review) call and the Phase 7 Agent Selection call appropriate given what subsequently surfaced?* — without re-reading session transcripts. The hypotheses are that (a) a non-trivial fraction of Phase 7 FBs are preventable at implementation time, exposed by structured per-FB analysis, and (b) the Phase 6/7 judgment calls drift over runs in ways that accumulated learnings in `.hq/start-memory.md` — auto-distilled from these retros by Phase 10 (Distillation) — should tighten.
 
 `.hq/retro/` follows `.hq/` semantics: gitignored (covered by the existing `.hq` entry), per-clone, branch-local. Worktree copy is not propagated by `worktree-setup.sh` — retro is the run's frozen output, not project-wide configuration. Team-wide aggregation, if ever required, is a separate plan.
 
@@ -629,7 +629,7 @@ The artifact has exactly **four** top-level Markdown sections, in this order:
 
 1. **`## Run Summary`** — facts about the run, all derivable from existing JSONL events + git log + plan cache + decision reports (no LLM judgment in this section). **Every field below is MUST — omitting any of them breaks the primary acceptance gate.** Fields:
    - plan id, branch name, run timestamp (UTC, ISO 8601)
-   - **phase wall-clock durations** — read `.hq/tasks/<branch-dir>/phase-timings.jsonl` via `phase-timing.sh summary` and emit the helper's output **verbatim**. Scope is **Phase 4–9 only**; Phase 1–3 / Phase 10 are deliberately not measured (see `/hq:start § Phase Timing` for the structural reasons — Phase 1–3 stamp pairs split across the Phase 3 branch switch, Phase 10 self-emits the summary). When the helper prints `No timing data recorded.` (no stamps ever landed for this run), emit that line verbatim with a one-line cause note — **never silently skip the field**. Any Phase 4–9 showing `(no data)` is a workflow defect signal (stamp invocations failed) and the `## Reflection` section MUST call it out.
+   - **phase wall-clock durations** — read `.hq/tasks/<branch-dir>/phase-timings.jsonl` via `phase-timing.sh summary` and emit the helper's output **verbatim**. Scope is **Phase 4–10**; Phase 1–3 / Phase 11 are deliberately not measured (see `/hq:start § Phase Timing` for the structural reasons — Phase 1–3 stamp pairs split across the Phase 3 branch switch, Phase 11 (Report) self-emits the summary). **Phase 10 (Distillation) runs after this artifact is written, so it shows `(no data)` here — expected, not a defect; its real duration appears only in the Phase 11 Report.** When the helper prints `No timing data recorded.` (no stamps ever landed for this run), emit that line verbatim with a one-line cause note — **never silently skip the field**. Any Phase 4–9 showing `(no data)` is a workflow defect signal (stamp invocations failed) and the `## Reflection` section MUST call it out (Phase 10's `(no data)` here is exempt per the above).
    - total commits made on the branch (`git rev-list --count <base>..HEAD`)
    - Phase 6 Self-Review result (read `.hq/tasks/<branch-dir>/quality-review-events.jsonl` via `quality-review.sh summary`)
    - Phase 7 Agent Selection mode and launched / skipped agents (same source)
@@ -681,6 +681,13 @@ The per-FB block has **two parts**: (1) a YAML fence carrying **3 categorical ax
 
 Adding axis values or introducing a new YAML axis is a deliberate change to this rule file; runtime composition MUST NOT invent values or add keys.
 
-### Future active loop (out of scope here)
+### Distillation (Phase 10) — closing the active loop
 
-Reading retro files back into `/hq:draft` Phase 2 (Simplicity gate priors) or `/hq:start` Phase 1 (pre-flight priors) is **deliberately not implemented** in the current writer. The judgment is that the writer side should accumulate enough artifacts to evaluate before designing the consumer side. When the consumer is added, it ships as a **separate `hq:plan`**, not as an extension to this section.
+`/hq:start` Phase 10 (Distillation) closes the learning loop the retrospective opens: it consumes this run's retro artifact and distills the **repo-specific** learnings into a **char-bounded compressed instruction** at `.hq/start-memory.md`, which Phase 4 reads at implementation time (and Phase 6 / Phase 7 consult for judgment). Contract:
+
+- **Source** — the retro artifact's `## FB Analysis` (`prevention_lever` + Notes) and `## Reflection`.
+- **Output** — forward-looking imperative cautions ("next time in this repo, do X"), merged and deduplicated into `.hq/start-memory.md`. **Not** an incident log of past problems.
+- **Budget** — `.hq/start-memory.md` is hard-capped by the `start-memory char limit` setting (`/hq:start § Settings`); Phase 10 re-distills (merge / generalize / evict) to stay within budget. The cap is the curation mechanism that prevents unbounded growth.
+- **Repo-specific only** — learnings whose fix would change the **plugin itself** (workflow rules / commands) are NOT distilled into `start-memory.md`; surfacing those as plugin-improvement feedback from the same retro source is a **separate output owned by a future `hq:plan`**.
+
+Reading retro learnings back into `/hq:draft` Phase 2 (Simplicity gate priors) remains future work — when added, it ships as a separate `hq:plan`, not as an extension to this section.
