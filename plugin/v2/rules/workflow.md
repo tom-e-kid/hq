@@ -553,7 +553,7 @@ The `Refs #<hq:task>` line is emitted **only when the `hq:plan` has a parent `hq
 - **`## Known Issues`** — every Phase 4 / 5 / 6 / 7 FB that did not auto-resolve, organized into three action-priority categories (Must Address / Recommended / Optional) so PR reviewers can triage at a glance. The leading `**Triage summary**` line gives the count breakdown immediately; each entry carries both a severity tag (`[<Severity>]`) and an originating-agent tag (`[<originating-agent>]`). **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
 - If either section is empty, omit it.
 
-During PR review, use `/hq:triage <PR>` to process the `Known Issues` entries — each can be: (1) added to the `hq:plan` for follow-up work, (2) left as-is, or (3) carved out as an `hq:feedback` Issue.
+During PR review, use `/hq:triage <PR>` to process the `Known Issues` entries — each can be: (1) added to the `hq:plan` for follow-up work, (2) left as-is, (3) carved out as an `hq:feedback` Issue, or (4) fixed in place (applied directly on the PR branch under a regression gate, for trivial and clearly-correct findings).
 
 ### Invariants (NOT overridable by `.hq/pr.md`)
 
@@ -608,6 +608,8 @@ FB handling is **phase-dependent** — different phases generate FBs for differe
 **Atomicity** — escalation into `## Known Issues` and the move to `feedbacks/done/` are a single atomic operation at Phase 8 (PR Creation). Surfacing an FB in the PR body without moving its file (or moving the file without surfacing the content) is forbidden. This atomicity cannot be skipped or weakened by project-level overrides such as `.hq/pr.md` — see `## PR Body Structure` § Invariants.
 
 **Note**: FB escalation to `hq:feedback` Issues happens during PR review via `/hq:triage` — not from `/hq:start`, `/pr`, or `/hq:archive`. Local FB files are a **branch-internal** concept; the PR body's `## Known Issues` is the hand-off point.
+
+**`/hq:triage` dispositions (four)**: once a Known Issue reaches the PR body, `/hq:triage` resolves each entry as one of — (1) **add to `hq:plan`** (follow-up work), (2) **leave as-is** (accepted limitation, or already resolved by a later commit — annotated `already resolved in <SHA>`), (3) **escalate to `hq:feedback`**, or (4) **fix in place**. Disposition 4 is the in-PR-branch **resolution path**: a trivial, clearly-correct finding is fixed directly (regression gate → commit → push → `fixed in <SHA>`), bypassing the `hq:plan` re-run loop that would otherwise re-execute `/hq:start` Phases 5–7. This is human-gated and orthogonal to the `/hq:start` Phase 7 auto-fix that was deliberately retired (each fix needs an explicit per-item user decision).
 
 ## Retrospective
 
