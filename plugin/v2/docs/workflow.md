@@ -47,7 +47,7 @@ Creation path:
 
 Response tools (invoked between intervention #2 and merge, at the user's discretion):
 
-- **`/hq:triage <PR>`** — interactive per-item: for each entry in the PR body's `## Known Issues` section, choose (1) add to `hq:plan` for follow-up, (2) leave as-is, or (3) carve out as `hq:feedback`. The **only** place `hq:feedback` Issues are created from the main workflow.
+- **`/hq:triage <PR>`** — interactive per-item: for each entry in the PR body's `## Known Issues` section, choose (1) add to `hq:plan` for follow-up, (2) leave as-is, (3) carve out as `hq:feedback`, or (4) fix in place (apply directly on the PR branch under a regression gate, for trivial and clearly-correct findings). The **only** place `hq:feedback` Issues are created from the main workflow.
 - **`/hq:respond`** — autonomously processes external PR review comments (Copilot, reviewers): fix / escalate as `hq:feedback` / dismiss.
 
 ## Commands
@@ -233,29 +233,41 @@ Phase 2: Parse Known Issues
 │
 Phase 3: Triage (strict-interactive, advisory suggestion)
 │  For each item, sequentially (item n+1 is not shown until item n is answered):
-│    Briefing: 概要 / 浮上経緯 / advisory Suggestion + 1-2 文 rationale
-│    Disposition prompt — bare 1 / 2 / 3 only:
-│      1: add to hq:plan
-│      2: leave as-is
-│      3: escalate to hq:feedback
+│    Liveness check vs current HEAD: live / already-resolved (<SHA>) / uncertain(→live)
+│    Briefing: 概要 / 浮上経緯 / 現状(liveness) / 影響範囲(scope) / advisory Suggestion
+│    Ordered gate (first match wins): Liveness→Validity→Ownership→Scope/Risk
+│      Gate0 already-resolved → 2 ("resolved in <SHA>")  | uncertain → live, fall through
+│      Gate1 false-positive   → 2 (leave)
+│      Gate2 別owner/別timescale → 3 (escalate)
+│      Gate3 trivial+clearly-correct+低blast → 4 (fix now) | substantive → 1 (plan)
+│    Bias: validity 不明→2 / scope 不明→1(not 4) / ownership 不明は 3 にしない
+│    Disposition prompt — bare 1 / 2 / 3 / 4 only:
+│      1: add to hq:plan   2: leave as-is   3: escalate to hq:feedback   4: fix in place
 │  Silent / blank / "go with your suggestion" / bulk / 自然言語 disposition は halt
 │    → 同 briefing で再質問 (Suggestions are advisory; no disposition is APPLIED
 │      without an explicit per-item response)
 │  (collect decisions; no writes yet)
 │
-Phase 4: Apply (batch)
+Phase 4: Apply (fix-now first, then atomic body edit)
+│  (4) fix in place: checkout PR branch → 最小修正 → regression gate(format/build/test)
+│        → fix: commit + push (2回失敗で revert・open据え置き) → SHA capture
 │  (1) append to hq:plan cache + plan-cache-push.sh
 │  (3) gh issue create --label hq:feedback (inherit projects from hq:task, NOT milestone)
-│  Edit PR body to reflect dispositions (single gh pr edit call)
+│  Single gh pr edit — body transform: 1=added to hq:plan / 2-resolved=already resolved in <SHA>
+│    / 3=escalated #N / 4=fixed in <SHA>
 │
 Phase 5: Report
-   counts per disposition + next-step hint
+   counts per disposition (fixed-in count + SHA, reverted-open に注意) + next-step hint
 ```
 
 **Key decisions**:
 
 - **Only creator of `hq:feedback` Issues** in the workflow. All other commands route residual issues through the PR body.
-- **Batch edits** — collect all per-item decisions interactively, then apply them in a single PR body edit.
+- **Four dispositions** — add to hq:plan / leave / escalate / fix in place. Disposition 4 closes the non-convergent loop where a trivial fix would route through `hq:plan` and re-run `/hq:start` Phases 5–7, generating fresh Known Issues. Human-gated, one finding at a time — distinct from the `/hq:start` Phase 7 auto-fix that was retired.
+- **Liveness before disposition** — each finding is re-checked against current HEAD; already-resolved findings fold into disposition 2 with an `already resolved in <SHA>` note (no 5th disposition). Never claim resolved without a concrete SHA; uncertain stays live.
+- **Ordered gate + over-fixing guard** — cheaper / safer dispositions are tested first; asymmetric cost (blind fix → quality incident, re-review → time) biases ambiguity to the safe side: validity 不明→2, scope 不明→1 (not 4).
+- **Fix-in-place regression gate** — disposition 4 commits only after format / build (and tests where defined) pass; 2 failures → revert and leave open. Commits/pushes precede the single atomic body edit so the body can reference each SHA.
+- **Batch body edits** — collect all per-item decisions interactively, then apply the body transforms in a single PR body edit.
 - **hq:plan updates go through cache sync** — never `gh issue edit <plan>` directly.
 
 ### `/hq:archive`
