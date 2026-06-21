@@ -72,15 +72,16 @@ Phase 2: Brainstorm + Simplicity gatekeeper (interactive — user intervention)
 │  Plan-split judgment: coupling test (4+ parallel decisions OR independently-shippable → split)
 │  Convergence: Why / Approach / Editable surface entries with inline tags /
 │               Plan items with consumer suffixes / primary w/marker committable
-│  Exit: commit-or-pushback message (single in-chat commitment line)
-│         User endorses "go" → Phase 3, or raises 違和感 → continue brainstorm
+│  Exit: converged → flows into Phase 3 (no in-chat artifact of its own)
 │
-Phase 3: Compose plan body + consumer coverage check (autonomous)
-│  Compose body from Phase 2 conversation state — no further user prompt
-│  Pre-emit check: every Plan item's (consumer: <name>) suffix is consistent
+Phase 3: Compose plan body → consumer coverage check → commit-or-pushback gate
+│  Compose body from Phase 2 conversation state — no subagent
+│  Pre-gate check: every Plan item's (consumer: <name>) suffix is consistent
+│  Gate: present the composed body VERBATIM in-chat (the exact text the Issue gets)
+│         User endorses "go" → Phase 4, or raises 違和感 → back to Phase 2 brainstorm
 │
-Phase 4: Create hq:plan Issue
-│  gh issue create --label hq:plan
+Phase 4: Create hq:plan Issue (autonomous, after "go")
+│  Emit the approved body verbatim — gh issue create --label hq:plan
 │  Register as sub-issue, inherit milestone + projects (when a parent hq:task exists)
 │
 Phase 5: Report
@@ -92,10 +93,10 @@ Phase 5: Report
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
 - The orchestrator composes the exact `## Why` + `## Approach` + `## Editable surface` + `## Plan` + `## Acceptance` flat 5-section structure inline from Phase 2 conversation state, with exactly one `[auto] [primary]` item in `## Acceptance` (or `[manual] [primary]` under the escape hatch).
 - `## Editable surface` IS the single AI agent fence — each entry carries an inline tag (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and the complement is implicit out of scope. Stack-natural extensions follow the Boundary expansion protocol (add the entry to `## Editable surface` *before* touching the surface, note the rationale in `## Approach`).
-- Downstream coordination lives in `## Plan` items via the `*(consumer: <name>)*` suffix; the consumer coverage check at Phase 3 enforces consistency before the Issue emits.
+- Downstream coordination lives in `## Plan` items via the `*(consumer: <name>)*` suffix; the consumer coverage check at Phase 3 enforces consistency before the body is presented at the commit-or-pushback gate.
 - Phase 2 is the mitigation checkpoint for `hq:workflow § Simplicity Criterion` — it challenges benefit/complexity tradeoffs before the plan is composed rather than after.
 - `## Plan` granularity: each item is a single meaningful commit unit. No numeric cap — motive-driven bloat is challenged by the Phase 2 Simplicity gatekeeper, not by a count ceiling.
-- Review surface is the **GitHub Issue** only. The Phase 2 commit-or-pushback message is a one-shot commitment checkpoint, not a Recap review; full plan-body review happens on the Issue after Phase 4.
+- Review happens twice over identical content: the Phase 3 commit-or-pushback gate presents the fully-composed plan body **verbatim** in-chat for `go`, and the GitHub Issue created in Phase 4 carries that same body. The in-chat artifact IS the plan body (not a lossy Recap summary), so what the user approves equals what gets created — no drift.
 - The handoff is intentional — user reviews / edits the `hq:plan` Issue before `/hq:start` is invoked.
 
 ### `/hq:start`
