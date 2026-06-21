@@ -14,24 +14,6 @@
   - Set `.hq/settings.json` `{ "base_branch": "<branch>" }` only when an explicit project-wide override is needed (e.g., a repo whose default base is `develop`, not `main`).
   - The resolution order is **invariant** across all consumers (`/hq:start`, `pr` skill, `worktree-rebase` skill). Consumers MUST NOT skip the `context.md` step.
 
-## Before Edit
-
-Before modifying an existing surface, take **one bounded read pass** over the context the edit depends on — the pre-edit counterpart to the post-edit § Before Commit blast-radius self-check. The two are complementary, not redundant: this pass prevents a contradiction from being written in the first place (it fires *before* the edit); the blast-radius self-check detects stale references already written (it fires *after*). One pass per surface, not a defect-exhaustion loop:
-
-1. **The whole target surface** — read the entire function / section / config block being changed end-to-end, not just the lines at the edit point, so the change fits the surface's existing shape and invariants.
-2. **Same-concept occurrences in the same file + adjacent context** — scan the file for the concept being edited appearing elsewhere (the same key / heading / marker / helper / branch) and read the lines immediately around the edit, so parallel occurrences stay consistent and neighbouring logic is not broken.
-3. **The change target's contract + nearest callers / consumers** — for code: confirm the exact signature, arguments, and return shape; for a doc / procedure surface: confirm the section's prescribed fields, accepted values, markers, and citation contract (which commands / rules cite it by `§ <section>`). Then read the closest call sites or consumer files that depend on the target, so the edit matches the contract its callers / consumers expect.
-
-This is a read discipline, not a fix loop: when the three reads surface no conflict, proceed straight to the edit. It exists to test the hypothesis that the dominant defect-prevention lever at implementation time is reading the surrounding code before writing. That hypothesis is tracked as the `better-pre-read` entry in `## Retrospective` § `prevention_lever`, whose accumulated distribution across runs is the evidence that will confirm or revise it.
-
-## Before Commit
-
-1. Run `format` command (see Commands table in CLAUDE.md)
-2. Verify `build` command passes
-3. **Blast-radius self-check** — one pass per unit, not a defect-exhaustion loop:
-   - For each **named thing** (symbol / heading / marker / config key / enum case / label / error code) this change introduces, renames, or shifts the semantics of, `grep` the repo and update every stale reference. LSP find-references is an equivalent substitute where available.
-   - For each procedure (gate / pipeline / phased doc / state machine) this change touches, re-read it top-to-bottom once in **flow order** and verify each step's preconditions still hold against the new state.
-
 ## Terminology
 
 - **`hq:workflow`** — shorthand for `plugin/v2/rules/workflow.md` (this file — the plugin-internal source of truth for the workflow rule, loaded on demand by each command). Skills and commands cite sections as `hq:workflow § <section>` instead of repeating the full path.
@@ -43,37 +25,6 @@ This is a read discipline, not a fix loop: when the three reads surface no confl
 - **`hq:wip`** — a GitHub Issue modifier label. Purpose is twofold: (1) **drafting marker** — the issue is still being shaped and not ready for automation, (2) **automation gate** — when `/hq:start` or `/hq:draft` is triggered automatically (e.g., from GitHub Actions), the command must skip (or, in manual invocation, pause and confirm) any Issue carrying this label.
 
 These are plugin-specific terms. Always use the `hq:` prefix to distinguish from general "task", "plan", or "feedback".
-
-## Project Overrides
-
-Every hq command, skill, and agent MAY consult a project-local override file under `.hq/` and layer its content on top of the defaults defined in this rule file. Overrides **augment**, never **replace**, the workflow contract — a consumer's own Invariants (phases, gates, required outputs, structural invariants of generated artifacts such as the PR body) remain in force.
-
-### Override files
-
-| Override file | Consumed by | Typical content |
-|---|---|---|
-| `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. always prefer `[manual]` primary on iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
-| `.hq/start.md` | `/hq:start` | Project-specific execution nuance (commit / build / test notes that the command's phases should layer in) |
-| `.hq/triage.md` | `/hq:triage` | Briefing tone / Suggestion wording hints / project-specific lean cues for individual findings |
-| `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |
-| `.hq/pr.md` | `pr` skill | PR body prose style, title conventions — scope-limited by the `pr` skill's own Invariants |
-| `.hq/code-review.md` | `code-reviewer` agent | Project-specific review axes |
-| `.hq/security-scan.md` | `security-scanner` agent | Project-specific security patterns |
-| `.hq/integrity-check.md` | `integrity-checker` agent | Project-specific plan / diff reconciliation hints |
-| `.hq/xcodebuild-config.md` | `xcodebuild-config` skill | Xcode build / run commands — managed by the skill itself (not hand-authored) |
-
-Override files are optional. Absence means "apply defaults"; missing files are never errors. Each consumer resolves its override file by a literal `cat .hq/<name>.md` (or equivalent Read) at load time.
-
-### Scope rules
-
-- **Overrides augment, Invariants govern.** A consumer's Invariants are NOT overridable. If override content appears to contradict an Invariant, the Invariant wins; the consumer SHOULD flag the conflict to the user after execution so the override file can be corrected. Concrete example: `.hq/triage.md` MUST NOT contain category-level or severity-level disposition pre-decisions (e.g. "always escalate Critical", "leave all Low as-is"), because the `/hq:triage` Phase 3 invariant — "No disposition may be APPLIED without an explicit per-item response from the user" — forbids any pre-applied disposition. Briefing tone, Suggestion wording, and per-finding lean cues are permissible; pre-decisions are not.
-- **Local to the consuming command / skill / agent.** An override file affects only its own consumer. It cannot introduce new phases, gates, or mandatory checks that alter another command's behavior. Cross-command behavior changes go through this rule file, not through overrides.
-- **Per-clone by default.** `.hq/` is included in `.gitignore` by `hq:bootstrap` Task 4, so override files are **per-clone / per-worktree** and NOT team-shared out of the box. Teams that want shared policy either (a) un-ignore specific override files and commit them, or (b) upstream the policy into this rule file. The former is experimental and risks per-member drift; the latter is the canonical path for team-wide rules.
-- **Worktree propagation.** `plugin/v2/skills/worktree-setup/scripts/worktree-setup.sh` copies existing override files into a newly created worktree so the worktree inherits the same behavior without re-setup. New override file names introduced here MUST be added to that script's copy list.
-
-### Language
-
-Override content is free-form prose in the project's working language (typically the user's conversation language). No structural markers are required — the consumer reads the file body as guidance.
 
 ## Naming Conventions
 
@@ -108,6 +59,37 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
 
 This rule applies to every skill and command that generates Issue or PR content — `/hq:draft`, `/hq:start` (fallback drafting), and the `pr` skill.
+
+## Project Overrides
+
+Every hq command, skill, and agent MAY consult a project-local override file under `.hq/` and layer its content on top of the defaults defined in this rule file. Overrides **augment**, never **replace**, the workflow contract — a consumer's own Invariants (phases, gates, required outputs, structural invariants of generated artifacts such as the PR body) remain in force.
+
+### Override files
+
+| Override file | Consumed by | Typical content |
+|---|---|---|
+| `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. always prefer `[manual]` primary on iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
+| `.hq/start.md` | `/hq:start` | Project-specific execution nuance (commit / build / test notes that the command's phases should layer in) |
+| `.hq/triage.md` | `/hq:triage` | Briefing tone / Suggestion wording hints / project-specific lean cues for individual findings |
+| `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |
+| `.hq/pr.md` | `pr` skill | PR body prose style, title conventions — scope-limited by the `pr` skill's own Invariants |
+| `.hq/code-review.md` | `code-reviewer` agent | Project-specific review axes |
+| `.hq/security-scan.md` | `security-scanner` agent | Project-specific security patterns |
+| `.hq/integrity-check.md` | `integrity-checker` agent | Project-specific plan / diff reconciliation hints |
+| `.hq/xcodebuild-config.md` | `xcodebuild-config` skill | Xcode build / run commands — managed by the skill itself (not hand-authored) |
+
+Override files are optional. Absence means "apply defaults"; missing files are never errors. Each consumer resolves its override file by a literal `cat .hq/<name>.md` (or equivalent Read) at load time.
+
+### Scope rules
+
+- **Overrides augment, Invariants govern.** A consumer's Invariants are NOT overridable. If override content appears to contradict an Invariant, the Invariant wins; the consumer SHOULD flag the conflict to the user after execution so the override file can be corrected. Concrete example: `.hq/triage.md` MUST NOT contain category-level or severity-level disposition pre-decisions (e.g. "always escalate Critical", "leave all Low as-is"), because the `/hq:triage` Phase 3 invariant — "No disposition may be APPLIED without an explicit per-item response from the user" — forbids any pre-applied disposition. Briefing tone, Suggestion wording, and per-finding lean cues are permissible; pre-decisions are not.
+- **Local to the consuming command / skill / agent.** An override file affects only its own consumer. It cannot introduce new phases, gates, or mandatory checks that alter another command's behavior. Cross-command behavior changes go through this rule file, not through overrides.
+- **Per-clone by default.** `.hq/` is included in `.gitignore` by `hq:bootstrap` Task 4, so override files are **per-clone / per-worktree** and NOT team-shared out of the box. Teams that want shared policy either (a) un-ignore specific override files and commit them, or (b) upstream the policy into this rule file. The former is experimental and risks per-member drift; the latter is the canonical path for team-wide rules.
+- **Worktree propagation.** `plugin/v2/skills/worktree-setup/scripts/worktree-setup.sh` copies existing override files into a newly created worktree so the worktree inherits the same behavior without re-setup. New override file names introduced here MUST be added to that script's copy list.
+
+### Override Language
+
+Override content is free-form prose in the project's working language (typically the user's conversation language). No structural markers are required — the consumer reads the file body as guidance.
 
 ## Issue Hierarchy
 
@@ -469,37 +451,6 @@ Consequences for plan structure:
 - Naturally broad scopes should be split into multiple `hq:plan`s at the gatekeeper stage rather than padded into one. `/hq:draft` Phase 2 raises this split decision explicitly when the brainstorm produces a large scope (see `## hq:plan` § Approach § plan-split signal for the coupling-based criterion).
 - The `## Editable surface` inline-tag set and `[auto] [primary]` 1-per-plan rule are retained as formal constraints; they pass the Simplicity criterion test by being low-burden and tightly targeted at specific gaming patterns (undeclared surface change, success-signal dissolution).
 
-## Cache-First Principle
-
-During `/hq:start` execution, **all reads and writes to the plan body go to the local cache**. The GitHub API is touched only at explicit **sync checkpoints**. This keeps execution fast, avoids rate limits, and lets individual checkbox toggles be cheap.
-
-### Cache files
-
-```
-.hq/tasks/<branch-dir>/gh/task.json    # read-only snapshot of hq:task
-.hq/tasks/<branch-dir>/gh/plan.md      # read/write working copy of hq:plan body
-```
-
-### Sync checkpoints
-
-| Direction | When | Action |
-|---|---|---|
-| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
-| Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
-| Push (cache → GitHub) | After Phase 5 (Acceptance) complete | Push Acceptance `[auto]` checkbox updates |
-| Push (cache → GitHub) | Before PR creation | Final consistency sync |
-
-### Helper scripts
-
-All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/`:
-
-- **`plan-cache-pull.sh <plan-number>`** — fetch plan body from GitHub, atomically write to `.hq/tasks/<branch-dir>/gh/plan.md`. Prints the written path.
-- **`plan-cache-push.sh <plan-number>`** — push the cached plan body to the GitHub Issue via `gh issue edit --body-file`.
-- **`plan-check-item.sh <pattern>`** — toggle a single `[ ]` checkbox to `[x]` in the cache, matching by fixed substring. Exit 3 = no match, exit 4 = ambiguous, already-checked = idempotent no-op.
-- **`find-plan-branch.sh <plan-number>`** — scan `.hq/tasks/*/context.md` for a `plan: <N>` match, print the corresponding `branch:` field. Exit 1 = not found.
-
-**Rule**: individual checkbox toggles during execution call `plan-check-item.sh` (cache only). Never call `gh issue edit <plan>` directly — always go through `plan-cache-push.sh` at the defined sync checkpoints.
-
 ## PR Body Structure
 
 The PR body is composed in **two layers**:
@@ -571,6 +522,55 @@ The following structural elements of the PR body are invariants of the HQ workfl
 - **Milestone / project inheritance** *(only when the plan has a parent `hq:task`)* — if the source `hq:task` has a milestone or project(s), the PR MUST inherit them via `--milestone` / `--project` flags. When no parent exists, omit these flags entirely — there is nothing to inherit from.
 
 A newly bootstrapped repository should understand these rules from this section alone — `.hq/pr.md` overrides are applied on top, never in place of, the invariants above.
+
+## Before Edit
+
+Before modifying an existing surface, take **one bounded read pass** over the context the edit depends on — the pre-edit counterpart to the post-edit § Before Commit blast-radius self-check. The two are complementary, not redundant: this pass prevents a contradiction from being written in the first place (it fires *before* the edit); the blast-radius self-check detects stale references already written (it fires *after*). One pass per surface, not a defect-exhaustion loop:
+
+1. **The whole target surface** — read the entire function / section / config block being changed end-to-end, not just the lines at the edit point, so the change fits the surface's existing shape and invariants.
+2. **Same-concept occurrences in the same file + adjacent context** — scan the file for the concept being edited appearing elsewhere (the same key / heading / marker / helper / branch) and read the lines immediately around the edit, so parallel occurrences stay consistent and neighbouring logic is not broken.
+3. **The change target's contract + nearest callers / consumers** — for code: confirm the exact signature, arguments, and return shape; for a doc / procedure surface: confirm the section's prescribed fields, accepted values, markers, and citation contract (which commands / rules cite it by `§ <section>`). Then read the closest call sites or consumer files that depend on the target, so the edit matches the contract its callers / consumers expect.
+
+This is a read discipline, not a fix loop: when the three reads surface no conflict, proceed straight to the edit. It exists to test the hypothesis that the dominant defect-prevention lever at implementation time is reading the surrounding code before writing. That hypothesis is tracked as the `better-pre-read` entry in `## Retrospective` § `prevention_lever`, whose accumulated distribution across runs is the evidence that will confirm or revise it.
+
+## Before Commit
+
+1. Run `format` command (see Commands table in CLAUDE.md)
+2. Verify `build` command passes
+3. **Blast-radius self-check** — one pass per unit, not a defect-exhaustion loop:
+   - For each **named thing** (symbol / heading / marker / config key / enum case / label / error code) this change introduces, renames, or shifts the semantics of, `grep` the repo and update every stale reference. LSP find-references is an equivalent substitute where available.
+   - For each procedure (gate / pipeline / phased doc / state machine) this change touches, re-read it top-to-bottom once in **flow order** and verify each step's preconditions still hold against the new state.
+
+## Cache-First Principle
+
+During `/hq:start` execution, **all reads and writes to the plan body go to the local cache**. The GitHub API is touched only at explicit **sync checkpoints**. This keeps execution fast, avoids rate limits, and lets individual checkbox toggles be cheap.
+
+### Cache files
+
+```
+.hq/tasks/<branch-dir>/gh/task.json    # read-only snapshot of hq:task
+.hq/tasks/<branch-dir>/gh/plan.md      # read/write working copy of hq:plan body
+```
+
+### Sync checkpoints
+
+| Direction | When | Action |
+|---|---|---|
+| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
+| Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
+| Push (cache → GitHub) | After Phase 5 (Acceptance) complete | Push Acceptance `[auto]` checkbox updates |
+| Push (cache → GitHub) | Before PR creation | Final consistency sync |
+
+### Helper scripts
+
+All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/`:
+
+- **`plan-cache-pull.sh <plan-number>`** — fetch plan body from GitHub, atomically write to `.hq/tasks/<branch-dir>/gh/plan.md`. Prints the written path.
+- **`plan-cache-push.sh <plan-number>`** — push the cached plan body to the GitHub Issue via `gh issue edit --body-file`.
+- **`plan-check-item.sh <pattern>`** — toggle a single `[ ]` checkbox to `[x]` in the cache, matching by fixed substring. Exit 3 = no match, exit 4 = ambiguous, already-checked = idempotent no-op.
+- **`find-plan-branch.sh <plan-number>`** — scan `.hq/tasks/*/context.md` for a `plan: <N>` match, print the corresponding `branch:` field. Exit 1 = not found.
+
+**Rule**: individual checkbox toggles during execution call `plan-check-item.sh` (cache only). Never call `gh issue edit <plan>` directly — always go through `plan-cache-push.sh` at the defined sync checkpoints.
 
 ## Feedback Loop
 
