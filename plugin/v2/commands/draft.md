@@ -100,7 +100,7 @@ This phase is **read-only investigation**. Do NOT write production code.
 These are the fields that must be committable before Phase 3. Track them as you listen; when a field is still fuzzy, ask about it as a natural continuation of the current thread — not as a checklist item.
 
 - `## Why` content — pain + why now, 1-few sentences.
-- `## Approach` content — chosen design + at least one rejected alternative with reason. Optional figure / sample code if structure-conveying.
+- `## Approach` content — chosen design + at least one rejected alternative with reason. Reader self-sufficient (an unfamiliar reader grasps the mechanism, not just the decision label). When the design is structural, a figure / intent snippet is part of convergence, not an afterthought.
 - `## Editable surface` entries — each entry's `<path / symbol>`, its inline tag (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`), and the ≤1行 note describing the concrete change. Inline tag is a **Phase 2 convergence requirement** — handing tag-less entries to Phase 3 is forbidden.
 - `## Plan` items — each item's commit-grain step. When a step performs a coordinated update on a downstream consumer, attach the `*(consumer: <name>)*` suffix.
 - `## Acceptance § [primary]` — single observable signal with marker (`[auto]` or `[manual]`) — see Primary acceptance convergence below.
@@ -152,6 +152,7 @@ Compose the `hq:plan` body directly from Phase 2 conversation state — no subag
 ### Composition rules
 
 - **Language** — plan body prose stays in the **conversation language** (`## Why` content, `## Approach` content, each `## Editable surface` entry's note after the inline tag, each `## Plan` step description, each `## Acceptance` condition). Workflow markers and prescribed headings stay in **English** — see `hq:workflow § Language`.
+- **Reader self-sufficiency (Why / Approach)** — these two sections are what the human reviewer reads to approve; compose them so a developer unfamiliar with this area understands the problem and the chosen mechanism from them alone (`hq:workflow § ## hq:plan` — *Two readers, one body* + the `## Why` / `## Approach` reader self-sufficiency rules). Concretely, while composing `## Approach`: judge whether the chosen design is **structural** (a flow, a state transition, a before/after relationship, a control-path change). If it is, render the key point as an ASCII / Mermaid figure or a ≤10-line intent snippet rather than compressing it into prose — a figure is expected here, not optional decoration. Figures / snippets are excluded from the Approach sentence count, so this never trades against the volume bound. Do **not** spend this readability investment on `## Editable surface` / `## Plan` / `## Acceptance` — those stay ≤1行 as the agent fence.
 - **Anti-content** — each section has explicit anti-content rules in `hq:workflow § ## hq:plan`. Honor them at composition time: do NOT leak file:line citations / error code dumps into `## Why`, do NOT leak implementation-detail signatures into `## Approach` / `## Editable surface` / `## Plan`. If a Phase 2-converged field would still leak content type at composition, Phase 2 was not actually converged — return control to Phase 2 (this is rare; the commit-or-pushback exit is designed to catch this).
 - **`Parent: #N` line** — emit only when a parent `hq:task` is present; omit the line entirely otherwise.
 - **`## Editable surface` entries** — each entry MUST carry one of the four inline tags (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and a concrete ≤1行 note. If a Phase 2-committed entry is missing its tag, that's a Phase 2 convergence defect — return to Phase 2.
@@ -190,7 +191,7 @@ Parent: #<hq:task issue number>
 <1-3 sentences: pain and why now>
 
 ## Approach
-<chosen design + at least one rejected alternative with reason. Optional: Mermaid / ASCII figure, or sample code ≤10 lines.>
+<chosen design + at least one rejected alternative with reason. Reader self-sufficient: an unfamiliar reader understands the mechanism, not just the decision label. Mermaid / ASCII figure expected when the design is structural (flow / state / before-after / control-path); ≤10-line intent snippet when shape reads faster as code. Figures / snippets excluded from the prose count.>
 
 ## Editable surface
 - `<file / symbol>` — `[新規]` <≤1行 note: what happens here>
