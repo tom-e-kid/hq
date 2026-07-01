@@ -68,7 +68,7 @@ Every hq command, skill, and agent MAY consult a project-local override file und
 
 | Override file | Consumed by | Typical content |
 |---|---|---|
-| `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. always prefer `[manual]` primary on iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
+| `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. primary-tier preference and `## Manual Verification` routing for iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
 | `.hq/start.md` | `/hq:start` | Project-specific execution nuance (commit / build / test notes that the command's phases should layer in) |
 | `.hq/triage.md` | `/hq:triage` | Briefing tone / Suggestion wording hints / project-specific lean cues for individual findings |
 | `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |

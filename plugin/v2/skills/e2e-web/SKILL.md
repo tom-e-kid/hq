@@ -112,7 +112,7 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active `hq:plan`** — read `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md`. If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Acceptance` section and use **unchecked `[auto]` items that are browser/UI-oriented** as the checklist. Ignore `[manual]` items — those are verified by the user during PR review.
+1. **Active `hq:plan`** — read `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md`. If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Acceptance` section and use **unchecked `[auto]` items that are browser/UI-oriented** as the checklist. The plan's `## Manual Verification` items (if any) are reviewer-verified during PR review, not driven here.
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
 
