@@ -91,7 +91,7 @@ Phase 5: Report
 **Key decisions**:
 
 - No branch, no code, no cache writes in this command. The only artifact is the `hq:plan` Issue.
-- The orchestrator composes the exact `## Why` + `## Approach` + `## Editable surface` + `## Plan` + `## Acceptance` flat 5-section structure inline from Phase 2 conversation state, with exactly one `[auto] [primary]` item in `## Acceptance` (or `[manual] [primary]` under the escape hatch).
+- The orchestrator composes the exact `## Why` + `## Approach` + `## Editable surface` + `## Plan` + `## Acceptance` flat 5-section structure inline from Phase 2 conversation state (plus an optional `## Manual Verification` section when reviewer-owned checks exist), with exactly one `[auto] [primary]` item in `## Acceptance` at the strongest achievable tier.
 - One body, two readers: `## Why` + `## Approach` carry reader-facing readability for the human reviewer (structural designs get an ASCII / Mermaid figure or intent snippet, not compressed prose), while `## Editable surface` / `## Plan` / `## Acceptance` stay ≤1行 as the agent fence. The readability investment is confined to Why/Approach so the body stays complete-but-not-bloated for both the reviewer and `/hq:start` (`hq:workflow § ## hq:plan` — *Two readers, one body*).
 - `## Editable surface` IS the single AI agent fence — each entry carries an inline tag (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and the complement is implicit out of scope. Stack-natural extensions follow the Boundary expansion protocol (add the entry to `## Editable surface` *before* touching the surface, note the rationale in `## Approach`).
 - Downstream coordination lives in `## Plan` items via the `*(consumer: <name>)*` suffix; the consumer coverage check at Phase 3 enforces consistency before the body is presented at the commit-or-pushback gate.
@@ -169,7 +169,7 @@ Phase 7: Quality Review (pure review — judgment-based agent selection)
 Phase 8: PR Creation
 │  Gate: all Plan + Acceptance [auto] checked
 │  Assemble workflow sections pack (English-fixed half):
-│    ## Manual Verification (unchecked [manual] items)
+│    ## Manual Verification (plan's reviewer-owned checks)
 │    ## Known Issues (unresolved FBs + move to done/)
 │    Closes #<plan> / Refs #<task>
 │  Delegate to `pr` skill → renders narrative layer from .hq/pr.md
@@ -395,9 +395,11 @@ Parent: #<hq:task issue number>
 - [ ] <implementation step — single meaningful commit unit> *(consumer: <name>)*
 
 ## Acceptance
-- [ ] [auto] [primary] <single concrete pass/fail signal>
-- [ ] [auto] <secondary verifiable check>
-- [ ] [manual] <requires user verification>
+- [ ] [auto] [primary] <strongest start-executable signal — specificity hierarchy>
+- [ ] [auto] <secondary start-executable check>
+
+## Manual Verification
+- [ ] [manual] <reviewer-owned: runtime / subjective outcome, or project-deferred check>
 ```
 
 Highlights:
@@ -406,10 +408,8 @@ Highlights:
 - **`## Approach`** — chosen design + ≥1 rejected alternative with reason. Optional figure (Mermaid / ASCII) and sample code (≤10 lines, intent-conveying only) when structure-conveying. **plan-split signal**: 4+ parallel independent decisions, or ≤3 decisions that could be released independently, means the plan should split.
 - **`## Editable surface`** — the single positive set, and **the AI agent fence**. Each entry has an inline tag (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`) and a ≤1行 note. The complement is implicit out of scope; the `integrity-checker` flags any diff touching a surface absent from this list. **Boundary expansion protocol**: when implementation reveals a stack-natural extension (e.g., Swift Concurrency async propagation, co-located test file), add the entry *before* touching the surface and note the rationale in `## Approach`.
 - **`## Plan`** — implementation steps. Each item is a single meaningful commit unit; adjacent edits to the same file collapse into one item. No numeric cap. `*(consumer: <name>)*` suffix is appended when the step performs a coordinated update on a named downstream consumer; the consumer coverage check at `/hq:draft` Phase 3 enforces consistency. All items must be checked before PR creation.
-- **`## Acceptance`** — completion criteria tagged by execution mode and role:
-  - `[auto]` — Claude executes and toggles (unit tests, API calls, file checks, Playwright). Prefer `[auto]`.
-  - `[manual]` — flows to PR body for user verification.
-  - `[primary]` — role marker; combines with `[auto]` only by default. Exactly one `[auto] [primary]` per plan, designating the single pass/fail signal that tells the plan succeeded. All other `[auto]` items are secondary. The `[manual] [primary]` escape hatch is permitted only under strict conditions (`hq:workflow § ## Acceptance § #### [manual] [primary] escape hatch`).
+- **`## Acceptance`** (start-owned) — start-executable completion criteria, all `[auto]`. Exactly one `[auto] [primary]`, the single start-executable signal the plan is judged by and start's motivation, chosen at the strongest achievable tier (behavioral test > anchored-semantic > structural grep > bare build). Nothing start cannot run belongs here.
+- **`## Manual Verification`** (reviewer-owned; optional) — checks a human performs at PR review: runtime / subjective outcomes (each a named observable) or deterministic checks the project defers to the reviewer. Never carries `[primary]`; emitted only when such checks exist; carried into the PR body with the `hq:manual` label.
 
 See `hq:workflow § ## hq:plan` for the authoritative schema, anti-content rules per section, volume bounds, and the `[primary]` / granularity rules.
 
@@ -480,7 +480,7 @@ Default full body:
 <optional>
 
 ## Manual Verification          <!-- workflow section — English-fixed -->
-<unchecked [manual] Acceptance items, verbatim>
+<plan's ## Manual Verification items, verbatim>
 
 ## Known Issues                 <!-- workflow section — English-fixed, /hq:triage parse target -->
 **Triage summary**: N must address, M recommended, K optional. Process via `/hq:triage <PR>`.
@@ -501,7 +501,7 @@ Refs #<hq:task>                  <!-- trailer — only when plan has parent -->
 
 Omit optional sections (`## Notes`, `## Manual Verification`, `## Known Issues`) when empty. `Closes` is mandatory. `Refs` is mandatory **only when the plan has a parent `hq:task`** — when no parent exists, omit the `Refs` line entirely.
 
-Projects MAY define `.hq/pr.md` to override the narrative layer in full (e.g., `## 概要` / `## 変更` / `## メモ` in Japanese, or any project-specific section set). The workflow sections layer is invariant — `.hq/pr.md` cannot rename / suppress / reorder `## Manual Verification` / `## Known Issues` / trailer or `## Primary Verification (manual)` when the escape hatch applies.
+Projects MAY define `.hq/pr.md` to override the narrative layer in full (e.g., `## 概要` / `## 変更` / `## メモ` in Japanese, or any project-specific section set). The workflow sections layer is invariant — `.hq/pr.md` cannot rename / suppress / reorder `## Manual Verification` / `## Known Issues` / trailer.
 
 ### Project Overrides
 
