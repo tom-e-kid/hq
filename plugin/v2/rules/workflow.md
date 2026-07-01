@@ -214,6 +214,13 @@ Every `hq:task` must:
 
 An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body IS the source of truth for what needs to be done and how completion is verified.
 
+**Two readers, one body.** The same body serves two audiences, and the readability investment is split deliberately so it stays complete-but-not-bloated for both:
+
+- **Human reviewer** (including a developer unfamiliar with this area) reads `## Why` + `## Approach` to decide whether to approve. These two sections carry the **reader self-sufficiency** bar below: the reader should grasp the problem and the chosen mechanism from them alone, without spelunking the diff. When the design is structural, a figure / snippet is the readability tool — not optional decoration.
+- **`/hq:start` / `integrity-checker`** consume `## Editable surface` / `## Plan` / `## Acceptance` as the agent fence. These stay terse (≤1行 per entry / item) — that compression is a functional requirement, not a stylistic one. Do **not** spend prose on them.
+
+Figures and intent snippets live in `## Approach` and are **excluded from its sentence count** (see below), so the readability investment in Why/Approach never fights the volume bounds.
+
 The `hq:plan` body follows a **flat 5-section structure**: `## Why` + `## Approach` + `## Editable surface` + `## Plan` + `## Acceptance`. Emission rules:
 
 - Angle-bracket `<placeholder>` tokens are substituted with real content.
@@ -251,6 +258,7 @@ The pain and why now. Gives the reader the "what problem is this solving" answer
 **Content rules**:
 
 - Required: (a) the pain or opportunity, (b) why now / what triggers this plan.
+- **Reader self-sufficiency**: a developer unfamiliar with this area should be able to grasp *what problem this solves* from `## Why` alone. If understanding the pain requires already knowing the code, the framing is too thin — name the concrete failure / friction, not an abstract gesture at it.
 - Anti-content (move to `## Approach` if present): file:line citations, error code enumerations, design judgment, comparison of alternatives, implementation hints.
 - Volume guidance: a few sentences. The test is not a sentence count but whether every sentence answers (a) or (b) — if it doesn't, it is content type leak and belongs elsewhere.
 
@@ -261,10 +269,11 @@ The chosen design + at least one rejected alternative with reason. This section 
 **Content rules**:
 
 - Required: (a) chosen design summary, (b) at least one rejected alternative named and dismissed with a one-line reason. "We considered alternatives" without naming any is not enough.
-- Optional figure: Mermaid or ASCII diagram, when the structural change reads better as a figure than as prose. GitHub renders Mermaid natively inside Issue bodies.
-- Optional sample code: ≤ 10 lines, intent-conveying only. Use when the shape of the change is faster to communicate as code than as prose.
-- Anti-content (move out): full implementation listings, complete signature enumerations, attribute-by-attribute spec dumps. Implementation detail belongs in the actual code, not in the plan.
-- Volume guidance: prose ≤ 5 sentences (figure / sample code excluded from the count). If more independent decisions need to be articulated, see **plan-split signal** below.
+- **Reader self-sufficiency**: `## Approach` must let an unfamiliar reader understand the *mechanism* of the change, not merely *name* the decision. "Adopt single-flight" is a label; the reader still needs to see how the requests collapse. Close that gap here — that is the whole point of the section.
+- **Figure expected for structural changes** (not optional decoration): when the chosen design is structural — a flow, a state transition, a before/after relationship, or a control-path change — render the key point as a Mermaid / ASCII diagram instead of compressing it into prose. GitHub renders Mermaid natively inside Issue bodies. Prose alone for a structural change is the readability failure this section exists to prevent. A figure is only skippable when the design genuinely has no structural shape to draw (a pure value / wording / threshold change).
+- **Intent snippet** (≤ 10 lines): when the shape of the change is faster to read as code than as prose, include an intent-conveying snippet. Intent only — not a copy of the eventual implementation.
+- Anti-content (move out): full implementation listings, complete signature enumerations, attribute-by-attribute spec dumps. Implementation detail belongs in the actual code, not in the plan. A figure / snippet that crosses into a full spec dump is anti-content even though figures are otherwise encouraged.
+- Volume guidance: prose ≤ 5 sentences. **Figures and intent snippets are excluded from the count** — they exist to *raise* readability without spending the prose budget, so reaching for one never trades against the sentence bound. If more independent decisions need to be articulated, see **plan-split signal** below.
 
 **plan-split signal** — when `## Approach` is forced to enumerate multiple **independent** decisions, the plan is probably trying to do too much. Judge by **coupling**, not raw count:
 
