@@ -2,12 +2,37 @@
 
 This protocol processes the `## Known Issues` section of a PR body — the hand-off point for **every** FB `/hq:start` produced in Phase 6 (Self-Review) and Phase 7 (Quality Review). Per the post-refactor design (`hq:workflow § Feedback Loop`), both phases are pure review: all findings (Critical through Low, Self-Review minor-gaps and Quality Review agent-emitted alike) surface here without auto-fix. The PR body groups them by action priority — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)` — with a leading `**Triage summary**` line so the reviewer sees the workload at a glance.
 
-It is a rule file, not a command: an executor Reads this file and follows it. Consumer: the `/hq:triage` command (interactive mode).
+It is a rule file, not a command: an executor Reads this file and follows it. Consumers: the `/hq:triage` command (interactive mode) and the `auto-triager` agent launched by `/hq:loop` (auto mode).
 
 ## Modes
 
 - **`interactive`** (default — `/hq:triage`): the behavior specified in this file, verbatim — Phase 3 is strict per-item interactive, and **no disposition may be APPLIED without an explicit per-item response from the user** (the anti-pollution invariant; see `## Rules`).
-- **`auto`**: reserved for `/hq:loop` (specified when that command ships). Until then, applying dispositions without per-item user responses is a contract violation.
+- **`auto`** (the `auto-triager` agent — sanctioned **only** when launched by `/hq:loop`): dispositions are derived by the same liveness check + ordered gate + bias rules, then **applied without per-item confirmation**, under the deviations below. The interactive-mode invariant is scoped to interactive mode; auto mode's compensating controls are: no autonomous Issue creation, the unchanged regression gate on fixes, the orchestrator's iteration budget, and a full per-item audit trail returned to the user.
+
+### Auto mode deviations
+
+Everything not listed here is identical to interactive mode. Inputs from the orchestrator's prompt: PR number, work branch, **iteration budget remaining** (integer ≥ 0).
+
+1. **Phase 3 does not prompt.** For each item, run the liveness check and the ordered gate, then record the derived Suggestion as the disposition directly. Emit the per-item briefing content (概要 / 浮上経緯 / 現状 / 影響範囲 / disposition + gate fired) into the return payload instead of the chat — the audit trail obligation is unchanged, only its destination moves.
+2. **Disposition 3 (escalate) is never applied.** An item gating to 3 is recorded as a **feedback candidate** — title, severity, originating agent, 1-2 sentence rationale — in the return payload, and its PR body line is left **untouched**. `hq:feedback` Issue creation is exclusively the orchestrator's Stage 4 user-confirmed step; this agent MUST NOT run `gh issue create`.
+3. **Disposition 1 (add to plan) is budget-gated.** Allowed only when (a) the iteration budget remaining is > 0, AND (b) the item's category is Must Address (Critical / High). A Medium / Low item that would gate to 1 is downgraded to 2 (leave) with a `deferred: loop budget` note in the audit trail. When the budget is 0, a Must Address item that would gate to 1 becomes a **feedback candidate** instead (deviation 2's path) — it must not silently disappear.
+4. **Bias rules and the disposition-4 regression gate apply unchanged.** Format / build (/ tests) before commit; 2 failed attempts → revert, leave the line open, report as un-fixed. This is the safety floor for unattended fixes — it is not weakenable by any override.
+5. **Phase 5 (Report) → structured return.** The final message is exactly:
+
+   ```markdown
+   status: completed
+   items: <n total>
+   dispositions:
+   - item: <original bullet text>
+     briefing: <概要 / 浮上経緯 / 現状 / 影響範囲 — compressed to 2-3 lines>
+     applied: <1|2|4> (<gate that fired>) [sha: <SHA> for 4] [note: deferred: loop budget …]
+   feedback_candidates:
+   - title: <one-liner> / severity: <Severity> / origin: <agent> / rationale: <1-2 sentences>
+   plan_gained_items: <true|false>
+   reverted_fixes: <list or none>
+   ```
+
+   `plan_gained_items` is true iff at least one disposition 1 was applied — the orchestrator's loop-decision input.
 
 For each item, one of four dispositions is decided:
 
@@ -250,7 +275,7 @@ Summarize:
 ## Rules
 
 - **Only this command creates `hq:feedback` Issues** — all other workflow commands route residual problems through the PR body.
-- **No disposition may be APPLIED without an explicit per-item response from the user.** Suggestions are advisory only; absence of an explicit response means halt, never default-to-suggestion. This invariant is the structural barrier that keeps the agent's read of a finding (the Suggestion) cleanly separated from the user's authoritative disposition decision; collapsing the two — by accepting "go with your suggestion" / bulk responses / silent acquiescence — restores the autonomous Issue-tracker pollution this command's Phase 3 is designed to block.
+- **No disposition may be APPLIED without an explicit per-item response from the user** *(interactive mode; in auto mode the § Auto mode deviations govern — dispositions auto-apply but Issue creation never does)*. Suggestions are advisory only; absence of an explicit response means halt, never default-to-suggestion. This invariant is the structural barrier that keeps the agent's read of a finding (the Suggestion) cleanly separated from the user's authoritative disposition decision; collapsing the two — by accepting "go with your suggestion" / bulk responses / silent acquiescence — restores the autonomous Issue-tracker pollution this command's Phase 3 is designed to block.
 - **Interactive for the triage phase only** — Phase 3 requires explicit per-item user decisions, but Phase 4 applies the recorded dispositions autonomously, including the disposition-4 fix (commit + push under a mandatory regression gate).
 - **Over-fixing is the disposition-4 failure mode** — fix in place only when the finding is trivial and clearly-correct with a low blast-radius. The ordered gate tests cheaper / safer dispositions first; the bias rules route ambiguity to the safe side (validity 不明 → 2, scope 不明 → 1 not 4). Asymmetric cost: a blind fix risks a quality incident, a re-review via `hq:plan` only costs time.
 - **Liveness before disposition** — investigate each finding against current HEAD before suggesting. Never claim `already-resolved` without a concrete resolving commit SHA; uncertain findings are treated as live. already-resolved folds into disposition 2 with an `already resolved in <SHA>` body note — it is not a separate disposition.

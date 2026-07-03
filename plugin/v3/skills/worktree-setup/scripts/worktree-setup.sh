@@ -150,7 +150,7 @@ if [[ -d "$source_dir/.claude/rules" ]]; then
 fi
 
 # .hq/ project override files (keep in sync with plugin/v3/rules/workflow.md § Project Overrides)
-for hq_override in draft.md start.md triage.md respond.md pr.md code-review.md security-scan.md integrity-check.md xcodebuild-config.md; do
+for hq_override in draft.md start.md triage.md respond.md pr.md loop.md code-review.md security-scan.md integrity-check.md xcodebuild-config.md; do
   if [[ -f "$source_dir/.hq/$hq_override" ]]; then
     mkdir -p "$worktree_dir/.hq"
     cp "$source_dir/.hq/$hq_override" "$worktree_dir/.hq/$hq_override"

@@ -23,6 +23,7 @@
 - **`hq:doc`** — a GitHub Issue (label: `hq:doc`) for informational notes / research findings worth preserving (not a direct task). Created manually by the user when investigation turns up something useful to retain. Not consumed by any workflow command.
 - **`hq:pr`** — a PR label applied automatically by the `pr` skill (in either invocation mode — Standalone `/pr` or via `/hq:start`). Marks a PR as a product of the `hq:plan` → PR workflow. Useful for filtering PRs that belong to this workflow vs ad-hoc PRs.
 - **`hq:wip`** — a GitHub Issue modifier label on `hq:task` Issues. Purpose is twofold: (1) **drafting marker** — the issue is still being shaped and not ready for automation, (2) **automation gate** — when `/hq:draft` is triggered automatically (e.g., from GitHub Actions), the command must skip (or, in manual invocation, pause and confirm) any Issue carrying this label.
+- **`hq:loop`** — the orchestrator command (`/hq:loop`) that runs draft → execute → auto-triage → report on the user's behalf, composing the three protocols (`draft-protocol` inline; `start-protocol` / `triage-protocol` via the `executor` / `auto-triager` agents). See `## Loop`.
 
 These are plugin-specific terms. Always use the `hq:` prefix to distinguish from general "task", "plan", or "feedback".
 
@@ -71,7 +72,8 @@ Every hq command, skill, and agent MAY consult a project-local override file und
 |---|---|---|
 | `.hq/draft.md` | `/hq:draft` | Domain-specific acceptance defaults (e.g. primary-tier preference and `## Manual Verification` routing for iOS / CLI / instruction-only projects), brainstorm hints, plan-split preferences |
 | `.hq/start.md` | `/hq:start` | Project-specific execution nuance (commit / build / test notes that the command's phases should layer in) |
-| `.hq/triage.md` | `/hq:triage` | Briefing tone / Suggestion wording hints / project-specific lean cues for individual findings |
+| `.hq/triage.md` | `/hq:triage`, `auto-triager` agent | Briefing tone / Suggestion wording hints / project-specific lean cues for individual findings |
+| `.hq/loop.md` | `/hq:loop` | `loop_max_iterations` override, loop-report style hints |
 | `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |
 | `.hq/pr.md` | `pr` skill | PR body prose style, title conventions — scope-limited by the `pr` skill's own Invariants |
 | `.hq/code-review.md` | `code-reviewer` agent | Project-specific review axes |
@@ -83,7 +85,7 @@ Override files are optional. Absence means "apply defaults"; missing files are n
 
 ### Scope rules
 
-- **Overrides augment, Invariants govern.** A consumer's Invariants are NOT overridable. If override content appears to contradict an Invariant, the Invariant wins; the consumer SHOULD flag the conflict to the user after execution so the override file can be corrected. Concrete example: `.hq/triage.md` MUST NOT contain category-level or severity-level disposition pre-decisions (e.g. "always escalate Critical", "leave all Low as-is"), because the `/hq:triage` Phase 3 invariant — "No disposition may be APPLIED without an explicit per-item response from the user" — forbids any pre-applied disposition. Briefing tone, Suggestion wording, and per-finding lean cues are permissible; pre-decisions are not.
+- **Overrides augment, Invariants govern.** A consumer's Invariants are NOT overridable. If override content appears to contradict an Invariant, the Invariant wins; the consumer SHOULD flag the conflict to the user after execution so the override file can be corrected. Concrete example: `.hq/triage.md` MUST NOT contain category-level or severity-level disposition pre-decisions (e.g. "always escalate Critical", "leave all Low as-is"), because the `/hq:triage` Phase 3 invariant — "No disposition may be APPLIED without an explicit per-item response from the user" — forbids any pre-applied disposition. Briefing tone, Suggestion wording, and per-finding lean cues are permissible; pre-decisions are not. The same constraint binds the `auto-triager` agent (triage-protocol `auto` mode): dispositions are derived by the ordered gate, never pre-decided by the override.
 - **Local to the consuming command / skill / agent.** An override file affects only its own consumer. It cannot introduce new phases, gates, or mandatory checks that alter another command's behavior. Cross-command behavior changes go through this rule file, not through overrides.
 - **Per-clone by default.** `.hq/` is included in `.gitignore` by `hq:bootstrap` Task 4, so override files are **per-clone / per-worktree** and NOT team-shared out of the box. Teams that want shared policy either (a) un-ignore specific override files and commit them, or (b) upstream the policy into this rule file. The former is experimental and risks per-member drift; the latter is the canonical path for team-wide rules.
 - **Worktree propagation.** `plugin/v3/skills/worktree-setup/scripts/worktree-setup.sh` copies existing override files into a newly created worktree so the worktree inherits the same behavior without re-setup. New override file names introduced here MUST be added to that script's copy list.
@@ -440,6 +442,26 @@ Consequences for plan structure:
 - `## Plan` has **no numeric item cap**. Formal caps target the result (how many items) rather than the motive (why each was added); they were deprecated once the gatekeeper role was introduced. The quality rules on `## Plan` (single meaningful commit unit, same-file consecutive items merge, no half-working intermediate state) remain because they are about the *grain* of each item, not its *necessity*.
 - Naturally broad scopes should be split into multiple `hq:plan`s at the gatekeeper stage rather than padded into one. `/hq:draft` Phase 2 raises this split decision explicitly when the brainstorm produces a large scope (see `## hq:plan` § Approach § plan-split signal for the coupling-based criterion).
 - The `## Editable surface` inline-tag set and `[auto] [primary]` 1-per-plan rule are retained as formal constraints; they pass the Simplicity criterion test by being low-burden and tightly targeted at specific gaming patterns (undeclared surface change, success-signal dissolution).
+
+## Loop
+
+`/hq:loop` is the orchestrator that runs the pipeline on the user's behalf. Stage map (spec: `plugin/v3/commands/loop.md`):
+
+```
+Stage 1 DRAFT (inline, interactive)   — draft-protocol verbatim, incl. brainstorm + "go" gate
+Stage 2 EXECUTE (executor agent)      — start-protocol agent mode → PR (consult-needed round-trips to the user)
+Stage 3 AUTO-TRIAGE (auto-triager)    — triage-protocol auto mode: apply 1/2/4, collect 3 as candidates
+   └─ plan gained items AND budget left → back to Stage 2 (executor auto-resumes)
+Stage 4 REPORT (inline, interactive)  — work report + feedback candidates → user picks → hq:feedback created
+```
+
+Invariants:
+
+- **Three interaction points only**: the Stage 1 `go` gate, executor `consult-needed` round-trips, and the Stage 4 feedback confirmation. All are non-skippable.
+- **Auto-triage is sanctioned only inside `/hq:loop`** (triage-protocol `auto` mode). Its compensating controls — no autonomous Issue creation, unchanged regression gate on fixes, iteration budget, full audit trail — are part of the mode's contract, not optional.
+- **Iteration cap** (`loop_max_iterations`, default 2 re-entries) is a hard bound; budget-exhausted Must-Address items surface as feedback candidates, never as silent drops.
+- **`hq:feedback` creation stays human-gated**: in the loop, the gate is the Stage 4 batch confirmation (per-candidate multi-select) instead of `/hq:triage`'s per-item response — the invariant's owner moves, the invariant does not.
+- Standalone `/hq:draft` / `/hq:start` / `/hq:triage` are unchanged by the loop's existence.
 
 ## PR Body Structure
 

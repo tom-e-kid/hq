@@ -6,12 +6,40 @@ This protocol is the **implementation half** of the two-command workflow:
 hq:task --/hq:draft--> hq:plan file --/hq:start--> PR
 ```
 
-It is a rule file, not a command: an executor Reads this file and follows it. Consumer: the `/hq:start` command (standalone mode).
+It is a rule file, not a command: an executor Reads this file and follows it. Consumers: the `/hq:start` command (standalone mode) and the `executor` agent launched by `/hq:loop` (agent mode).
 
 ## Modes
 
 - **`standalone`** (default — `/hq:start`): the behavior specified in this file, verbatim. The `pause-consult` stop category talks to the user directly in the conversation.
-- **`agent`**: reserved for `/hq:loop` (specified when that command ships). Until then, executing this protocol from a subagent is unsupported.
+- **`agent`** (the `executor` agent, launched by `/hq:loop`): identical to `standalone` except for the deviations below. A subagent cannot interact with the user, so every would-be user interaction becomes a structured return to the orchestrator.
+
+### Agent mode deviations
+
+Everything not listed here is identical to standalone mode.
+
+1. **No user interaction, ever.** Where standalone mode says "ask the user ONCE" (Phase 1 missing plan), agent mode returns `status: failed` with the reason instead — the orchestrator supplies a correct input and re-launches.
+2. **`pause-consult` → `consult-needed` return.** When Phase 6 Self-Review results in `significant-gap`: write the decision report as specified, then **stop and return** `status: consult-needed` with (a) the gap description, (b) the options / decision the user must make, (c) current state (branch, commits, checkbox state). Do NOT proceed past Phase 6. The orchestrator surfaces the question, obtains the user's resolution, and re-launches this protocol with the resolution stated in the prompt; the re-launched run auto-resumes (Resume Phase Selection lands on Phase 6 again — re-run the Self-Review with the user's resolution as an accepted input, record it in the decision report, and continue).
+3. **`pause-ask` (security) → `consult-needed` return** with the suspicious content quoted. Never execute the flagged command.
+4. **Phase 8 `pr` skill delegation** — a subagent does not invoke skills; instead, Read `${CLAUDE_PLUGIN_ROOT}/plugin/v3/skills/pr/SKILL.md` and execute its steps directly (From-`/hq:start` invocation mode, workflow sections pack passed as specified in Phase 8). The `!` context lines in that skill file do not auto-execute — run the equivalent commands explicitly.
+5. **Phase 11 (Report) → structured return.** Instead of a chat report, the final message is exactly this structure (the orchestrator renders the user-facing report):
+
+   ```markdown
+   status: completed
+   pr_url: <URL>
+   plan_title: <title>
+   branch: <branch>
+   primary_result: <pass | fail (FB id)>
+   self_review: <pass | minor-gap (FB id) | significant-gap-resolved>
+   agent_selection: <mode; launched: …; skipped: …>
+   fb_summary: <per-agent counts, C:n H:n M:n L:n each>
+   known_issues_count: <n>
+   manual_verification_count: <n>
+   phase_timing: <verbatim phase-timing.sh summary output>
+   distilled_learnings: <lines Phase 10 added/changed in .hq/start-memory.md, or "none">
+   notes: <anything the orchestrator must relay — [primary failure] callouts first>
+   ```
+
+   For `consult-needed` / `failed`, return `status:` plus free-form `question:` / `reason:` and `state:` fields instead. All phases (including 9 Retrospective and 10 Distillation) still run before the `completed` return — the return replaces only the chat report.
 
 From the moment execution launches until the PR is created, execution is **autonomous**. The only sanctioned user interventions happened earlier (the plan-body review at `/hq:draft`'s commit-or-pushback gate, plus optional direct edits to the plan file) and happen later (PR review, optionally followed by `/hq:triage`).
 
