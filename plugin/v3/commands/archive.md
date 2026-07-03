@@ -8,16 +8,16 @@ allowed-tools: Read, Glob, Bash(git:*), Bash(gh:*), Bash(bash:*), Bash(ls:*), Ba
 
 This command closes out the current work branch in one of two modes:
 
-| Mode | Trigger | Precondition | Folder destination | Issue close |
+| Mode | Trigger | Precondition | Folder destination | PR close |
 |---|---|---|---|---|
-| **done** (default) | `/hq:archive` | PR is `MERGED` | `.hq/tasks/done/<branch-dir>/` | Auto (via PR `Closes #<plan>`) |
-| **cancel** | `/hq:archive cancel` | PR is `OPEN` / `CLOSED` / absent (anything except `MERGED`) | `.hq/tasks/canceled/<branch-dir>/` | Explicit `gh issue close --reason "not planned"` |
+| **done** (default) | `/hq:archive` | PR is `MERGED` | `.hq/tasks/done/<branch-dir>/` | n/a (already merged) |
+| **cancel** | `/hq:archive cancel` | PR is `OPEN` / `CLOSED` / absent (anything except `MERGED`) | `.hq/tasks/canceled/<branch-dir>/` | `gh pr close` (when still open) |
 
-In **done mode** the command verifies the PR is merged, then archives + cleans up. In **cancel mode** the command closes the PR (if still open) without merging, explicitly closes the `hq:plan` Issue with reason `not planned`, archives the task folder to `canceled/`, then cleans up the local branch.
+In **done mode** the command verifies the PR is merged, then archives + cleans up. In **cancel mode** the command closes the PR (if still open) without merging, archives the task folder to `canceled/`, then cleans up the local branch. The plan is a local file that travels with the archived folder — there is no plan Issue to close in either mode.
 
 If the pre-checks for the selected mode fail, the command **stops** and reports what remains. The explicit `cancel` argument is itself the confirmation — once pre-checks pass, the command proceeds unconditionally in either mode.
 
-**Security**: This command deletes the local branch and (in cancel mode) closes the PR + Issue on GitHub. It never pushes, never force-pushes, never deletes remote branches, and never touches branches other than the current feature branch.
+**Security**: This command deletes the local branch and (in cancel mode) closes the PR on GitHub. It never pushes, never force-pushes, never deletes remote branches, and never touches branches other than the current feature branch.
 
 **`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v3/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this command starts so all phases have Focus, FB Lifecycle, etc. available. All `hq:workflow § <name>` citations refer to sections of that file.
 
@@ -40,12 +40,12 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`). Create all phases as ta
 | Resolve focus | Resolving focus |
 | Pre-check: PR state | Checking PR state |
 | Pre-check: pending FBs | Checking pending FBs |
-| Close PR + Issue (cancel only) | Closing PR and Issue |
+| Close PR (cancel only) | Closing PR |
 | Archive task folder | Archiving task folder |
 | Clean up branch | Cleaning up branch |
 | Report results | Reporting results |
 
-Set each to `in_progress` when starting and `completed` when done. If a pre-check aborts the command, mark remaining phases as `completed` with a brief note and stop. The "Close PR + Issue" task is `completed` with note `n/a (done mode)` when running in done mode.
+Set each to `in_progress` when starting and `completed` when done. If a pre-check aborts the command, mark remaining phases as `completed` with a brief note and stop. The "Close PR" task is `completed` with note `n/a (done mode)` when running in done mode.
 
 ## Context
 
@@ -56,7 +56,6 @@ Set each to `in_progress` when starting and `completed` when done. If a pre-chec
 
 Read `.hq/tasks/<branch-dir>/context.md` for the **current branch** (branch-dir = branch name with `/` → `-`). Extract:
 
-- `plan` — `hq:plan` Issue number
 - `source` — `hq:task` Issue number (may be absent — plans without a parent task)
 - `branch` — original branch name (should match current branch)
 - `base_branch` — the branch this feature branch was created from (captured at `/hq:start` Phase 3 — see `hq:workflow § Focus`). **Hold this in conversation state** — Phase 5 archives `context.md` away, and Phase 6 needs the base to check out of the feature branch.
@@ -113,13 +112,11 @@ find .hq/tasks/<branch-dir>/feedbacks -maxdepth 1 -type f -name 'FB*.md' 2>/dev/
 - No pending FBs → proceed silently.
 - Pending FBs exist → **do not abort**. Record the list and include it in the Phase 7 report. Rationale: when the work is being canceled, unresolved FBs are part of the abandoned state — they will travel with the folder to `canceled/` for the audit trail. The user has already signaled cancel intent via the explicit argument.
 
-## Phase 4: Close PR + Issue (cancel mode only)
+## Phase 4: Close PR (cancel mode only)
 
 **Skip this phase entirely in done mode.** Mark its task `completed` with note `n/a (done mode)` and move to Phase 5.
 
-In cancel mode, perform the GitHub-side close operations **before** moving local files. If any of these fails, abort with the failure — the workspace stays consistent with GitHub state.
-
-### 4a. Close the PR (if open)
+In cancel mode, perform the GitHub-side close operation **before** moving local files. If it fails, abort with the failure — the workspace stays consistent with GitHub state.
 
 If Phase 2 recorded PR state `OPEN`:
 
@@ -129,22 +126,9 @@ gh pr close <pr-number> --comment "Closed via /hq:archive cancel — work cancel
 
 Do **not** pass `--delete-branch`. Remote branch lifecycle is left to repo settings / manual cleanup, symmetric with done mode (which never deletes remote branches either).
 
-If the PR was already `CLOSED` or absent, skip 4a.
+If the PR was already `CLOSED` or absent, skip the close (nothing to do on GitHub).
 
-### 4b. Close the hq:plan Issue
-
-The `Closes #<plan>` linkage on the PR auto-closes the plan **only on merge**. In cancel mode there is no merge, so close the plan Issue explicitly:
-
-```bash
-gh issue close <plan> --reason "not planned" --comment "<comment>"
-```
-
-Where `<comment>` is one of:
-
-- PR existed (any non-merged state): `Canceled via /hq:archive cancel. PR #<n> closed without merging: <url>`
-- No PR existed: `Canceled via /hq:archive cancel. No PR was created.`
-
-The parent `hq:task` Issue is **not** touched — task-level requirements may still be valid; only this particular plan attempt is canceled. The user can manually close the task later if appropriate.
+The plan is a local file — there is no plan Issue to close; the abandoned `plan.md` travels with the folder to `canceled/` in Phase 5. The parent `hq:task` Issue is **not** touched — task-level requirements may still be valid; only this particular plan attempt is canceled. The user can manually close the task later if appropriate.
 
 ## Phase 5: Archive Task Folder
 
@@ -197,12 +181,7 @@ Hold the final `dst` path in conversation state for the report.
 
 ## Phase 7: Update Memory
 
-Clear the focus entry in your memory.
-
-- **Done mode**: the `hq:plan` Issue is already closed by GitHub on PR merge (via `Closes #<plan>`); no `gh issue close` call is needed.
-- **Cancel mode**: Phase 4b already closed the `hq:plan` Issue explicitly.
-
-In both modes, the parent `hq:task` Issue (if any) is left untouched.
+Clear the focus entry in your memory. In both modes, the parent `hq:task` Issue (if any) is left untouched.
 
 ## Phase 8: Report
 
@@ -214,7 +193,6 @@ Mode-aware summary.
 - **Archived**: `.hq/tasks/<branch-dir>/` → `.hq/tasks/done/<branch-dir>[-timestamp]/`
 - **Branch deleted**: `<feature-branch>`
 - **Now on**: `<base-branch>`
-- **hq:plan**: #<plan> (closed on PR merge)
 - **PR**: #<pr> (merged, <url>)
 
 **Cancel mode**:
@@ -223,7 +201,6 @@ Mode-aware summary.
 - **Archived**: `.hq/tasks/<branch-dir>/` → `.hq/tasks/canceled/<branch-dir>[-timestamp]/`
 - **Branch force-deleted**: `<feature-branch>`
 - **Now on**: `<base-branch>`
-- **hq:plan**: #<plan> (closed with reason "not planned")
 - **PR**: #<pr> (closed without merging, <url>) — or `(no PR was created)` if Phase 2 found none
 - **Pending FBs at cancel time** (if any): list filenames from Phase 3 with a note that they live under `.hq/tasks/canceled/<branch-dir>/feedbacks/` for the audit trail.
 
