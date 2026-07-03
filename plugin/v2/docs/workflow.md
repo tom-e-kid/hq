@@ -107,9 +107,10 @@ Input: `hq:plan` Issue number.
 ```
 Phase 1: Pre-flight Check (non-interactive)
 │  find-plan-branch.sh <plan>
-│  ├─ found existing branch → auto-resume
+│  ├─ found existing branch (exit 0) → auto-resume
 │  │    (git checkout, cache pull, resume phase by checkbox state)
-│  └─ not found → fresh start (proceed to Phase 2)
+│  ├─ not found (exit 1) → fresh start (proceed to Phase 2)
+│  └─ ambiguous (exit 5) → ABORT (multiple dirs reference the same plan)
 │
 Phase 2: Load Plan (fresh start only)
 │  gh issue view <plan> → title, body, milestone, projects
@@ -137,7 +138,7 @@ Phase 5: Acceptance (sweep only — no fixing)
 │                         (Phase 4 fixes; re-enter Phase 5)
 │  └─ cap exhausted    → FB per remaining item (with `covers_acceptance`)
 │                         + toggle [x] + push, Phase 6
-│  Retry cap = FB retry cap (§ Settings, default 2)
+│  Retry cap = Phase 5 retry cap (§ Settings, default 2)
 │
 Phase 6: Self-Review (orchestrator pre-Quality-Review self-assessment)
 │  orchestrator self-assesses across 3 axes:

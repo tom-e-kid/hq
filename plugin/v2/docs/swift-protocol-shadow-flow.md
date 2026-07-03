@@ -4,8 +4,10 @@
 
 ```
 Step 0: Initialization
-│  Clean .hq/protocol-shadow/
-│  Create protocols/, conformances/, findings/
+│  Derive <dir-key> from <directory>   ($OUT = .hq/protocol-shadow/<dir-key>/)
+│  Clean $OUT only — results for other directories coexist
+│  Create $OUT/{protocols, conformances, findings}
+│  (all output paths below are relative to $OUT)
 │
 Step 1: Protocol Collection (Collector Agents — parallel)
 │  ┌─────────────────────────────────────────────┐
