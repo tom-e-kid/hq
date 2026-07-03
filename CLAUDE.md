@@ -5,7 +5,8 @@ A development hub for AI-assisted workflows across multiple projects.
 ## Repository Overview
 
 - **.claude-plugin/** — Plugin manifest (`plugin.json`): defines commands, agents, and skills paths
-- **plugin/v2/** — Active plugin version (commands, agents, skills)
+- **plugin/v3/** — Active plugin version (commands, agents, skills)
+- **plugin/v2/** — Legacy — frozen, do not modify
 - **plugin/v1/** — Legacy — do not modify
 - **tools/** — CLI tools (Go binary)
 
@@ -20,9 +21,9 @@ A development hub for AI-assisted workflows across multiple projects.
 
 ## Dogfooding
 
-This repository develops its own plugin and uses that same plugin (the `hq:*` commands, agents, and skills under `plugin/v2/`) to drive its own development workflow. Changes to the workflow are exercised here first.
+This repository develops its own plugin and uses that same plugin (the `hq:*` commands, agents, and skills under `plugin/v3/`) to drive its own development workflow. Changes to the workflow are exercised here first.
 
-The workflow rule is a single file: **`plugin/v2/rules/workflow.md`**. This is the plugin-internal source of truth — each `/hq:*` command reads it on invocation. There is no copy, no distribution step, and no consumer-side build artifact: editing this file is the change.
+The workflow rule is a single file: **`plugin/v3/rules/workflow.md`**. This is the plugin-internal source of truth — each `/hq:*` command reads it on invocation. There is no copy, no distribution step, and no consumer-side build artifact: editing this file is the change.
 
 ## Language Policy
 

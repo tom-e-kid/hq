@@ -1,12 +1,12 @@
 {
   "name": "hq",
-  "version": "2.0.0",
-  "commands": "./plugin/v2/commands",
+  "version": "3.0.0",
+  "commands": "./plugin/v3/commands",
   "agents": [
-    "./plugin/v2/agents/code-reviewer.md",
-    "./plugin/v2/agents/security-scanner.md",
-    "./plugin/v2/agents/integrity-checker.md",
-    "./plugin/v2/agents/review-comment-analyzer.md"
+    "./plugin/v3/agents/code-reviewer.md",
+    "./plugin/v3/agents/security-scanner.md",
+    "./plugin/v3/agents/integrity-checker.md",
+    "./plugin/v3/agents/review-comment-analyzer.md"
   ],
-  "skills": "./plugin/v2/skills"
+  "skills": "./plugin/v3/skills"
 }

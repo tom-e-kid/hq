@@ -23,7 +23,7 @@ HQ separates a feature from idea to merge into a small set of command-scoped ope
 
 The two review points are the workflow's center of gravity. Everything downstream of intervention #2 is **user-directed** — `/hq:triage` and `/hq:respond` compose freely, not in a fixed sequence.
 
-For the full lifecycle, plan body schema, sync model, and per-command phase breakdown, see [plugin/v2/docs/workflow.md](plugin/v2/docs/workflow.md). The authoritative rule specifications live at [plugin/v2/rules/workflow.md](plugin/v2/rules/workflow.md), loaded on demand by each command.
+For the full lifecycle, plan body schema, sync model, and per-command phase breakdown, see [plugin/v3/docs/workflow.md](plugin/v3/docs/workflow.md). The authoritative rule specifications live at [plugin/v3/rules/workflow.md](plugin/v3/rules/workflow.md), loaded on demand by each command.
 
 ## Components
 
@@ -36,7 +36,7 @@ For the full lifecycle, plan body schema, sync model, and per-command phase brea
 | `triage`  | Triage PR body `## Known Issues` — add to plan / leave / escalate to `hq:feedback` |
 | `respond` | Respond to external PR review comments — fix / escalate / dismiss |
 | `archive` | Safely close the current branch — **done** (PR merged → `tasks/done/`) or **cancel** (`archive cancel`: closes PR without merging → `tasks/canceled/`) |
-| `swift-protocol-shadow` | Detect protocol default implementation shadowing in Swift ([flow](plugin/v2/docs/swift-protocol-shadow-flow.md)) |
+| `swift-protocol-shadow` | Detect protocol default implementation shadowing in Swift ([flow](plugin/v3/docs/swift-protocol-shadow-flow.md)) |
 
 ### Skills (analysis criteria)
 
@@ -107,7 +107,7 @@ The plugin is designed to **leave no trace in the target repository**:
 - **Committed** (only when missing): `CLAUDE.md` (with the bootstrap-managed `<!-- BEGIN HQ --> ... <!-- END HQ -->` block), `.gitignore` entry (`.hq/`).
 - **Never committed** (gitignored): `.claude/settings.local.json`, `.hq/` (tasks, feedbacks, reports, retro).
 
-The workflow rule itself lives at `plugin/v2/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command. Nothing is copied into the consumer project — editing that one file is the change.
+The workflow rule itself lives at `plugin/v3/rules/workflow.md` inside the plugin and is loaded on demand by each `/hq:*` command. Nothing is copied into the consumer project — editing that one file is the change.
 
 Per-project guidance can be layered via `.hq/<command>.md` overrides (e.g. `.hq/draft.md`, `.hq/start.md`). Overrides **augment**, never **replace**, the workflow contract.
 
@@ -116,7 +116,8 @@ Per-project guidance can be layered via `.hq/<command>.md` overrides (e.g. `.hq/
 | Path | Role |
 |------|------|
 | `.claude-plugin/plugin.json` | Plugin manifest |
-| `plugin/v2/` | Active plugin — commands, agents, skills, rules, scripts, docs |
+| `plugin/v3/` | Active plugin — commands, agents, skills, rules, scripts, docs |
+| `plugin/v2/` | Legacy — frozen, do not modify |
 | `plugin/v1/` | Legacy — frozen, do not modify |
 | `CLAUDE.md` | Project instructions for Claude Code |
 | `AGENTS.md` | Pointer to `CLAUDE.md` for OpenAI Codex |
