@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Toggle a single "[ ]" checkbox to "[x]" in the branch-local plan cache.
+# Toggle a single "[ ]" checkbox to "[x]" in the branch-local plan file.
 # Usage: plan-check-item.sh <pattern>
 #   <pattern> is a fixed substring that uniquely identifies the checklist line.
 # Exit codes:
@@ -26,9 +26,9 @@ if [[ -z "$branch_raw" || "$branch_raw" == "HEAD" ]]; then
 fi
 branch_dir=${branch_raw//\//-}
 
-cache_file=".hq/tasks/${branch_dir}/gh/plan.md"
+cache_file=".hq/tasks/${branch_dir}/plan.md"
 if [[ ! -f "$cache_file" ]]; then
-  echo "error: cache file not found: $cache_file" >&2
+  echo "error: plan file not found: $cache_file" >&2
   exit 1
 fi
 

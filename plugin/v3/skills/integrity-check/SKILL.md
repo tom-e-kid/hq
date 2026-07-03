@@ -42,7 +42,7 @@ From the diff, extract every item that can be referenced from elsewhere. For eac
 - **Symbols** — function / method / type / constant / enum-variant names introduced, removed, or renamed. Include language-level identifiers from added/removed declarations on both sides of the hunk.
 - **File paths** — paths that were created, deleted, moved, or renamed. Include both the old and the new path for renames.
 - **Command / subcommand names** — new or removed slash-commands (`/hq:<name>`), CLI subcommands, npm/bun scripts, mise tasks, make targets.
-- **Rule / section names** — structural heading names (`## Why`, `## Approach`, `## Editable surface`, `## Plan`, `## Acceptance`, `## Known Issues`, …), Editable surface inline tags (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`), Plan consumer suffix marker (`*(consumer: <name>)*`), FB field names, workflow-rule section names (`hq:workflow § <section>`), label names (`hq:plan`, `hq:pr`, …).
+- **Rule / section names** — structural heading names (`## Why`, `## Approach`, `## Editable surface`, `## Plan`, `## Acceptance`, `## Known Issues`, …), Editable surface inline tags (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`), Plan consumer suffix marker (`*(consumer: <name>)*`), FB field names, workflow-rule section names (`hq:workflow § <section>`), label names (`hq:task`, `hq:pr`, …).
 - **Config keys** — JSON/YAML/TOML keys added or removed (e.g., `base_branch`, `allowed-tools`), environment variable names.
 - **Public API shape** — exported symbols whose signature (arguments, return type, frontmatter schema) changed. The token did not move, but its contract did — callers may silently break.
 

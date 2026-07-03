@@ -70,7 +70,7 @@ From the skill file, extract and follow:
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`
-4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `plan` and `source` (GitHub issue numbers). Read the plan body from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md` — do NOT call `gh issue view`. If the cache file does not exist, proceed without plan context.
+4. **Focus**: from the current branch name (step 2), compute the context path: `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Read it with the Read tool. If not found, treat as "none". If found, extract `branch` and `source`. Read the plan body from the local plan file: `.hq/tasks/<branch-dir>/plan.md` (the plan is a local file — never fetch it from GitHub). If the plan file does not exist, proceed without plan context.
 5. **Requirements**: if `docs/requirements.md` exists, use as reference
 
 ## Progress Reporting
@@ -115,7 +115,7 @@ You MUST save all output files to disk before returning. This is not optional.
 6. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits)
 7. Set frontmatter fields:
    - `skill: /code-review`
-   - `source` and `plan`: from focus (step 4)
+   - `source` and `branch`: from focus (step 4)
 
 Use the Write tool for every file — do not just return text.
 

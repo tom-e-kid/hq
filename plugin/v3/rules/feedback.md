@@ -1,6 +1,6 @@
 ---
-source: <hq:task issue number, e.g. 42>
-plan: <hq:plan issue number, e.g. 123>
+source: <hq:task issue number, e.g. 42 — omit when the plan has no parent task>
+branch: <work branch name from context.md, e.g. feat/oauth-login>
 skill: <skill or agent that generated this FB, e.g. /code-review, /e2e-web, copilot>
 run_at: <ISO 8601 timestamp>
 covers_acceptance: <optional — unique substring of the `## Acceptance` item this FB covers, e.g. "`pnpm test` passes">

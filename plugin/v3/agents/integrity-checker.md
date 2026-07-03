@@ -101,7 +101,7 @@ You override the skill's general "Review Criteria" (three-class model) with the 
 1. **Project root**: `git rev-parse --show-toplevel`
 2. **Current branch**: `git rev-parse --abbrev-ref HEAD`
 3. **Base branch**: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`
-4. **Plan context**: prefer the `## Editable surface` + `## Plan` sections inlined by the caller's invocation prompt (§ Input contract above). If no such sections are present, compute the focus path `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`), then read `.hq/tasks/<branch-dir>/gh/plan.md` and extract those two sections yourself. If neither source yields them, apply § Without-plan fallback.
+4. **Plan context**: prefer the `## Editable surface` + `## Plan` sections inlined by the caller's invocation prompt (§ Input contract above). If no such sections are present, compute the focus path `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`), then read `.hq/tasks/<branch-dir>/plan.md` and extract those two sections yourself. If neither source yields them, apply § Without-plan fallback.
 
 ## Progress Reporting
 
@@ -156,7 +156,7 @@ You MUST save all output files to disk before returning. This is not optional.
 6. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits)
 7. Set frontmatter fields:
    - `skill: /integrity-check`
-   - `source` and `plan`: from focus (step 4)
+   - `source` and `branch`: from focus (step 4)
 
 Use the Write tool for every file — do not just return text.
 
