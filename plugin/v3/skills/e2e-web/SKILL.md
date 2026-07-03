@@ -32,7 +32,7 @@ Identify which app to verify based on the following (in priority order):
 
 1. **Explicit argument** — if the user passes an app path (e.g., `/e2e-web apps/admin`), use it
 2. **Recent edits** — look at the recently edited files in Context; if most changes are under a specific app directory, use it
-3. **Active `hq:plan`** — if a plan issue is active, check which app it relates to
+3. **Active `hq:plan`** — if a plan is active, check which app it relates to
 4. **Ask the user** — if ambiguous, ask before proceeding
 
 Once determined, read the target app's package.json (or equivalent build config) to discover available scripts.
@@ -112,17 +112,15 @@ Skip this phase if the app has no authentication.
 
 Determine what to verify (in priority order):
 
-1. **Active `hq:plan`** — read `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`). Extract `plan` (GitHub issue number). Read the plan body from the local cache: `.hq/tasks/<branch-dir>/gh/plan.md`. If the cache file does not exist, fall back to `gh issue view <plan> --json body --jq '.body'`. Parse the `## Acceptance` section and use **unchecked `[auto]` items that are browser/UI-oriented** as the checklist. The plan's `## Manual Verification` items (if any) are reviewer-verified during PR review, not driven here.
+1. **Active `hq:plan`** — read the plan body from `.hq/tasks/<branch-dir>/plan.md` (branch-dir = branch name with `/` → `-`; the plan is a local file, no GitHub fallback — see `hq:workflow § Local Plan Principle`). Parse the `## Acceptance` section and use **unchecked `[auto]` items that are browser/UI-oriented** as the checklist. The plan's `## Manual Verification` items (if any) are reviewer-verified during PR review, not driven here.
 2. **User instruction** — if the user specifies items, use those
 3. **Ask the user** — if neither is available, ask what to verify
 
-On successful verification of an `[auto]` item, toggle its checkbox in the cache via:
+On successful verification of an `[auto]` item, toggle its checkbox in the plan file via:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/plan-check-item.sh" "<unique substring>"
 ```
-
-Do NOT call `gh issue edit` directly — the plan cache is pushed to GitHub at the Phase 5 (Acceptance) sync checkpoint by the caller (`/hq:start`).
 
 Useful patterns:
 
@@ -145,7 +143,7 @@ If all items pass, no FB files are generated.
 
 ## Feedback Output
 
-For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `plan` from `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`).
+For each failed verification item, create a FB file following the workflow rules (directory, numbering, format). Set `source` and `branch` from `.hq/tasks/<branch-dir>/context.md` (branch-dir = branch name with `/` → `-`).
 
 Additionally, capture a screenshot at the moment of failure and save to `.hq/tasks/<branch-dir>/feedbacks/screenshots/` with naming `FB001.png`, `FB002.png`, etc. Reference the screenshot path in the FB file's **Evidence** field.
 
