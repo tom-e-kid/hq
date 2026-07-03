@@ -1,6 +1,6 @@
 # Implementation Plan: `hq:loop` Orchestrator + Plan Localization + Command Refactoring
 
-Status: **approved design, not started**
+Status: **Phases 1–3 implemented and merged to develop (2026-07-04); Phase 4 is an evaluation gate awaiting ≥ 3 real `/hq:loop` runs**
 Author context: composed 2026-07-04 from a design session with the repository owner. All user decisions below are final unless explicitly re-opened.
 
 This document is written to be self-sufficient: an AI implementer (Opus / Sonnet class) should be able to execute each phase from this document plus the referenced source files, without access to the original design conversation.
