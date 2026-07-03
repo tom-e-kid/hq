@@ -245,7 +245,7 @@ For each unchecked `[auto]` item in the plan's `## Acceptance`:
 3. **On fail**: leave the checkbox as `[ ]` and record the failure summary in conversation context (no FB yet).
 4. Track a **sweep counter per item** — how many times this item has cycled through the Phase 4 → Phase 5 loop.
 
-`[manual]` items are not executed — they stay `[ ]` and flow to the PR body in Phase 7.
+The sweep covers `## Acceptance` only, which is all `[auto]`. The plan's `## Manual Verification` items are reviewer-owned — Phase 5 does not touch them; Phase 8 carries them verbatim into the PR body.
 
 ### 1-by-1 toggle rule (batch toggle prohibited)
 
@@ -268,9 +268,7 @@ This 1-item = 1-FB = 1-toggle ordering makes the reviewer audit trail linear and
 
 If the retry cap is `0`, the first sweep's failures go straight to FB + `[x]` with no loopback.
 
-**`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (`[auto] [primary]` — `[manual] [primary]` items are deferred, not failed; see the paragraph below), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 8 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 11 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
-
-**`[primary]` deferred — escape hatch sibling.** When the plan carries a `[manual] [primary]` item (`hq:workflow § #### [manual] [primary] escape hatch`), the Phase 5 sweep does not execute it — same rule as any `[manual]` item, the sweep skips `[manual]`. Do NOT convert it into a failure or an FB; it has not failed, it is **deferred** to reviewer judgment at PR time. Phase 8 gate enforces the compensating controls (`## Primary Verification (manual)` section presence + `hq:manual` label); final pass/fail judgment belongs to the PR reviewer. Phase 11 (Report) MUST surface this item as **`[primary deferred]`** — the sibling notice to `[primary failure]` — so the user sees immediately that the plan's single most important signal is pending reviewer review, not failed.
+**`[primary]` failure — conspicuous report.** If the failing item that exhausts the retry cap carries the `[primary]` marker (always `[auto] [primary]`), the plan's single-most-important success signal did not pass. The per-item handling is unchanged (FB + `[x]`-anyway so the Phase 8 Gate does not ABORT on a continue-report), but the failure MUST be surfaced prominently — the FB subject explicitly prefixed with `[primary failure]`, and Phase 11 (Report) must call it out above all secondary FBs. Do not silently treat a primary FB as just another entry in `## Known Issues`; its class of severity is higher by construction of the plan.
 
 Acceptance failures are treated as **all actionable** (unlike Phase 7 Quality Review FBs, which surface to `## Known Issues` without inline fix). An `[auto]` check failing means the implementation doesn't satisfy the plan — by definition something to fix in Phase 4.
 
@@ -511,7 +509,7 @@ Before creating the PR, verify:
 - All items in `## Plan` are `[x]` — **required**
 - All `[auto]` items in `## Acceptance` are `[x]` — **required**
 - Working tree is clean — `git status --short` returns empty
-- **Escape hatch flag** — inspect the plan's `## Acceptance` section for a `[manual] [primary]` item. If present, this plan is in escape-hatch mode; the Assemble PR Body step MUST include `## Primary Verification (manual)` and the `pr` skill delegation MUST apply the `hq:manual` label. Post-assembly verification below confirms both.
+- **Manual Verification flag** — inspect the plan for a `## Manual Verification` section carrying items. If present, the Assemble step MUST include the `## Manual Verification` block and the `pr` skill delegation MUST apply the `hq:manual` label.
 
 If any of the first two fail, ABORT per Stop Policy. If the working tree is dirty, create a `chore: residual changes prior to PR` commit to absorb the leftovers and continue — this is a safety net for upstream Commit Policy slips, not an invitation to skip commits during earlier phases.
 
@@ -521,22 +519,12 @@ Phase 8 builds the **workflow sections pack** — the English-fixed, auto-inject
 
 The pack has these blocks; each is built only when its trigger condition holds, and each is passed verbatim to the `pr` skill in the Create the PR step below.
 
-1. **`## Primary Verification (manual)` block** *(only when the plan has `[manual] [primary]` — escape hatch)* — copy the primary item verbatim, add an evidence link placeholder for screenshot / video (the reviewer fills it in during PR review if the executor could not attach it from the run), and list a reviewer checklist of ≥3 observations decomposing the primary's single observable into concrete verifiable parts.
-2. **`## Manual Verification` block** *(only when unchecked `[manual]` items remain, excluding the `[manual] [primary]` item which lives in block 1)* — copy each remaining unchecked `[manual]` item from `## Acceptance` verbatim.
-3. **`## Known Issues` block** *(only when pending FBs exist under `.hq/tasks/<branch-dir>/feedbacks/`)* — for each pending FB, read the frontmatter `severity:` and `skill:` fields and emit a line of the form `- [<Severity>] [<originating-agent>] <title> — <brief description>` under the appropriate action-priority category (`### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)`) **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Emit a leading `**Triage summary**` line counting the items per category. Category sub-sections are emitted **only when at least one FB falls in them** — empty categories are omitted (no empty headings). Within each category, entries preserve insertion order. This 3-category structure and the dual `[<Severity>] [<originating-agent>]` tagging are invariant — see `hq:workflow § ## PR Body Structure § Invariants`.
-4. **Trailer lines** — `Closes #<plan>` is always present; `Refs #<task>` follows only when the plan has a parent `hq:task` (per `hq:workflow § ## PR Body Structure § Invariants`).
-5. **Label / flag set** — always include `--label "hq:pr"`. Add `--label "hq:manual"` when block 1 was emitted (escape hatch). Add `--milestone` / `--project` only when the plan has a parent `hq:task` and the task carries those (resolved in Create the PR below).
+1. **`## Manual Verification` block** *(only when the plan has a `## Manual Verification` section with items)* — copy each `[manual]` item from the plan's `## Manual Verification` section verbatim.
+2. **`## Known Issues` block** *(only when pending FBs exist under `.hq/tasks/<branch-dir>/feedbacks/`)* — for each pending FB, read the frontmatter `severity:` and `skill:` fields and emit a line of the form `- [<Severity>] [<originating-agent>] <title> — <brief description>` under the appropriate action-priority category (`### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)`) **and** move the file to `feedbacks/done/` in the same step (atomic; see `hq:workflow` § Feedback Loop). Emit a leading `**Triage summary**` line counting the items per category. Category sub-sections are emitted **only when at least one FB falls in them** — empty categories are omitted (no empty headings). Within each category, entries preserve insertion order. This 3-category structure and the dual `[<Severity>] [<originating-agent>]` tagging are invariant — see `hq:workflow § ## PR Body Structure § Invariants`.
+3. **Trailer lines** — `Closes #<plan>` is always present; `Refs #<task>` follows only when the plan has a parent `hq:task` (per `hq:workflow § ## PR Body Structure § Invariants`).
+4. **Label / flag set** — always include `--label "hq:pr"`. Add `--label "hq:manual"` when the Manual Verification block (block 1) was emitted. Add `--milestone` / `--project` only when the plan has a parent `hq:task` and the task carries those (resolved in Create the PR below).
 
 Title: `<type>: <description>` — plan title with the `(plan)` scope removed. The `pr` skill is the executor of the title flag; `.hq/pr.md` MAY adjust title-line conventions per its Override scope.
-
-### Post-assembly verification (escape hatch only)
-
-When the plan carries a `[manual] [primary]` item (flagged by the Gate above), verify the workflow sections pack before delegating to the `pr` skill:
-
-- The `## Primary Verification (manual)` block is present in the pack with (a) the primary item verbatim, (b) an evidence link (screenshot / video — a placeholder is acceptable, the reviewer fills it during PR review), and (c) a reviewer checklist of ≥3 concrete observations.
-- The label set includes `--label "hq:manual"` in addition to `--label "hq:pr"`.
-
-If either check fails, ABORT — the escape hatch's rigor rests on these controls; shipping without them silently degrades the primary signal. Do not proceed to the Final Sync Checkpoint.
 
 ### Final Sync Checkpoint (Push)
 
@@ -548,9 +536,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/plugin/v2/scripts/plan-cache-push.sh" <plan>
 
 Delegate to the `pr` skill, passing:
 
-- The **workflow sections pack** (the four blocks 1–4 assembled above — escape-hatch / Manual Verification / Known Issues / trailer).
+- The **workflow sections pack** (the blocks assembled above — Manual Verification / Known Issues / trailer).
 - The **title** (`<type>: <description>` from the plan title, `(plan)` scope removed).
-- The **label / flag set** — `--label "hq:pr"`, plus `--label "hq:manual"` when the escape hatch fired. **Only when the plan has a parent `hq:task`**, add `--milestone` / `--project` inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`); when no parent exists, no `task.json` cache file is present and no `--milestone` / `--project` flags are passed.
+- The **label / flag set** — `--label "hq:pr"`, plus `--label "hq:manual"` when the Manual Verification block was emitted. **Only when the plan has a parent `hq:task`**, add `--milestone` / `--project` inherited from the `hq:task` (read `.hq/tasks/<branch-dir>/gh/task.json`); when no parent exists, no `task.json` cache file is present and no `--milestone` / `--project` flags are passed.
 
 The `pr` skill renders the **narrative layer** from `.hq/pr.md` (or defaults) and appends the workflow sections pack verbatim, then runs `gh pr create` with the labels and flags. The `pr` skill is the single path to `gh pr create`; do not call `gh pr create` directly from `/hq:start`.
 
@@ -643,7 +631,6 @@ Summarize:
 - **Self-Review (Phase 6)**: result (pass / minor-gap / significant-gap) + one-line summary of the rationale (paraphrase the **Decision rationale** paragraph from the Phase 6 decision report — name what was weighed, what tipped the call). When `minor-gap`, name the FB id.
 - **Agent Selection (Phase 7)**: mode (`judgment` / `full`) + launched / skipped lists with the per-agent one-line reasons + the **Overall rationale** paragraph from the Phase 7 decision report (verbatim or paraphrased ≤ 2 sentences). In `judgment` mode the launched set is variable; in `full` mode it follows the matrix at `## Diff Classification`.
 - **Per-agent results (Phase 7 Step 2)**: per-agent summaries for every agent that ran (severity counts, notable FBs).
-- **Primary (manual, deferred)** *(only when the plan has `[manual] [primary]` — escape hatch)*: the primary item verbatim, flagged as **`[primary deferred]`** — pending reviewer judgment at PR time. Surface this above `Known Issues` so the user sees it immediately.
 - **Phase Timing** *(MUST)*: include the `### Timing` subsection below verbatim with `phase-timing.sh summary` output. Not omittable on any path — see § Timing.
 - **PR**: URL
 - **Manual verification items**: count (to be done by user in PR review)
@@ -653,7 +640,7 @@ The **Self-Review (Phase 6)** and **Agent Selection (Phase 7)** lines are the us
 
 ### Timing *(MUST)*
 
-The Phase Timing block is a **required output** of every `/hq:start` run — emit it on every Phase 11 invocation, regardless of run outcome (zero-FB, all-FB-Optional, escape hatch, etc.). The block exists so the user can see where the run actually spent time and so future runs can compare wall-clock distributions. Skipping or shortening this block is a real gap, not a continue-report.
+The Phase Timing block is a **required output** of every `/hq:start` run — emit it on every Phase 11 invocation, regardless of run outcome (zero-FB, all-FB-Optional, etc.). The block exists so the user can see where the run actually spent time and so future runs can compare wall-clock distributions. Skipping or shortening this block is a real gap, not a continue-report.
 
 Run the phase-timing summary and include its **verbatim output** under a `### Timing` subsection in the report:
 
