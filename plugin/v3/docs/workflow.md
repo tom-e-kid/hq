@@ -30,6 +30,7 @@ Core artifacts:
 ```
 
 - **Creation path**: `/hq:draft` → `/hq:start` → (merge) → `/hq:archive`.
+- **Orchestrated path**: `/hq:loop [input]` runs draft → execute → auto-triage → report in one command, keeping three interaction points (the draft `go` gate, rare executor consults, the final feedback confirmation). Autonomous stages run as subagents (`executor` / `auto-triager`); re-execution is bounded by `loop_max_iterations`. Spec: `plugin/v3/commands/loop.md`, `hq:workflow § Loop`.
 - **Cancel path**: `/hq:archive cancel` closes the PR (if open) and archives the task folder under `.hq/tasks/canceled/`. The plan is a local file — there is no plan Issue to close in either path; the parent `hq:task` is never touched.
 - **Response tools** (user-directed, zero or more times, any order): `/hq:triage` for in-PR Known Issues, `/hq:respond` for external review comments.
 
@@ -66,3 +67,4 @@ Helper scripts (`plugin/v3/scripts/`): `plan-check-item.sh` (checkbox toggle), `
 - **PR body = 2 layers** — the narrative layer is project-overridable via `.hq/pr.md`; the workflow sections (`## Manual Verification` / `## Known Issues` / `## Implementation Plan` / `Refs` trailer) are English-fixed invariants. Spec: `hq:workflow § PR Body Structure`, `skills/pr/SKILL.md`.
 - **Learning loop** — Phase 9 writes the retrospective, Phase 10 distills repo-specific cautions into the char-bounded `.hq/start-memory.md`, which Phase 4 (implementation), Phase 6 (Self-Review), and Phase 7 (Agent Selection) read on the next run. Spec: `hq:workflow § Retrospective`.
 - **Project overrides** — every command / skill / agent may consult `.hq/<name>.md` for project-local guidance; overrides augment, Invariants govern. Spec: `hq:workflow § Project Overrides`.
+- **Loop composition** — `/hq:loop` composes the three protocols instead of duplicating them: draft runs inline (interactive by definition), execute / triage run as subagents with per-role `model:` assignment. Auto-triage applies gate-derived dispositions without per-item confirmation but never creates Issues — feedback candidates are user-confirmed at the final report. Spec: `hq:workflow § Loop`.
