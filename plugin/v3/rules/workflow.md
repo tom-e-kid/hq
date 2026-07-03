@@ -18,11 +18,11 @@
 
 - **`hq:workflow`** — shorthand for `plugin/v3/rules/workflow.md` (this file — the plugin-internal source of truth for the workflow rule, loaded on demand by each command). Skills and commands cite sections as `hq:workflow § <section>` instead of repeating the full path.
 - **`hq:task`** — a GitHub Issue (label: `hq:task`) that describes **what** needs to be done. The requirement. **Trigger** of the workflow.
-- **`hq:plan`** — a GitHub Issue (label: `hq:plan`) that describes **how** to do it. The implementation plan. **Center** of the workflow — drives execution, verification, and PR. One `hq:task` can have multiple `hq:plan` issues.
+- **`hq:plan`** — a **local plan file** at `.hq/tasks/<branch-dir>/plan.md` that describes **how** to do it. The implementation plan. **Center** of the workflow — drives execution, verification, and PR. Created by `/hq:draft`; identified by its branch name. One `hq:task` can have multiple `hq:plan` files (one per branch). Not a GitHub Issue — the PR body carries a snapshot of the plan from PR creation onward (see `## PR Body Structure`).
 - **`hq:feedback`** — a GitHub Issue (label: `hq:feedback`) for unresolved problems carved out from a PR's Known Issues during PR review. Created via `/hq:triage` only.
 - **`hq:doc`** — a GitHub Issue (label: `hq:doc`) for informational notes / research findings worth preserving (not a direct task). Created manually by the user when investigation turns up something useful to retain. Not consumed by any workflow command.
 - **`hq:pr`** — a PR label applied automatically by the `pr` skill (in either invocation mode — Standalone `/pr` or via `/hq:start`). Marks a PR as a product of the `hq:plan` → PR workflow. Useful for filtering PRs that belong to this workflow vs ad-hoc PRs.
-- **`hq:wip`** — a GitHub Issue modifier label. Purpose is twofold: (1) **drafting marker** — the issue is still being shaped and not ready for automation, (2) **automation gate** — when `/hq:start` or `/hq:draft` is triggered automatically (e.g., from GitHub Actions), the command must skip (or, in manual invocation, pause and confirm) any Issue carrying this label.
+- **`hq:wip`** — a GitHub Issue modifier label on `hq:task` Issues. Purpose is twofold: (1) **drafting marker** — the issue is still being shaped and not ready for automation, (2) **automation gate** — when `/hq:draft` is triggered automatically (e.g., from GitHub Actions), the command must skip (or, in manual invocation, pause and confirm) any Issue carrying this label.
 
 These are plugin-specific terms. Always use the `hq:` prefix to distinguish from general "task", "plan", or "feedback".
 
@@ -32,22 +32,23 @@ Titles follow **Conventional Commits** style. Recognized `<type>` values: `feat`
 
 - **`hq:task` title**: `<type>: <requirement>`
   - Example: `feat: add user authentication`
-- **`hq:plan` title**: `<type>(plan): <implementation approach>`
+- **`hq:plan` title**: `<type>(plan): <implementation approach>` — the `# `-heading first line of the plan file
   - Example: `feat(plan): implement user authentication with OAuth 2.0`
   - The `(plan)` scope distinguishes the implementation plan from the parent requirement.
 - **PR title**: `<type>: <implementation>` — same as `hq:plan` title with `(plan)` removed
   - Example: `feat: implement user authentication with OAuth 2.0`
-- **Branch name**: `<type>/<short-description>` (kebab-case)
+- **Branch name**: `<type>/<short-description>` (kebab-case, ≤ 40 chars, alphanumeric + hyphens)
   - Example: `feat/oauth-login`
+  - Derived from the plan title by `/hq:draft` at plan-file creation time (the branch name keys the plan's directory `.hq/tasks/<branch-dir>/`; `/hq:start` creates the actual git branch later).
 
 ## Language
 
 Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored in the **conversation language** (the language the user is speaking in this session). Headings that are **auto-injected by `/hq:start` or parsed by downstream tooling** stay in **English** regardless, so the injection / parsing contract holds across projects. Narrative headings — including the PR body's narrative sections — are free-form and follow the conversation language.
 
 - **English (fixed — auto-injected or parse-targeted)**:
-  - Workflow markers: `Parent: #N`, `[auto]`, `[manual]`, `[primary]`, `Closes #<plan>`, `Refs #<task>`
+  - Workflow markers: `[auto]`, `[manual]`, `[primary]`, `Refs #<task>`
   - `hq:task` / `hq:plan` prescribed headings: `## Why`, `## Approach`, `## Editable surface`, `## Plan`, `## Acceptance`, `## Manual Verification` (all consumed by `/hq:draft` / `/hq:start`; `## Manual Verification` is emitted only when the plan has reviewer-owned checks)
-  - PR body **workflow sections**: `## Manual Verification` (Phase 8 carry-forward of the plan's reviewer-owned checks), `## Known Issues` (Phase 8 auto-inject from pending FBs + `/hq:triage` literal-grep target)
+  - PR body **workflow sections**: `## Manual Verification` (Phase 8 carry-forward of the plan's reviewer-owned checks), `## Known Issues` (Phase 8 auto-inject from pending FBs + `/hq:triage` literal-grep target), `## Implementation Plan` (Phase 8 plan snapshot)
   - Editable surface inline tags: `[新規]` / `[改修]` / `[削除]` / `[silent-break]` (the brackets and tag values are fixed; the latter three are romaji-free fixed strings even in English-only repos — they are structural markers, not translatable prose)
   - Plan item consumer suffix: `*(consumer: <name>)*` (the literal `consumer:` keyword is fixed; `<name>` is the consumer identifier)
   - File paths, identifiers, code fences, shell commands
@@ -58,7 +59,7 @@ Runtime-generated content — `hq:task` / `hq:plan` / PR bodies — is authored 
   - Free-form narrative text under `## Known Issues` entries
   - Any free-form section headings the author introduces (e.g., `### 背景`, `### Requirements`)
 
-This rule applies to every skill and command that generates Issue or PR content — `/hq:draft`, `/hq:start` (fallback drafting), and the `pr` skill.
+This rule applies to every skill and command that generates Issue, plan-file, or PR content — `/hq:draft`, `/hq:start` (fallback drafting), and the `pr` skill.
 
 ## Project Overrides
 
@@ -97,27 +98,23 @@ Override content is free-form prose in the project's working language (typically
 With a parent hq:task:
   Milestone (GitHub built-in, optional)
     └── hq:task Issue  — requirement ("what")
-          └── hq:plan Issue  — implementation plan ("how")
-                ├── ← Closes → PR  (Refs #hq:task)
-                │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
-                └── (or escalated during PR review via /hq:triage)
+          └── hq:plan file  — .hq/tasks/<branch-dir>/plan.md ("how"; local, gitignored)
+                └── PR  (Refs #hq:task; embeds plan snapshot in ## Implementation Plan)
+                      └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #PR)
 
 Without a parent hq:task:
-  hq:plan Issue  — implementation plan ("how"); top-level, requirement captured in ## Why
-    ├── ← Closes → PR  (no Refs trailer)
-    │     └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #plan)
-    └── (or escalated during PR review via /hq:triage)
+  hq:plan file  — .hq/tasks/<branch-dir>/plan.md; requirement captured in ## Why
+    └── PR  (no Refs trailer; embeds plan snapshot)
+          └── ← /hq:triage → hq:feedback Issue(s)  (residual, Refs #PR)
 ```
 
-- `hq:task` and `hq:plan` are separate issues (separation of concerns)
+- `hq:task` (requirement) and `hq:plan` (implementation plan) are separate artifacts (separation of concerns). The task is a GitHub Issue; the plan is a local file, durable via the PR body snapshot from PR creation onward.
 - **`hq:task` is optional** — an `hq:plan` can be created without a parent `hq:task` by invoking `/hq:draft` with no issue number. Use this when the requirement already lives in an external tracker, or for 1:1 cases where a separate requirement Issue is pure overhead. When no parent exists, the plan's `## Why` section becomes the sole source of truth for the requirement.
-- `hq:plan` is created as a **sub-issue** of its parent `hq:task` (GitHub sub-issues API) only when a parent `hq:task` exists. Plans without a parent are top-level Issues.
-- PR uses `Closes #<hq:plan>` to auto-close the plan issue on merge
-- PR uses `Refs #<hq:task>` to maintain a link to the requirement — only when the plan has a parent `hq:task`; omitted when absent
-- **Traceability inheritance** — if the source `hq:task` has a milestone or project(s), all generated items (`hq:plan`, PR, `hq:feedback`) must inherit them via `--milestone` / `--project` flags. Exception: `hq:feedback` issues do NOT inherit milestones. When no parent `hq:task` exists, there is nothing to inherit from, so milestone / project are left unset.
+- Parent linkage lives in `context.md` `source:` (see `### Focus`), not in the plan body.
+- PR uses `Refs #<hq:task>` to maintain a link to the requirement — only when the plan has a parent `hq:task`; omitted when absent. Merging a PR closes nothing automatically; `hq:task` closure is user-owned.
+- **Traceability inheritance** — if the source `hq:task` has a milestone or project(s), all generated GitHub items (PR, `hq:feedback`) must inherit them via `--milestone` / `--project` flags. Exception: `hq:feedback` issues do NOT inherit milestones. When no parent `hq:task` exists, there is nothing to inherit from, so milestone / project are left unset.
 - Labels are created lazily at first use:
   - `gh label create "hq:task" --description "HQ requirement (what to do)" --color "39FF14" 2>/dev/null || true`
-  - `gh label create "hq:plan" --description "HQ implementation plan (how to do it)" --color "00D4FF" 2>/dev/null || true`
   - `gh label create "hq:feedback" --description "HQ unresolved feedback" --color "FF073A" 2>/dev/null || true`
   - `gh label create "hq:doc" --description "HQ informational note / research findings (not a direct task)" --color "5319E7" 2>/dev/null || true`
   - `gh label create "hq:pr" --description "HQ PR associated with an hq:plan" --color "8A2BE2" 2>/dev/null || true`
@@ -126,7 +123,7 @@ Without a parent hq:task:
 
 ## `hq:task`
 
-An `hq:task` issue describes **what** needs to be done — the requirement, not the implementation. It is the trigger of the workflow and the input source for `/hq:draft` (which composes one or more `hq:plan` issues from it).
+An `hq:task` issue describes **what** needs to be done — the requirement, not the implementation. It is the trigger of the workflow and the input source for `/hq:draft` (which composes one or more `hq:plan` files from it).
 
 The body is a **lightweight requirement document** primarily read by humans. Optimize for four properties; when they conflict, prioritize in this order:
 
@@ -212,7 +209,7 @@ Every `hq:task` must:
 
 ## `hq:plan`
 
-An `hq:plan` issue is the implementation plan that drives work on a branch. The issue body IS the source of truth for what needs to be done and how completion is verified.
+An `hq:plan` is the implementation plan that drives work on a branch. It is a **local file** at `.hq/tasks/<branch-dir>/plan.md`, created by `/hq:draft`; its first line is a `# <type>(plan): <title>` heading, followed by the body specified here. The plan file IS the source of truth for what needs to be done and how completion is verified. At PR creation, `/hq:start` Phase 8 embeds the full file verbatim into the PR body's `## Implementation Plan` section — the durable, reviewable record from that point on.
 
 **Two readers, one body.** The same body serves two audiences, and the readability investment is split deliberately so it stays complete-but-not-bloated for both:
 
@@ -224,12 +221,12 @@ Figures and intent snippets live in `## Approach` and are **excluded from its se
 The `hq:plan` body follows a **flat 5-section structure** — `## Why` + `## Approach` + `## Editable surface` + `## Plan` + `## Acceptance` — plus an optional `## Manual Verification` section appended when the plan has reviewer-owned checks. Emission rules:
 
 - Angle-bracket `<placeholder>` tokens are substituted with real content.
-- The `Parent:` line is emitted only when the plan has a parent `hq:task`; omit it entirely otherwise.
+- Parent-task linkage is NOT part of the body — it lives in `context.md` `source:` (see `### Focus`).
 - Optional sub-content (figure / sample code in `## Approach`) is omitted entirely when empty. Never write `_None._` / `Not applicable` / padded prose as filler.
 - The `## Manual Verification` section is emitted only when the plan has reviewer-owned checks; omit the heading entirely when every acceptance signal is start-executable.
 
 ```markdown
-Parent: #<hq:task issue number>
+# <type>(plan): <implementation approach>
 
 ## Why
 <1-3 sentences: pain and why now>
@@ -376,71 +373,57 @@ Items land here routed by **who verifies**, not by what kind of signal. Two kind
 
 **Format**: `` - [ ] [manual] <one named observable or deferred check> ``. `/hq:start` Phase 8 carries these verbatim into the PR body's `## Manual Verification` section; the `hq:manual` label marks the PR as needing reviewer verification before merge.
 
-### Registration
-
-When the `hq:plan` has a parent `hq:task`, register the newly created plan as a sub-issue of that task:
-
-```bash
-PLAN_ID=$(gh api /repos/{owner}/{repo}/issues/<plan> --jq '.id')
-gh api --method POST /repos/{owner}/{repo}/issues/<task>/sub_issues --field sub_issue_id="$PLAN_ID"
-```
-
-When the plan has no parent `hq:task`, skip sub-issue registration entirely.
-
 ### Self-contained invariant
 
 Every `hq:plan` must:
 
-- Be **self-contained** — it survives session clears (it lives on GitHub, not locally).
+- Be **self-contained** — readable as a standalone plan document. It survives session clears (it lives on disk, and in the PR body from PR creation onward), so it must not depend on conversation state.
 - Define **`## Why`** (pain + why now), **`## Approach`** (chosen design + ≥1 rejected alternative with reason), **`## Editable surface`** (positive scope set with inline tags `[新規]` / `[改修]` / `[削除]` / `[silent-break]`), **`## Plan`** (implementation steps, single-commit-grain), and **`## Acceptance`** (start-executable completion criteria, including exactly one `[auto] [primary]` item per the specificity hierarchy) — plus **`## Manual Verification`** (reviewer-owned runtime / deferred checks, no `[primary]`) when such checks exist.
 - Follow the **Language** rule above — content in the conversation language, markers and prescribed headings in English.
 - Keep Acceptance checks atomic and verifiable — each `[auto]` item maps to a single concrete signal (pass/fail).
 
 ### Focus
 
-**Focus** is a pointer to the `hq:plan` issue currently driving work. It is stored in two places:
+**Focus** is a pointer to the `hq:plan` currently driving work. It is stored in two places:
 
-1. **`.hq/tasks/<branch-dir>/context.md`** — deterministic file (branch name: `/` → `-`). Agents and skills resolve focus from this file.
+1. **`.hq/tasks/<branch-dir>/context.md`** — deterministic file (branch name: `/` → `-`). Agents and skills resolve focus from this file; the plan itself is the sibling file `plan.md` in the same directory.
 2. **Memory** — a project-type memory entry for cross-session awareness. Lets new sessions know what was in progress.
 
-**context.md format** (frontmatter YAML — no free-text body). When the plan has a parent `hq:task`, all keys below are present; `source` and `gh.task` are **omitted entirely when no parent exists** (see field descriptions).
+**context.md format** (frontmatter YAML — no free-text body). `source` and `gh.task` are present only when the plan has a parent `hq:task`; `base_branch` is present only once `/hq:start` has created the git branch (see field descriptions).
 
 ```yaml
 ---
-plan: <hq:plan issue number>
 source: <hq:task issue number>
 branch: <original branch name with slashes intact, e.g., feat/oauth-login>
 base_branch: <branch this feature branch was created from, e.g., main / develop / refactor/parent-feature>
 gh:
   task: .hq/tasks/<branch-dir>/gh/task.json
-  plan: .hq/tasks/<branch-dir>/gh/plan.md
 ---
 ```
 
-- `plan` — **MUST**. The `hq:plan` issue number driving current work.
-- `source` — **optional**. The `hq:task` issue number this plan implements. Present when the plan has a parent `hq:task` (the normal case); **omitted when no parent exists** (plans created via `/hq:draft` without an `hq:task` argument).
-- `branch` — **MUST**. The original git branch name (with slashes). Lets tooling check out the correct branch given a plan number (the directory name has `/` → `-` transformation which is not reliably invertible).
-- `base_branch` — **MUST**. The branch this feature branch was created from, captured at `/hq:start` Phase 3 via `git symbolic-ref --short HEAD` immediately before `git checkout -b`. This is the **per-branch authoritative base record** consumed by the Base branch resolution chain in § Branch Rules — it survives global `.hq/settings.json` drift across worktrees / stacked PRs (the failure mode that motivates this field). When a `context.md` from a prior version of this rule lacks the field, consumers fall back to the next step in the resolution chain.
-- `gh` — paths to the local GitHub issue cache (see Cache-First Principle below). `gh.plan` is always present; `gh.task` is present only when `source` is set (i.e. the plan has a parent `hq:task`).
+- `source` — **optional**. The `hq:task` issue number this plan implements. Present when the plan has a parent `hq:task` (the normal case); **omitted when no parent exists** (plans created via `/hq:draft` without an `hq:task` argument). This is the single carrier of parent linkage — the plan body has no `Parent:` line.
+- `branch` — **MUST**. The original git branch name (with slashes), derived by `/hq:draft` from the plan title. Lets tooling check out the correct branch given a plan query (the directory name has `/` → `-` transformation which is not reliably invertible).
+- `base_branch` — **MUST once the git branch exists**. The branch this feature branch was created from, appended by `/hq:start` Phase 3 via `git symbolic-ref --short HEAD` immediately before `git checkout -b`. Absent between `/hq:draft` (which writes `context.md` without it) and `/hq:start` Phase 3. This is the **per-branch authoritative base record** consumed by the Base branch resolution chain in § Branch Rules — it survives global `.hq/settings.json` drift across worktrees / stacked PRs (the failure mode that motivates this field). When absent, consumers fall back to the next step in the resolution chain.
+- `gh` — path to the local `hq:task` snapshot (`gh/task.json`, written by `/hq:start` Phase 3). Present only when `source` is set.
 
 **Lifecycle**:
 
-- **On start** (`/hq:start`): write `.hq/tasks/<branch-dir>/context.md`. Save focus info to your memory (project type) — include the branch name and plan number, and the source number when the plan has a parent `hq:task` (omit source otherwise).
-- **On status query**: read `.hq/tasks/<branch-dir>/context.md` → read the plan body from `.hq/tasks/<branch-dir>/gh/plan.md`. If cache not found, fall back to `gh issue view <plan> --json body --jq '.body'` → report status.
-- **On completion**: when a PR is created and all Plan items + Acceptance `[auto]` items are checked, update your memory to indicate no active task. The PR's `Closes #<plan>` handles issue closure on merge. The `context.md` file is left in place — it travels with the task folder until `/hq:archive` moves it to either `.hq/tasks/done/` (PR merged) or `.hq/tasks/canceled/` (PR closed without merging, via `/hq:archive cancel`).
+- **On draft** (`/hq:draft`): create `.hq/tasks/<branch-dir>/` with `plan.md` and `context.md` (`source` when a parent exists, `branch`).
+- **On start** (`/hq:start` Phase 3): append `base_branch:`, write `gh/task.json` (when a parent exists). Save focus info to your memory (project type) — include the branch name, and the source number when the plan has a parent `hq:task`.
+- **On status query**: read `.hq/tasks/<branch-dir>/context.md` → read the plan body from `.hq/tasks/<branch-dir>/plan.md` → report status.
+- **On completion**: when a PR is created and all Plan items + Acceptance `[auto]` items are checked, update your memory to indicate no active task. The `context.md` and `plan.md` files are left in place — they travel with the task folder until `/hq:archive` moves it to either `.hq/tasks/done/` (PR merged) or `.hq/tasks/canceled/` (PR closed without merging, via `/hq:archive cancel`).
 
 ### Focus Resolution
 
-When the user gives a **vague instruction** (e.g., "the auth task", "issue 42"), resolve the focus by searching in order:
+When the user gives a **vague instruction** (e.g., "the auth task", "the oauth plan"), resolve the focus by searching in order:
 
-1. **context.md** — check `.hq/tasks/<current-branch-dir>/context.md` for the current branch. If it exists, use it and confirm with the user: "Restored focus: plan=#X, source=#Y. Correct?" (drop the `source=` part when the plan has no parent `hq:task`). If the user says no, continue to the steps below.
+1. **context.md** — check `.hq/tasks/<current-branch-dir>/context.md` for the current branch. If it exists, use it and confirm with the user: "Restored focus: branch=X, source=#Y. Correct?" (drop the `source=` part when the plan has no parent `hq:task`). If the user says no, continue to the steps below.
 2. **memory** — check your memory for active focus info.
-3. **direct issue number** — if the user provides a number, check `.hq/tasks/` cache dirs first. If not cached, use `gh issue view <number>` to verify it exists and has the `hq:plan` label.
-4. **search** — run `gh issue list --label hq:plan --state open --json number,title` and match against the user's keyword.
+3. **search** — run `bash find-plan.sh <keyword>` (scans `.hq/tasks/*/context.md` `branch:` fields; exact match wins, unique substring accepted).
 
-If exactly one match: set focus automatically. If multiple matches: show candidates and ask the user to choose. If no match: ask the user to specify the issue number.
+If exactly one match: set focus automatically. If multiple matches (`find-plan.sh` exit 5): show candidates and ask the user to choose. If no match: ask the user to specify the branch.
 
-**NOTE**: `/hq:start <plan>` does **NOT** use this resolution order. It takes a plan number directly and resolves the work branch via `.hq/tasks/*/context.md` (see `find-plan-branch.sh`), ignoring the current branch and memory.
+**NOTE**: `/hq:start <query>` does **NOT** use this resolution order. It resolves the work branch via `find-plan.sh` directly, ignoring the current branch and memory; with no argument it uses the current branch.
 
 ## Simplicity Criterion
 
@@ -463,7 +446,7 @@ Consequences for plan structure:
 The PR body is composed in **two layers**:
 
 1. **Narrative layer** — the section above the workflow sections. Heading names, language, structure, and prose are all **author-controlled** via `.hq/pr.md` (see `pr` skill § Project Overrides). The default narrative — used when `.hq/pr.md` is absent or gives only prose-style hints — is `## Summary` / `## Changes` / `## Notes` in the conversation language. Projects MAY redefine the entire narrative (e.g., `## 概要` / `## 変更` / `## メモ` in Japanese).
-2. **Workflow sections layer** — the sections auto-injected by `/hq:start` Phase 8: `## Manual Verification` / `## Known Issues` (each emitted only when its trigger condition holds), followed by the `Closes` / `Refs` trailer. These headings are **English-fixed** (each has an injection or parse contract — see § Language) and not overridable by `.hq/pr.md`.
+2. **Workflow sections layer** — the sections auto-injected by `/hq:start` Phase 8: `## Manual Verification` / `## Known Issues` (each emitted only when its trigger condition holds) and `## Implementation Plan` (always emitted — the plan-file snapshot), followed by the `Refs #<task>` trailer (only when a parent `hq:task` exists). These headings are **English-fixed** (each has an injection or parse contract — see § Language) and not overridable by `.hq/pr.md`.
 
 The full default body produced by `/hq:start` (via the `pr` skill) looks like:
 
@@ -492,15 +475,22 @@ The full default body produced by `/hq:start` (via the `pr` skill) looks like:
 ### Optional (Low)
 - [Low] [<originating-agent>] <unresolved FB title> — <brief description>
 
-Closes #<hq:plan>
+## Implementation Plan
+<details><summary>Plan snapshot at PR creation</summary>
+
+<full plan.md content verbatim>
+
+</details>
+
 Refs #<hq:task>
 ```
 
-The `Refs #<hq:task>` line is emitted **only when the `hq:plan` has a parent `hq:task`**. When absent, omit the line entirely; the trailer block then contains only `Closes #<hq:plan>`.
+The `Refs #<hq:task>` line is emitted **only when the `hq:plan` has a parent `hq:task`**. When absent, omit the line entirely (there is no other trailer).
 
 - **`## Manual Verification`** — the plan's `## Manual Verification` items carried verbatim into the PR body for reviewer verification during PR review. Present only when the plan has such items.
 - **`## Known Issues`** — every Phase 4 / 5 / 6 / 7 FB that did not auto-resolve, organized into three action-priority categories (Must Address / Recommended / Optional) so PR reviewers can triage at a glance. The leading `**Triage summary**` line gives the count breakdown immediately; each entry carries both a severity tag (`[<Severity>]`) and an originating-agent tag (`[<originating-agent>]`). **This becomes the source of truth for residual problems.** The corresponding local FB files are moved to `feedbacks/done/` at PR creation time (see FB Lifecycle below).
-- If either section is empty, omit it.
+- **`## Implementation Plan`** — the full `plan.md` content verbatim, wrapped in a `<details>` block. Always emitted. This is the **durable record of the plan** (the local file is gitignored and per-clone) and the reviewer's reference for what was planned vs what shipped. It is a **creation-time snapshot**: `/hq:triage` disposition 1 (add to plan) appends to the local `plan.md` only and does not re-edit this section.
+- If `## Manual Verification` or `## Known Issues` is empty, omit it. `## Implementation Plan` is never omitted.
 
 During PR review, use `/hq:triage <PR>` to process the `Known Issues` entries — each can be: (1) added to the `hq:plan` for follow-up work, (2) left as-is, (3) carved out as an `hq:feedback` Issue, or (4) fixed in place (applied directly on the PR branch under a regression gate, for trivial and clearly-correct findings).
 
@@ -513,8 +503,8 @@ The following structural elements of the PR body are invariants of the HQ workfl
 - **`## Known Issues` section presence** — whenever pending FB files exist at PR creation time, their titles + brief descriptions MUST appear under a section literally named `## Known Issues`.
 - **`## Known Issues` structure** — when pending FBs exist at PR creation time, `## Known Issues` MUST contain: (a) a `**Triage summary**` line at the top stating the count breakdown across the three action categories (e.g., `**Triage summary**: 2 must address, 1 recommended, 5 optional. Process via /hq:triage <PR>.`), and (b) up to three category sub-sections in this order — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)`. Each category sub-section is emitted **only when at least one FB falls in it**; empty categories are omitted entirely (no empty headings). Each entry under a category MUST carry **both** tags: a severity tag in the literal form `[<Severity>]` (one of `[Critical]` / `[High]` / `[Medium]` / `[Low]`, drawn from the FB file's frontmatter `severity:` field — no trailing colon) **and** an originating-agent tag in the form `[<originating-agent>]` (drawn from the FB file's frontmatter `skill:` field, normalized to the agent / source name — e.g., `code-reviewer` / `integrity-checker` / `security-scanner` / `self-review` / `/hq:start`). Within each category, entries preserve **insertion order** (no secondary sort). `.hq/pr.md` MUST NOT suppress, rename, reformat, or reorder this structure.
 - **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
-- **`Closes #<hq:plan>` trailer** — every PR body MUST end with this line.
-- **`Refs #<hq:task>` trailer** — required when the `hq:plan` has a parent `hq:task`; the `Refs` line MUST follow `Closes`. Omitted entirely when no parent exists — the PR body then ends with only `Closes #<hq:plan>`.
+- **`## Implementation Plan` section presence** — every PR MUST carry the full `plan.md` content verbatim inside a `<details>` block under a section literally named `## Implementation Plan`. This is the plan's durable record; suppressing or summarizing it is forbidden.
+- **`Refs #<hq:task>` trailer** — required when the `hq:plan` has a parent `hq:task`. Omitted entirely when no parent exists.
 - **`hq:pr` label** — every PR created by the `pr` skill (in either invocation mode — Standalone or via `/hq:start`) MUST carry the `hq:pr` label.
 - **Milestone / project inheritance** *(only when the plan has a parent `hq:task`)* — if the source `hq:task` has a milestone or project(s), the PR MUST inherit them via `--milestone` / `--project` flags. When no parent exists, omit these flags entirely — there is nothing to inherit from.
 
@@ -538,36 +528,27 @@ This is a read discipline, not a fix loop: when the three reads surface no confl
    - For each **named thing** (symbol / heading / marker / config key / enum case / label / error code) this change introduces, renames, or shifts the semantics of, `grep` the repo and update every stale reference. LSP find-references is an equivalent substitute where available.
    - For each procedure (gate / pipeline / phased doc / state machine) this change touches, re-read it top-to-bottom once in **flow order** and verify each step's preconditions still hold against the new state.
 
-## Cache-First Principle
+## Local Plan Principle
 
-During `/hq:start` execution, **all reads and writes to the plan body go to the local cache**. The GitHub API is touched only at explicit **sync checkpoints**. This keeps execution fast, avoids rate limits, and lets individual checkbox toggles be cheap.
+The plan file `.hq/tasks/<branch-dir>/plan.md` is the **single source of truth** for the plan body. There is no GitHub copy to synchronize during execution — all reads and writes go straight to the local file. The plan becomes durable at PR creation, when `/hq:start` Phase 8 embeds it verbatim into the PR body's `## Implementation Plan` section.
 
-### Cache files
+### Task-folder files
 
 ```
-.hq/tasks/<branch-dir>/gh/task.json    # read-only snapshot of hq:task
-.hq/tasks/<branch-dir>/gh/plan.md      # read/write working copy of hq:plan body
+.hq/tasks/<branch-dir>/plan.md         # the hq:plan — single source of truth
+.hq/tasks/<branch-dir>/context.md      # focus frontmatter (see § Focus)
+.hq/tasks/<branch-dir>/gh/task.json    # read-only snapshot of hq:task (only when a parent exists)
 ```
-
-### Sync checkpoints
-
-| Direction | When | Action |
-|---|---|---|
-| Pull (GitHub → cache) | `/hq:start` begin (both proceed and auto-resume) | Initialize / refresh cache; on auto-resume warn if GitHub body diverges from prior cache |
-| Push (cache → GitHub) | After Phase 4 (Execute) complete | Push Plan checkbox updates |
-| Push (cache → GitHub) | After Phase 5 (Acceptance) complete | Push Acceptance `[auto]` checkbox updates |
-| Push (cache → GitHub) | Before PR creation | Final consistency sync |
 
 ### Helper scripts
 
 All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/`:
 
-- **`plan-cache-pull.sh <plan-number>`** — fetch plan body from GitHub, atomically write to `.hq/tasks/<branch-dir>/gh/plan.md`. Prints the written path.
-- **`plan-cache-push.sh <plan-number>`** — push the cached plan body to the GitHub Issue via `gh issue edit --body-file`.
-- **`plan-check-item.sh <pattern>`** — toggle a single `[ ]` checkbox to `[x]` in the cache, matching by fixed substring. Exit 3 = no match, exit 4 = ambiguous, already-checked = idempotent no-op.
-- **`find-plan-branch.sh <plan-number>`** — scan `.hq/tasks/*/context.md` for a `plan: <N>` match, print the corresponding `branch:` field. Exit 1 = not found.
+- **`plan-check-item.sh <pattern>`** — toggle a single `[ ]` checkbox to `[x]` in the current branch's `plan.md`, matching by fixed substring. Exit 3 = no match, exit 4 = ambiguous, already-checked = idempotent no-op.
+- **`find-plan.sh <branch-or-substring>`** — scan `.hq/tasks/*/context.md` `branch:` fields for a match (exact wins; unique substring accepted), print the branch name. Exit 1 = not found, exit 5 = ambiguous.
+- **`read-context.sh`** — print the current branch's `context.md`, or `none`.
 
-**Rule**: individual checkbox toggles during execution call `plan-check-item.sh` (cache only). Never call `gh issue edit <plan>` directly — always go through `plan-cache-push.sh` at the defined sync checkpoints.
+**Rule**: individual checkbox toggles during execution call `plan-check-item.sh`. Structural plan edits (e.g., `/hq:triage` disposition 1 appending a follow-up item) edit `plan.md` directly.
 
 ## Feedback Loop
 
@@ -585,7 +566,7 @@ Skills that perform verification or review may output feedback files (FB) to `.h
 
 **Numbering** — check existing files in `feedbacks/` and `feedbacks/done/` to determine the next number. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits).
 
-**Format** — FB files must follow [feedback.md](feedback.md). Read `plan` and `source` values from `.hq/tasks/<branch-dir>/context.md` for the frontmatter fields.
+**Format** — FB files must follow [feedback.md](feedback.md). Read `branch` and `source` values from `.hq/tasks/<branch-dir>/context.md` for the frontmatter fields.
 
 **`covers_acceptance` frontmatter (optional, soft convention)** — FB files MAY include a `covers_acceptance: "<unique substring of an acceptance item>"` frontmatter field linking the FB to the specific `## Acceptance` item it covers. Populate this field in Phase 4/5-origin FBs (where the correspondence is 1:1 with an acceptance item by construction); leave it unset on Phase 6/7-origin FBs (Self-Review minor gaps and Quality Review findings that do not map 1:1 to an acceptance item). No hook or script enforces this field — it exists to make the audit trail linear for reviewers and to support the Phase 5 1-by-1 toggle rule. See [feedback.md](feedback.md) for the full schema.
 
@@ -610,24 +591,24 @@ FB handling is **phase-dependent** — different phases generate FBs for differe
 
 ## Retrospective
 
-Per-run reflective analysis written by `/hq:start` Phase 9 (Retrospective) to a Markdown artifact at `.hq/retro/<branch-dir>/<plan>.md`. The artifact lets the run be re-examined after the fact along two axes — *was each Phase 7 (Quality Review) FB a valid detection? Could it have been prevented at implementation time? If so, by what lever?* AND *was the Phase 6 (Self-Review) call and the Phase 7 Agent Selection call appropriate given what subsequently surfaced?* — without re-reading session transcripts. The hypotheses are that (a) a non-trivial fraction of Phase 7 FBs are preventable at implementation time, exposed by structured per-FB analysis, and (b) the Phase 6/7 judgment calls drift over runs in ways that accumulated learnings in `.hq/start-memory.md` — auto-distilled from these retros by Phase 10 (Distillation) — should tighten.
+Per-run reflective analysis written by `/hq:start` Phase 9 (Retrospective) to a Markdown artifact at `.hq/retro/<branch-dir>.md`. The artifact lets the run be re-examined after the fact along two axes — *was each Phase 7 (Quality Review) FB a valid detection? Could it have been prevented at implementation time? If so, by what lever?* AND *was the Phase 6 (Self-Review) call and the Phase 7 Agent Selection call appropriate given what subsequently surfaced?* — without re-reading session transcripts. The hypotheses are that (a) a non-trivial fraction of Phase 7 FBs are preventable at implementation time, exposed by structured per-FB analysis, and (b) the Phase 6/7 judgment calls drift over runs in ways that accumulated learnings in `.hq/start-memory.md` — auto-distilled from these retros by Phase 10 (Distillation) — should tighten.
 
 `.hq/retro/` follows `.hq/` semantics: gitignored (covered by the existing `.hq` entry), per-clone, branch-local. Worktree copy is not propagated by `worktree-setup.sh` — retro is the run's frozen output, not project-wide configuration. Team-wide aggregation, if ever required, is a separate plan.
 
 ### File path
 
 ```
-.hq/retro/<branch-dir>/<plan>.md
+.hq/retro/<branch-dir>.md
 ```
 
-`<branch-dir>` = branch name with `/` → `-` (same convention as `.hq/tasks/<branch-dir>/`). `<plan>` = bare `hq:plan` issue number (e.g., `75`). One file per `/hq:start` run; auto-resume sessions overwrite the existing file because the artifact captures the latest run snapshot, not a per-session history.
+`<branch-dir>` = branch name with `/` → `-` (same convention as `.hq/tasks/<branch-dir>/`; one plan per branch, so the branch alone keys the artifact). One file per `/hq:start` run; auto-resume sessions overwrite the existing file because the artifact captures the latest run snapshot, not a per-session history.
 
 ### Fixed schema
 
 The artifact has exactly **four** top-level Markdown sections, in this order:
 
 1. **`## Run Summary`** — facts about the run, all derivable from existing JSONL events + git log + plan cache + decision reports (no LLM judgment in this section). **Every field below is MUST — omitting any of them breaks the primary acceptance gate.** Fields:
-   - plan id, branch name, run timestamp (UTC, ISO 8601)
+   - plan title, branch name, run timestamp (UTC, ISO 8601)
    - **phase wall-clock durations** — read `.hq/tasks/<branch-dir>/phase-timings.jsonl` via `phase-timing.sh summary` and emit the helper's output **verbatim**. Scope is **Phase 4–10**; Phase 1–3 / Phase 11 are deliberately not measured (see `/hq:start § Phase Timing` for the structural reasons — Phase 1–3 stamp pairs split across the Phase 3 branch switch, Phase 11 (Report) self-emits the summary). **Phase 10 (Distillation) runs after this artifact is written, so it shows `(no data)` here — expected, not a defect; its real duration appears only in the Phase 11 Report.** When the helper prints `No timing data recorded.` (no stamps ever landed for this run), emit that line verbatim with a one-line cause note — **never silently skip the field**. Any Phase 4–9 showing `(no data)` is a workflow defect signal (stamp invocations failed) and the `## Reflection` section MUST call it out (Phase 10's `(no data)` here is exempt per the above).
    - total commits made on the branch (`git rev-list --count <base>..HEAD`)
    - Phase 6 Self-Review result (read `.hq/tasks/<branch-dir>/quality-review-events.jsonl` via `quality-review.sh summary`)
