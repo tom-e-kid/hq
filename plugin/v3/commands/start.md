@@ -593,7 +593,7 @@ Phase 10 makes no commits — `.hq/start-memory.md` is a per-clone gitignored ar
 Summarize:
 
 - **hq:task** *(only when the plan has a parent `hq:task`)*: number + title. Omit this line entirely when no parent exists.
-- **hq:plan**: number + title + link
+- **hq:plan**: title + file path (`.hq/tasks/<branch-dir>/plan.md`)
 - **Branch**: name
 - **Key changes**: brief bullet list
 - **Self-Review (Phase 6)**: result (pass / minor-gap / significant-gap) + one-line summary of the rationale (paraphrase the **Decision rationale** paragraph from the Phase 6 decision report — name what was weighed, what tipped the call). When `minor-gap`, name the FB id.
