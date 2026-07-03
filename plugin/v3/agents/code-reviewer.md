@@ -115,7 +115,7 @@ You MUST save all output files to disk before returning. This is not optional.
 6. Format: `FB001.md`, `FB002.md`, etc. (zero-padded to 3 digits)
 7. Set frontmatter fields:
    - `skill: /code-review`
-   - `source` and `plan`: from focus (step 4)
+   - `source` and `branch`: from focus (step 4)
 
 Use the Write tool for every file — do not just return text.
 
