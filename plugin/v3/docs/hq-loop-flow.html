@@ -123,7 +123,7 @@
       <span class="item"><span class="dot a"></span>subagent 実行</span>
       <span class="item"><span class="dot m"></span>決定論ステップ</span>
     </div>
-    <p class="interactions">ユーザ介入は <b>3 箇所</b>: ① Stage 1 の brainstorm + go/stop ゲート ／ ② J3・J5 が consult を選んだとき（稀） ／ ③ Stage 7 の feedback 確認。root の判断 J1–J7 はすべて <code>.hq/tasks/&lt;dir&gt;/reports/</code> に決定記録を残す — 「なぜそう判断したか」を人間が事後監査できる。</p>
+    <p class="interactions">ユーザ介入は <b>3 系統</b>: ① Stage 1 の brainstorm + go/stop ゲート ／ ② root が consult を選んだとき — J3（build 受け入れ）・J5（triage）・<b>J8（発散時の計画見直し提案 / 安全キャンセル）</b> ／ ③ Stage 7 の feedback 確認。root の判断 J1–J8 はすべて <code>.hq/tasks/&lt;dir&gt;/reports/</code> に決定記録を残す — 「なぜそう判断したか」を人間が事後監査できる。</p>
   </header>
 
   <div class="flow">
@@ -200,12 +200,15 @@
       </div>
     </section>
 
-    <!-- LOOP DECISION -->
+    <!-- J8 CONVERGENCE JUDGMENT -->
     <div class="decision">
-      <div class="dec-box">
-        <h3>再突入判定（root）</h3>
-        <div class="branch"><span class="arr">↺</span><span class="loopback"><b>Stage 2 に再突入</b> — fix-directive / plan 追記が発生 かつ 再突入回数 &lt; <code>loop_max_iterations</code>（既定 2）。戻ったら Stage 3–4 も再走する。</span></div>
-        <div class="branch"><span class="arr">↓</span><span><b>Stage 5 へ</b> — 対応キューが空、または budget 消化。積み残しの Must Address は candidate として必ず浮上（silent drop 禁止）。<b>ここを通過した状態 = 最終対応案</b>。</span></div>
+      <div class="dec-box" style="border-color:rgba(180,142,199,.6)">
+        <h3><span style="color:var(--judge);font-family:var(--mono);font-size:12px;margin-right:8px">J8</span>収束判定（root）— 機械的な回数上限ではなく、FB の軌跡を意味的に判断する</h3>
+        <div class="branch"><span class="arr">↓</span><span><b>収束</b> — 残るのは些細な指摘のみ（低 severity・新たな設計論点なし）→ executor の micro-fix パス 1 回（regression gate 必須・Stage 3–4 のフル再走はしない、root が micro-diff を目視）→ <b>Stage 5 へ</b>。</span></div>
+        <div class="branch"><span class="arr">↺</span><span class="loopback"><b>継続</b> — 実質的だが有界な対応が残り budget もある → <b>Stage 2 に再突入</b>（Stage 3–4 も再走）。<code>loop_max_iterations</code>（既定 2）は暴走時のハードバックストップとして残る。</span></div>
+        <div class="branch"><span class="arr">⛔</span><span><b style="color:var(--user)">発散</b> — 修正が新たな不具合・検討事項を生んでいる（兆候: 修正済み箇所への同等以上の severity の FB、plan の前提と矛盾する FB、fix→新 FB の連鎖、primary の反復失敗）→ <b>計画自体の欠陥仮説</b>。ループをブロックし、問題分析 + 計画上の根本原因 + <b>計画見直し案</b>を verbatim で人間に提示（介入 ②）:<br>
+        ・<b>承認</b> → plan.md を改訂（影響 item を再オープン）、budget リセット → Stage 2 からやり直し<br>
+        ・<b>却下 / 中止</b> → <b>安全キャンセル</b> — archive cancel 経路を read-and-follow（PR は未作成なので task フォルダ → <code>.hq/tasks/canceled/</code>、branch 強制削除、memory クリア）→ 経緯を報告して終了。</span></div>
       </div>
     </div>
 

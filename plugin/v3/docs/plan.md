@@ -378,7 +378,25 @@ Added 2026-07-04 after the Phase 1–3 implementation and before any real run. O
 │       accept         → residual list (→ PR ## Known Issues)
 │       escalate       → feedback candidate (user-confirmed at Stage 7)
 │     evidence gap → root MAY launch a read-only verification agent for that FB
-│     re-entry bound: loop_max_iterations (hard cap; overflow → candidates, never drops)
+│
+├─ Re-entry / convergence judgment (J8, root — replaces the mechanical loop decision):
+│     after each Stage 2→3→4 cycle, root judges the FB trajectory:
+│     • CONVERGED — residual is trivial (low-severity, no new design questions):
+│         one final fix-directive micro-pass (executor, regression-gated; no full
+│         Stage 3–4 re-run — root spot-checks the micro-diff) → Stage 5
+│     • CONTINUE — substantive but bounded follow-ups, budget remains → Stage 2
+│         (Stage 3–4 re-run after). loop_max_iterations stays as the hard backstop.
+│     • DIVERGING — fixes spawn new defects / new design questions (signals: same-or-
+│         higher-severity FBs on already-fixed surfaces, FBs contradicting plan
+│         assumptions, fix→new-FB chains across iterations, repeated primary failure)
+│         → plan-defect hypothesis → BLOCK and consult the user (interaction ②):
+│         present the problem analysis + root cause in the plan + a concrete revised-
+│         plan proposal (verbatim, go-gate discipline).
+│           user approves revision → plan.md updated (affected items re-opened),
+│             iteration budget resets → Stage 2
+│           user declines / aborts → SAFE CANCEL: archive-cancel route (no PR exists
+│             yet — task folder → .hq/tasks/canceled/, branch force-deleted, memory
+│             cleared; read-and-follow commands/archive.md cancel mode) → report & end
 │
 ├─ Stage 5 SHIP    (root composes, J6; pr skill executes)  PR creation — final proposal:
 │     narrative (Summary / Approach incl. deviations / Changes — from plan Why/Approach +
@@ -407,6 +425,7 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 | J5 | Stage 4 | per-FB disposition + fix-directive composition + budget allocation | regression gate on fixes; iteration cap; no autonomous Issue creation |
 | J6 | Stage 5 | PR narrative: what the human reviewer needs (motive, approach, deviations) | workflow sections + labels + Refs trailer invariants; `.hq/pr.md` |
 | J7 | Stage 7 | candidate presentation quality (grouping, rationale) | Issue creation itself is user-gated |
+| J8 | after each Stage 2–4 cycle | **convergence judgment**: converged (micro-fix → Ship) / continue (re-enter) / diverging (plan-defect hypothesis → block, propose plan revision, or safe-cancel on user decline) | regression gate on the micro-pass; `loop_max_iterations` hard backstop; plan revision and cancel are both user-gated |
 
 ### 11.3 File-level deltas
 
@@ -426,5 +445,5 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 - `commands/{draft,start,triage}.md` and `rules/triage-protocol.md` and `agents/auto-triager.md` do not exist; `rules/execute-protocol.md` and `agents/retro-distiller.md` exist; `plugin.json` reflects the agent set.
 - `rg -n "Implementation Plan" plugin/v3/skills/pr/SKILL.md plugin/v3/rules/workflow.md` → zero hits (D8).
 - `rg -n "/hq:draft|/hq:start|/hq:triage" plugin/v3/ --glob '!docs/plan.md'` → zero hits.
-- loop.md contains all seven judgment IDs (J1–J7) with decision-record contracts.
-- Manual Verification: one full dogfood run — plan-only exit (`stop`) works; a triage fix-directive round-trips through the executor; PR carries the refocused body; retro-distiller writes both artifacts.
+- loop.md contains all eight judgment IDs (J1–J8) with decision-record contracts, including J8's three outcomes and the safe-cancel route.
+- Manual Verification: one full dogfood run — plan-only exit (`stop`) works; a triage fix-directive round-trips through the executor; a simulated diverging run reaches the J8 block with a plan-revision proposal, and declining it lands in `.hq/tasks/canceled/`; PR carries the refocused body; retro-distiller writes both artifacts.
