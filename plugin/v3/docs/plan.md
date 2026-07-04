@@ -1,6 +1,6 @@
 # Implementation Plan: `hq:loop` Orchestrator + Plan Localization + Command Refactoring
 
-Status: **Phases 1–3 and Phase 5 implemented and merged to develop (2026-07-04). Phase 5 (§ 11) supersedes D2/D4 and parts of the Phase 3 architecture — §§ 1–7 describe superseded intermediate states and are kept as history. Phase 4 remains an evaluation gate awaiting ≥ 3 real `/hq:loop` runs.**
+Status: **Phases 1–3 and Phase 5 implemented and merged to develop (2026-07-04). Phase 5 (§ 11) supersedes D2/D4 and parts of the Phase 3 architecture — §§ 1–7 describe superseded intermediate states and are kept as history. Phase 4 remains an evaluation gate awaiting ≥ 3 real `/hq:loop` runs. Phase 6 (§ 12, telemetry sink) is designed, not yet implemented.**
 Author context: composed 2026-07-04 from a design session with the repository owner. All user decisions below are final unless explicitly re-opened.
 
 This document is written to be self-sufficient: an AI implementer (Opus / Sonnet class) should be able to execute each phase from this document plus the referenced source files, without access to the original design conversation.
@@ -452,3 +452,57 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 - `rg -n "/hq:draft|/hq:start|/hq:triage" plugin/v3/ --glob '!plugin/v3/docs/plan.md' --glob '!plugin/v3/docs/hq-loop-flow.html'` → zero hits (both excluded docs reference the old names only as history).
 - loop.md contains all eight judgment IDs (J1–J8) with decision-record contracts, including J8's three outcomes (converged path mandating the integrity-checker re-run), the safe-cancel route, and the per-stage Progress Tracking contract.
 - Manual Verification: one full dogfood run — plan-only exit (`stop`) works; a triage fix-directive round-trips through the executor; a simulated diverging run reaches the J8 block with a plan-revision proposal, and declining it lands in `.hq/tasks/canceled/`; PR carries the refocused body; retro-distiller writes both artifacts.
+
+## 12. Phase 6 — Central telemetry sink (`~/.hq/`)
+
+Added 2026-07-04. Owner decision: `.hq/` working state stays **project-local** (locality, direct plan editability, worktree isolation, override commit path, permission surface all depend on it); only **telemetry — write-once analytical run data** — is centralized, so cross-project statistics (e.g., J8 divergence rate, J5 disposition accuracy, timing distributions) become queryable without scraping clones. Architecture: **dual-write, not move** — human-readable records keep living in the project `.hq/`; a structured event row additionally lands in the central sink.
+
+### 12.1 Storage
+
+- **`~/.hq/events.jsonl`** — append-only JSONL, one event per line. Append-only is unconditionally safe for concurrent writers (parallel agents, parallel worktrees); no locking, no dependencies.
+- **sqlite is a later query layer, not the write path.** When statistics work starts, an import script (`events.jsonl` → `~/.hq/hq.sqlite`) materializes tables; raw JSONL remains the source of truth so schema iteration never loses data. Building the importer is out of scope for this phase (deferred until the first real analysis need).
+
+### 12.2 Event schema
+
+```json
+{"ts":"<ISO 8601 UTC>","repo":"<owner/repo — normalized origin URL; fallback: top-level dir name>",
+ "branch":"<work branch>","run_id":"<branch-dir>-<loop start ts>","worktree":"<absolute path — attribute, never a key>",
+ "kind":"<see catalog>","payload":{...}}
+```
+
+Identity rules: `repo` (normalized `git remote get-url origin` → `owner/repo`, strip `.git`; no remote → top-level dir name prefixed `local:`) is the aggregation key. `worktree` and `branch` are attributes — worktree churn must not fragment history. `run_id` groups one `/hq:loop` invocation (re-entries share it; a J8-approved revision keeps it, recording the revision as an event).
+
+**Event kinds (closed catalog — extending it is a deliberate edit to this section):**
+
+| kind | emitted at | payload (minimum) |
+|---|---|---|
+| `run_start` / `run_end` | loop entry / Stage 7 exit (or cancel/stop exit) | entry stage; end: outcome (`shipped` / `plan-only` / `canceled` / `failed`), iterations used |
+| `gate` | Stage 1 gate resolution | `go` / `stop` / pushback count |
+| `build_result` | each executor return | mode, status, primary pass/fail, fb count, noop |
+| `j_decision` | each J1–J8 decision record write | judgment id, verdict (e.g. J3 pass/gap/consult; J4 launched set), record path |
+| `disposition` | each J5 per-FB decision | fb id, severity, origin agent, disposition, prior-departure flag |
+| `j8_verdict` | each Stage 4 exit | converged / continue / diverging; on diverging: user outcome (revised / canceled) |
+| `timing` | Stage 7 (once) | `phase-timing.sh summary` parsed to per-slot seconds |
+| `retro` | retro-distiller return | judgment_hindsight headline, start_memory_delta, plugin_level_findings count |
+
+### 12.3 File-level deltas
+
+1. **New `scripts/hq-event.sh`** — `hq-event.sh <kind> [key=val ...]`: resolves `repo`/`branch`/`worktree` itself (git), takes `run_id` from `.hq/tasks/<branch-dir>/context.md` (see item 3), JSON-escapes, appends one line to `~/.hq/events.jsonl` (`mkdir -p ~/.hq`). **Never fails the pipeline**: any error (unwritable home, no git) prints a warning and exits 0 — telemetry is observability, not a gate.
+2. **`commands/loop.md`** — add § Telemetry: the emission points per the catalog (root emits `run_start`/`gate`/`j_decision`/`disposition`/`j8_verdict`/`timing`/`run_end`); one line per decision-record write, adjacent to it. Note the non-blocking contract.
+3. **`rules/workflow.md § Focus`** — `context.md` gains an optional `run_id:` field, written at loop entry (Stage 0/1) so all writers (root, executor, distiller) share it; absent field → helper falls back to `<branch-dir>-unknown`.
+4. **`rules/execute-protocol.md`** — executor emits `build_result` just before its structured return (one `hq-event.sh` call).
+5. **`agents/retro-distiller.md`** — emits `retro` before its return.
+6. **`hq:workflow § Terminology` or a short § Telemetry** — one paragraph: what `~/.hq/events.jsonl` is, dual-write principle, non-blocking contract, privacy note (events carry titles/ids/verdicts, never diff content or code).
+7. **Docs** — `docs/workflow.md` "Where things live" gains the `~/.hq/events.jsonl` line; README Design Philosophy gains one bullet.
+
+### 12.4 Acceptance
+
+- `[primary]` (Tier 1 behavioral): a fixture-driven smoke test of `hq-event.sh` — emits 3 kinds from a temp git repo with `HOME` overridden, asserts 3 valid JSON lines with correct `repo` normalization (remote and no-remote cases) and that a read-only `HOME` exits 0 with a warning.
+- Structural: `rg -c "hq-event.sh" plugin/v3/commands/loop.md plugin/v3/rules/execute-protocol.md plugin/v3/agents/retro-distiller.md` ≥ 1 each; the kind catalog appears in loop.md § Telemetry.
+- Manual Verification: after the next real `/hq:loop` run, `~/.hq/events.jsonl` contains a coherent `run_start` → … → `run_end` sequence for it.
+
+### 12.5 Deferred (named, not scheduled)
+
+- **E7 — sqlite importer + first stats queries** (divergence rate per repo, disposition distribution, slot timing percentiles). Trigger: the first time the user actually asks a statistics question.
+- **E8 — per-repo start-memory sharing** (`~/.hq/repos/<owner-repo>/start-memory.md`) so worktrees of the same repo share learnings. Trigger: worktree-parallel usage becomes routine. Carries the identity-key complexity — do not bundle into Phase 6.
+
