@@ -1,6 +1,6 @@
 # Implementation Plan: `hq:loop` Orchestrator + Plan Localization + Command Refactoring
 
-Status: **Phases 1–3 implemented and merged to develop (2026-07-04); Phase 4 is an evaluation gate awaiting ≥ 3 real `/hq:loop` runs**
+Status: **Phases 1–3 implemented and merged to develop (2026-07-04); Phase 4 is an evaluation gate awaiting ≥ 3 real `/hq:loop` runs. Phase 5 (loop consolidation — see § 11) is designed and approved in direction, not yet implemented; it supersedes decisions D2/D4 and parts of the Phase 3 architecture before any real run occurred.**
 Author context: composed 2026-07-04 from a design session with the repository owner. All user decisions below are final unless explicitly re-opened.
 
 This document is written to be self-sufficient: an AI implementer (Opus / Sonnet class) should be able to execute each phase from this document plus the referenced source files, without access to the original design conversation.
@@ -331,3 +331,100 @@ Not scheduled work — re-evaluation gates after ≥ 3 real `/hq:loop` runs. Eac
 - `tools/` CLI (Go binary) — no changes.
 - Reading retro learnings back into draft Phase 2 (already deferred by `workflow.md § Retrospective`).
 - Team-shared plan storage / multi-clone plan sync.
+
+## 11. Phase 5 — Loop consolidation: root-agent judgment, PR-last, loop-only
+
+Added 2026-07-04 after the Phase 1–3 implementation and before any real run. Owner directives (final):
+
+| # | Directive |
+|---|---|
+| D5 | **Root agent is the judge.** The model running `/hq:loop` (session model, Opus/Fable class) is assumed to out-judge a typical human developer. Semantic decisions that cannot be settled deterministically are routed to the **root agent**, never to a subagent and never forced into mechanical rules. Deterministic rails (scripts, structural gates, regression gates) remain deterministic. Subagents gather evidence and execute; they do not make final calls. |
+| D6 | **Loop-only.** Standalone `/hq:draft` / `/hq:start` / `/hq:triage` are retired (supersedes D4). `/hq:loop` is the single pipeline entry with a state-machine pre-flight; `/hq:respond` and `/hq:archive` remain as orthogonal post-PR tools. |
+| D7 | **PR-last.** The PR is created only **after** triage completes — the PR is the final proposal, not an intermediate hand-off. Triage operates on local FB files directly (no PR-body parsing). Supersedes the Phase 3 order (PR → triage). |
+| D8 | **PR content refocus.** The PR body is what a human reviewer needs: motivation, chosen approach (+ deviations discovered during build), changes, verification — not the agent's task list. The `## Implementation Plan` full-plan embed (Phase 1, 5.2) is **dropped**; `.hq/pr.md` format overrides continue to govern the narrative. The plan file stays a local working artifact, archived with the task dir (durability tradeoff re-accepted; E4 remains the escape hatch). |
+
+### 11.1 Target stage map
+
+```
+/hq:loop <input>                                   ROOT = session model, main conversation
+│
+├─ Stage 0 RESUME  (root)          state detection from artifacts:
+│     no plan.md                     → Stage 1
+│     plan.md w/ unchecked items     → Stage 2 (covers old /hq:start)
+│     built, FBs untriaged           → Stage 3/4
+│     PR exists                      → Stage 7 or /hq:respond / /hq:archive hint
+│
+├─ Stage 1 PLAN    (root, interactive)  draft-protocol: intake+survey → brainstorm+
+│     Simplicity gate → compose → go gate (answers: go / stop = plan-only exit / pushback)
+│     → plan.md + context.md
+│
+├─ Stage 2 BUILD   (executor agent, model: inherit)  execute-protocol:
+│     branch → per-item implement+commit → acceptance sweep (retry cap) → structured return
+│     entry modes: fresh / fix-directive (root-composed fix instructions; absorbs the old
+│     P4 loopback AND triage disposition-4 fixes AND disposition-1 follow-up items)
+│
+├─ Stage 3 REVIEW
+│     J3 root: acceptance review of the build (plan alignment / out-of-scope impact /
+│         tunnel vision — absorbs old start Phase 6 Self-Review; now genuinely third-party
+│         because the root did not write the code) → pass | fix-directive → Stage 2 | consult user
+│     J4 root: reviewer-agent selection (judgment; credential hard-floor stays deterministic)
+│     → launch code-reviewer / security-scanner / integrity-checker in parallel → FB files
+│
+├─ Stage 4 TRIAGE  (root judgment over FB files — pre-PR, no PR body involved)
+│     J5 root, per FB: validity → ownership → scope/risk (ordered-gate heuristic + bias
+│     rules as judgment priors, not mechanical procedure). Dispositions:
+│       fix now        → fix-directive queue → Stage 2 re-entry (regression-gated)
+│       plan follow-up → plan.md append → Stage 2 re-entry            } budget-gated
+│       accept         → residual list (→ PR ## Known Issues)
+│       escalate       → feedback candidate (user-confirmed at Stage 7)
+│     evidence gap → root MAY launch a read-only verification agent for that FB
+│     re-entry bound: loop_max_iterations (hard cap; overflow → candidates, never drops)
+│
+├─ Stage 5 SHIP    (root composes, J6; pr skill executes)  PR creation — final proposal:
+│     narrative (Summary / Approach incl. deviations / Changes — from plan Why/Approach +
+│     build reality; .hq/pr.md override) + ## Manual Verification + ## Known Issues
+│     (post-triage residual only) + Refs #task. No plan embed.
+│
+├─ Stage 6 RETRO   (retro-distiller agent, model: sonnet, background-able)
+│     retro (now covers build + review + triage dispositions) → .hq/retro/<branch-dir>.md
+│     → distill into .hq/start-memory.md (char-capped)
+│
+└─ Stage 7 REPORT  (root, interactive)
+      work report + J5 audit trail (incl. suggestion-vs-decision divergences) +
+      feedback candidates → user multi-select → gh issue create hq:feedback (Refs #PR)
+```
+
+### 11.2 Root-agent judgment catalog
+
+Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` (auditability unchanged).
+
+| ID | Where | Judgment | Deterministic floor that still binds |
+|---|---|---|---|
+| J1 | Stage 0 | ambiguous state → which stage to enter; stale-artifact handling | artifact existence checks are mechanical |
+| J2 | Stage 1 | Simplicity gate pushbacks; `[primary]` tier commitment; plan-split | plan body schema, tag set, 1-`[primary]` rule |
+| J3 | Stage 3 | build acceptance: plan alignment / out-of-scope / tunnel vision → pass / fix-directive / consult | Phase-5 sweep results are facts, not re-judged |
+| J4 | Stage 3 | reviewer-agent subset selection | credential-prefix hard floor forces security-scanner |
+| J5 | Stage 4 | per-FB disposition + fix-directive composition + budget allocation | regression gate on fixes; iteration cap; no autonomous Issue creation |
+| J6 | Stage 5 | PR narrative: what the human reviewer needs (motive, approach, deviations) | workflow sections + labels + Refs trailer invariants; `.hq/pr.md` |
+| J7 | Stage 7 | candidate presentation quality (grouping, rationale) | Issue creation itself is user-gated |
+
+### 11.3 File-level deltas
+
+1. **`commands/loop.md`** — full rewrite: Stage 0 state machine, Stages 1–7, the J1–J7 judgment specs (criteria + decision-record contract), settings (`loop_max_iterations`), stop policy. The triage judgment criteria (ordered-gate heuristic, bias rules, over-fixing guard) move here (or to `workflow.md § Triage Judgment` — implementer's choice; single home, cited from loop.md).
+2. **`rules/draft-protocol.md`** — keep as Stage 1 spec; add `stop` as a sanctioned gate answer (plan-only exit); drop the "consumed by /hq:draft" framing.
+3. **`rules/start-protocol.md` → `rules/execute-protocol.md`** — strip Phases 6–11 (Self-Review → J3; Quality Review orchestration → Stage 3; PR → Stage 5; retro/distill → Stage 6; report → return schema). Keep: pre-flight/branch/context (P1–P3), execute (P4), acceptance sweep + retry loop (P5), commit policy, phase timing (rescope), continue-report FBs. Entry modes: `fresh` / `fix-directive` (a root-composed instruction list; replaces both the old P5 loopback framing and triage-fix application). Return schema gains `self_notes` (implementer's own residual concerns — evidence for J3).
+4. **`rules/triage-protocol.md`** — **deleted**. Judgment criteria relocate per item 1; FB schema stays in `rules/feedback.md`.
+5. **`skills/pr/SKILL.md`** — body redesign per D8: narrative (Summary / Approach / Changes, `.hq/pr.md`-overridable) + `## Manual Verification` + `## Known Issues` = post-triage residual (accepted limitations + `escalated: #N` links; no Triage-summary-for-later-processing framing — nothing is "to be processed" anymore) + `Refs #<task>`. Remove `## Implementation Plan` invariant. Standalone `/pr` mode stays for ad-hoc branches.
+6. **Agents** — `auto-triager.md` deleted; `executor.md` updated (execute-protocol, fix-directive mode, self_notes); **new `retro-distiller.md`** (sonnet): consumes run artifacts (reports, FBs incl. triage dispositions, timings, git log) → retro artifact + start-memory distillation per `workflow.md § Retrospective` (schema updated to include a `## Triage Analysis` axis or fold dispositions into FB Analysis — implementer's choice, keep the 4-section gate).
+7. **`rules/workflow.md`** — § Loop rewrite (stage map + judgment catalog pointer); § PR Body Structure rewrite (D8); § Feedback Loop rewrite (FBs are triaged pre-PR; `feedbacks/done/` move happens at triage disposition, not PR creation); § Terminology (`hq:loop` primary entry; retire `/hq:draft`/`/hq:start`/`/hq:triage` references repo-wide); Retrospective source list update.
+8. **`commands/draft.md` / `start.md` / `triage.md`** — deleted. `respond.md` / `archive.md` swept for references (archive's pending-FB pre-check semantics now "untriaged FBs = abnormal"; respond unchanged).
+9. **`docs/workflow.md` + `docs/hq-loop-flow.html`** — updated to the new model. `CLAUDE.md` Dogfooding paragraph updated.
+10. **`.claude-plugin/plugin.json`** — agents list: −auto-triager, +retro-distiller.
+
+### 11.4 Acceptance (structural, Tier 3)
+
+- `commands/{draft,start,triage}.md` and `rules/triage-protocol.md` and `agents/auto-triager.md` do not exist; `rules/execute-protocol.md` and `agents/retro-distiller.md` exist; `plugin.json` reflects the agent set.
+- `rg -n "Implementation Plan" plugin/v3/skills/pr/SKILL.md plugin/v3/rules/workflow.md` → zero hits (D8).
+- `rg -n "/hq:draft|/hq:start|/hq:triage" plugin/v3/ --glob '!docs/plan.md'` → zero hits.
+- loop.md contains all seven judgment IDs (J1–J7) with decision-record contracts.
+- Manual Verification: one full dogfood run — plan-only exit (`stop`) works; a triage fix-directive round-trips through the executor; PR carries the refocused body; retro-distiller writes both artifacts.
