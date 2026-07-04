@@ -8,7 +8,7 @@
     "./plugin/v3/agents/integrity-checker.md",
     "./plugin/v3/agents/review-comment-analyzer.md",
     "./plugin/v3/agents/executor.md",
-    "./plugin/v3/agents/auto-triager.md"
+    "./plugin/v3/agents/retro-distiller.md"
   ],
   "skills": "./plugin/v3/skills"
 }
