@@ -1,6 +1,6 @@
 # Implementation Plan: `hq:loop` Orchestrator + Plan Localization + Command Refactoring
 
-Status: **Phases 1–3 and Phase 5 implemented and merged to develop (2026-07-04). Phase 5 (§ 11) supersedes D2/D4 and parts of the Phase 3 architecture — §§ 1–7 describe superseded intermediate states and are kept as history. Phase 4 remains an evaluation gate awaiting ≥ 3 real `/hq:loop` runs. Phase 6 (§ 12, telemetry sink) is designed, not yet implemented.**
+Status: **Phases 1–3 and Phase 5 implemented and merged to develop (2026-07-04). Phase 5 (§ 11) supersedes D2/D4 and parts of the Phase 3 architecture — §§ 1–7 describe superseded intermediate states and are kept as history. Phase 4 remains an evaluation gate awaiting ≥ 3 real `/hq:loop` runs. Phase 6 (§ 12, telemetry sink) is implemented and merged (2026-07-04).**
 Author context: composed 2026-07-04 from a design session with the repository owner. All user decisions below are final unless explicitly re-opened.
 
 This document is written to be self-sufficient: an AI implementer (Opus / Sonnet class) should be able to execute each phase from this document plus the referenced source files, without access to the original design conversation.
