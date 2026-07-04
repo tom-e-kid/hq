@@ -380,10 +380,14 @@ Added 2026-07-04 after the Phase 1–3 implementation and before any real run. O
 │     evidence gap → root MAY launch a read-only verification agent for that FB
 │
 ├─ Re-entry / convergence judgment (J8, root — replaces the mechanical loop decision):
-│     after each Stage 2→3→4 cycle, root judges the FB trajectory:
+│     fires after EVERY Stage 2→3→4 cycle — including the first (a first triage whose
+│     FBs are all micro-fix-grade converges at iteration 0). Root judges the trajectory:
 │     • CONVERGED — residual is trivial (low-severity, no new design questions):
-│         one final fix-directive micro-pass (executor, regression-gated; no full
-│         Stage 3–4 re-run — root spot-checks the micro-diff) → Stage 5
+│         one final fix-directive micro-pass (executor, regression-gated), then
+│         **integrity-checker re-run scoped to the micro-diff** (residual/consumer/
+│         surface-integrity check — the one reviewer whose axis a "trivial" fix can
+│         still break) + root spot-check of the micro-diff → Stage 5. No full
+│         Stage 3–4 re-run.
 │     • CONTINUE — substantive but bounded follow-ups, budget remains → Stage 2
 │         (Stage 3–4 re-run after). loop_max_iterations stays as the hard backstop.
 │     • DIVERGING — fixes spawn new defects / new design questions (signals: same-or-
@@ -425,11 +429,11 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 | J5 | Stage 4 | per-FB disposition + fix-directive composition + budget allocation | regression gate on fixes; iteration cap; no autonomous Issue creation |
 | J6 | Stage 5 | PR narrative: what the human reviewer needs (motive, approach, deviations) | workflow sections + labels + Refs trailer invariants; `.hq/pr.md` |
 | J7 | Stage 7 | candidate presentation quality (grouping, rationale) | Issue creation itself is user-gated |
-| J8 | after each Stage 2–4 cycle | **convergence judgment**: converged (micro-fix → Ship) / continue (re-enter) / diverging (plan-defect hypothesis → block, propose plan revision, or safe-cancel on user decline) | regression gate on the micro-pass; `loop_max_iterations` hard backstop; plan revision and cancel are both user-gated |
+| J8 | after each Stage 2–4 cycle (incl. the first) | **convergence judgment**: converged (micro-fix → integrity-checker re-run → Ship) / continue (re-enter) / diverging (plan-defect hypothesis → block, propose plan revision, or safe-cancel on user decline) | regression gate on the micro-pass; integrity-checker re-run is mandatory after any micro-fix; `loop_max_iterations` hard backstop; plan revision and cancel are both user-gated |
 
 ### 11.3 File-level deltas
 
-1. **`commands/loop.md`** — full rewrite: Stage 0 state machine, Stages 1–7, the J1–J7 judgment specs (criteria + decision-record contract), settings (`loop_max_iterations`), stop policy. The triage judgment criteria (ordered-gate heuristic, bias rules, over-fixing guard) move here (or to `workflow.md § Triage Judgment` — implementer's choice; single home, cited from loop.md).
+1. **`commands/loop.md`** — full rewrite: Stage 0 state machine, Stages 1–7, the J1–J8 judgment specs (criteria + decision-record contract), settings (`loop_max_iterations`), stop policy. The triage judgment criteria (ordered-gate heuristic, bias rules, over-fixing guard) move here (or to `workflow.md § Triage Judgment` — implementer's choice; single home, cited from loop.md). **Progress Tracking is a first-class contract**: at loop start, TaskCreate one task per stage (Stage 0–7); set `in_progress`/`completed` at stage boundaries; on J8 re-entry, create iteration-suffixed tasks (`Build (iteration 2)` …); reflect J8 outcomes in task subjects (e.g., `Converged — micro-fix + integrity re-check`); update long stages with in-progress counts (`Build — item 3/5`). Subagents keep the existing convention of reporting via TaskCreate/TaskUpdate so their progress is visible in the same UI. The user must be able to tell the loop's current position from the task list alone at any moment.
 2. **`rules/draft-protocol.md`** — keep as Stage 1 spec; add `stop` as a sanctioned gate answer (plan-only exit); drop the "consumed by /hq:draft" framing.
 3. **`rules/start-protocol.md` → `rules/execute-protocol.md`** — strip Phases 6–11 (Self-Review → J3; Quality Review orchestration → Stage 3; PR → Stage 5; retro/distill → Stage 6; report → return schema). Keep: pre-flight/branch/context (P1–P3), execute (P4), acceptance sweep + retry loop (P5), commit policy, phase timing (rescope), continue-report FBs. Entry modes: `fresh` / `fix-directive` (a root-composed instruction list; replaces both the old P5 loopback framing and triage-fix application). Return schema gains `self_notes` (implementer's own residual concerns — evidence for J3).
 4. **`rules/triage-protocol.md`** — **deleted**. Judgment criteria relocate per item 1; FB schema stays in `rules/feedback.md`.
@@ -445,5 +449,5 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 - `commands/{draft,start,triage}.md` and `rules/triage-protocol.md` and `agents/auto-triager.md` do not exist; `rules/execute-protocol.md` and `agents/retro-distiller.md` exist; `plugin.json` reflects the agent set.
 - `rg -n "Implementation Plan" plugin/v3/skills/pr/SKILL.md plugin/v3/rules/workflow.md` → zero hits (D8).
 - `rg -n "/hq:draft|/hq:start|/hq:triage" plugin/v3/ --glob '!docs/plan.md'` → zero hits.
-- loop.md contains all eight judgment IDs (J1–J8) with decision-record contracts, including J8's three outcomes and the safe-cancel route.
+- loop.md contains all eight judgment IDs (J1–J8) with decision-record contracts, including J8's three outcomes (converged path mandating the integrity-checker re-run), the safe-cancel route, and the per-stage Progress Tracking contract.
 - Manual Verification: one full dogfood run — plan-only exit (`stop`) works; a triage fix-directive round-trips through the executor; a simulated diverging run reaches the J8 block with a plan-revision proposal, and declining it lands in `.hq/tasks/canceled/`; PR carries the refocused body; retro-distiller writes both artifacts.
