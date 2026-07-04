@@ -56,6 +56,26 @@ Wall-clock stamps use `phase-timing.sh stamp <slot> start|end` (slots 4–10; nu
 
 Root-stamped slots: entry stamp before the stage's first action, exit stamp after its last, per the same discipline as the execute protocol.
 
+## Telemetry (dual-write, non-blocking)
+
+Every run additionally emits structured events to the **central sink** `~/.hq/events.jsonl` via `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/hq-event.sh" <kind> [key=val ...]` — the cross-project analytics counterpart of the human-readable records that stay in the project `.hq/`. The helper is **non-blocking by contract**: it never fails the pipeline (any error → warning + exit 0). Events carry titles / ids / verdicts, never diff content or code.
+
+**run_id** — capture `RUN_TS` (UTC, `date -u +%Y%m%dT%H%M%S`) once at loop entry. As soon as the run's `context.md` exists (immediately at Stage 0 for resumes; right after Stage 1 writes it for fresh plans), set `run_id: <branch-dir>-<RUN_TS>` in its frontmatter, overwriting any stale value from a prior run. All writers (root, executor, retro-distiller) share it via the helper's context.md lookup. J8 re-entries and revisions stay within the same run_id.
+
+**Emission points (root)** — one call each, adjacent to the action it records:
+
+| kind | when | payload |
+|---|---|---|
+| `run_start` | loop entry, after run_id lands | `entry_stage=<0-7>` |
+| `gate` | Stage 1 gate resolution | `answer=<go\|stop>` `pushbacks=<n>` |
+| `j_decision` | each J1–J8 decision-record write | `judgment=<J1..J8>` `verdict=<...>` `record=<path>` |
+| `disposition` | each J5 per-FB decision | `fb=<id>` `severity=<S>` `origin=<agent>` `disposition=<fix\|plan\|accept\|escalate>` `prior_departure=<true\|false>` |
+| `j8_verdict` | each Stage 4 exit | `verdict=<converged\|continue\|diverging>` [`user_outcome=<revised\|canceled>`] `iteration=<n>` |
+| `timing` | Stage 7, once | `slot<N>=<seconds>` per measured slot |
+| `run_end` | loop exit (any path) | `outcome=<shipped\|plan-only\|canceled\|failed>` `iterations=<n>` |
+
+The executor emits `build_result` and the retro-distiller emits `retro` themselves (their protocols specify it). The kind catalog is **closed** — extending it is a deliberate edit to `plan.md §12` and this table, not a runtime improvisation.
+
 ## Decision records (applies to every judgment J1–J8)
 
 Each judgment writes a Markdown decision record to `.hq/tasks/<branch-dir>/reports/<j-id>-<YYYY-MM-DD-HHMM>.md`: what was judged, the evidence weighed, the decision, and a single **Decision rationale** paragraph naming what tipped the call (write it for a reviewer asking "why?"). These records are the audit surface for the root's authority, and the retro-distiller's primary input. J3 additionally records a `self_review_gate` event and J4 an `agent_selection` event via `quality-review.sh record` (historical event names).

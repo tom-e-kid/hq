@@ -234,6 +234,8 @@ Running Acceptance at the end of the build is intentional: the loop reviews qual
 
 ## Return Contract
 
+**Telemetry (before returning):** emit one event — `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/hq-event.sh" build_result mode=<fresh|fix-directive> status=<completed|failed> primary=<pass|fail|n/a> fb_count=<n> noop=<true|false>`. Non-blocking by contract (a telemetry warning never changes the return).
+
 The final message is exactly this structure — no greetings, no prose around it. The orchestrator parses it; anything outside is lost.
 
 ```markdown
