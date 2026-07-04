@@ -128,7 +128,7 @@ Keep the task payload (when a parent exists) in conversation state; it is writte
    git checkout -b <branch>
    ```
    `ACTUAL_BASE` is the branch HEAD was on immediately before the new branch was cut — the authoritative per-branch base record. Step 3 writes it to `context.md`.
-3. **Append `base_branch: <ACTUAL_BASE>`** to `.hq/tasks/<branch-dir>/context.md` frontmatter (schema: `hq:workflow § Focus`) — this is the per-branch authoritative base that Phase 8 / `pr` skill resolve from. When a parent `hq:task` exists, also add the `gh.task` path entry.
+3. **Append `base_branch: <ACTUAL_BASE>`** to `.hq/tasks/<branch-dir>/context.md` frontmatter (schema: `hq:workflow § Focus`) — this is the per-branch authoritative base that the loop's Ship stage / `pr` skill resolve from. When a parent `hq:task` exists, also add the `gh.task` path entry.
 4. **Write task cache** *(only when the plan has a parent `hq:task`)* — `.hq/tasks/<branch-dir>/gh/task.json` (the JSON fetched in Phase 2). When no parent exists, skip this step.
 5. **Save focus to memory** — a project-type memory entry with the branch name, plus the source number when the plan has a parent `hq:task`. When no parent exists, omit the source number from the memory entry.
 6. **Read `hq:workflow`** (`${CLAUDE_PLUGIN_ROOT}/plugin/v3/rules/workflow.md`) and follow all applicable rules.
@@ -201,7 +201,7 @@ For each unchecked `[auto]` item in the plan's `## Acceptance`:
 3. **On fail**: leave the checkbox as `[ ]` and record the failure summary in conversation context (no FB yet).
 4. Track a **sweep counter per item** — how many times this item has cycled through the Phase 4 → Phase 5 loop.
 
-The sweep covers `## Acceptance` only, which is all `[auto]`. The plan's `## Manual Verification` items are reviewer-owned — Phase 5 does not touch them; Phase 8 carries them verbatim into the PR body.
+The sweep covers `## Acceptance` only, which is all `[auto]`. The plan's `## Manual Verification` items are reviewer-owned — Phase 5 does not touch them; loop Stage 5 carries them verbatim into the PR body.
 
 ### 1-by-1 toggle rule (batch toggle prohibited)
 

@@ -1,6 +1,6 @@
 # Implementation Plan: `hq:loop` Orchestrator + Plan Localization + Command Refactoring
 
-Status: **Phases 1–3 implemented and merged to develop (2026-07-04); Phase 4 is an evaluation gate awaiting ≥ 3 real `/hq:loop` runs. Phase 5 (loop consolidation — see § 11) is designed and approved in direction, not yet implemented; it supersedes decisions D2/D4 and parts of the Phase 3 architecture before any real run occurred.**
+Status: **Phases 1–3 and Phase 5 implemented and merged to develop (2026-07-04). Phase 5 (§ 11) supersedes D2/D4 and parts of the Phase 3 architecture — §§ 1–7 describe superseded intermediate states and are kept as history. Phase 4 remains an evaluation gate awaiting ≥ 3 real `/hq:loop` runs.**
 Author context: composed 2026-07-04 from a design session with the repository owner. All user decisions below are final unless explicitly re-opened.
 
 This document is written to be self-sufficient: an AI implementer (Opus / Sonnet class) should be able to execute each phase from this document plus the referenced source files, without access to the original design conversation.
@@ -449,6 +449,6 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 
 - `commands/{draft,start,triage}.md` and `rules/triage-protocol.md` and `agents/auto-triager.md` do not exist; `rules/execute-protocol.md` and `agents/retro-distiller.md` exist; `plugin.json` reflects the agent set.
 - `rg -n "Implementation Plan" plugin/v3/skills/pr/SKILL.md plugin/v3/rules/workflow.md` → zero hits (D8).
-- `rg -n "/hq:draft|/hq:start|/hq:triage" plugin/v3/ --glob '!docs/plan.md'` → zero hits.
+- `rg -n "/hq:draft|/hq:start|/hq:triage" plugin/v3/ --glob '!plugin/v3/docs/plan.md' --glob '!plugin/v3/docs/hq-loop-flow.html'` → zero hits (both excluded docs reference the old names only as history).
 - loop.md contains all eight judgment IDs (J1–J8) with decision-record contracts, including J8's three outcomes (converged path mandating the integrity-checker re-run), the safe-cancel route, and the per-stage Progress Tracking contract.
 - Manual Verification: one full dogfood run — plan-only exit (`stop`) works; a triage fix-directive round-trips through the executor; a simulated diverging run reaches the J8 block with a plan-revision proposal, and declining it lands in `.hq/tasks/canceled/`; PR carries the refocused body; retro-distiller writes both artifacts.
