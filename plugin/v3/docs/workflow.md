@@ -51,11 +51,12 @@ Full stage + judgment spec: `commands/loop.md`. Visual: `docs/hq-loop-flow.html`
 .hq/tasks/<branch-dir>/reports/       # J1–J8 decision records (the root's audit surface)
 .hq/retro/<branch-dir>.md             # per-run retrospective (Stage 6)
 .hq/start-memory.md                   # distilled repo learnings (Stage 6 writes; Phase 4 + J3/J4/J5 read)
+~/.hq/events.jsonl                    # central telemetry sink — structured run events, cross-project (dual-write)
 ```
 
 `<branch-dir>` = branch name with `/` → `-`. Everything under `.hq/` is per-clone and gitignored.
 
-Helper scripts (`plugin/v3/scripts/`): `plan-check-item.sh` (checkbox toggle), `find-plan.sh` (branch lookup), `read-context.sh`, `phase-timing.sh` (slots 4–10; mapping in `loop.md § Timing slots`), `quality-review.sh` (J3/J4 event records).
+Helper scripts (`plugin/v3/scripts/`): `plan-check-item.sh` (checkbox toggle), `find-plan.sh` (branch lookup), `read-context.sh`, `phase-timing.sh` (slots 4–10; mapping in `loop.md § Timing slots`), `quality-review.sh` (J3/J4 event records), `hq-event.sh` (central telemetry, non-blocking).
 
 Agents (`plugin/v3/agents/`): `executor` (build; model inherit) · `code-reviewer` / `security-scanner` (sonnet) / `integrity-checker` (review) · `retro-distiller` (sonnet) · `review-comment-analyzer` (used by `/hq:respond`).
 

@@ -121,6 +121,7 @@ Run `/hq:bootstrap` once when initializing a new project. The skill **never sile
 - **Human-gated where it matters** — the plan approval, plan revisions after divergence, and `hq:feedback` Issue creation always pass through the user.
 - **Leave no trace** — committed to the consumer repo only when missing: `CLAUDE.md` (bootstrap block) and the `.gitignore` entry. Everything else lives under the gitignored `.hq/` (plan, context, FBs, reports, retro, start-memory). The workflow specs live inside the plugin; nothing is copied out — editing the spec files is the change.
 - **Closed learning loop** — every run ends with a retrospective (written by a different party than the judge) distilled into a char-capped `.hq/start-memory.md`, read by the next run's build and judgments.
+- **Dual-write telemetry** — human-readable records stay in the project `.hq/`; structured run events (gates, judgments, dispositions, J8 verdicts, timings) are additionally appended to the central `~/.hq/events.jsonl` for cross-project analytics. Non-blocking: telemetry never gates the pipeline.
 
 Per-project guidance can be layered via `.hq/<name>.md` overrides (e.g. `.hq/draft.md`, `.hq/start.md`, `.hq/loop.md`, `.hq/pr.md`). Overrides **augment**, never **replace**, the workflow contract.
 

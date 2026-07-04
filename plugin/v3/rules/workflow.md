@@ -398,6 +398,7 @@ Every `hq:plan` must:
 source: <hq:task issue number>
 branch: <original branch name with slashes intact, e.g., feat/oauth-login>
 base_branch: <branch this feature branch was created from, e.g., main / develop / refactor/parent-feature>
+run_id: <branch-dir>-<loop start ts, e.g., feat-oauth-login-20260704T093000>
 gh:
   task: .hq/tasks/<branch-dir>/gh/task.json
 ---
@@ -406,6 +407,7 @@ gh:
 - `source` — **optional**. The `hq:task` issue number this plan implements. Present when the plan has a parent `hq:task` (the normal case); **omitted when no parent exists** (plans whose Stage 1 input had no `hq:task` number). This is the single carrier of parent linkage — the plan body has no `Parent:` line.
 - `branch` — **MUST**. The original git branch name (with slashes), derived at Stage 1 from the plan title. Lets tooling check out the correct branch given a plan query (the directory name has `/` → `-` transformation which is not reliably invertible).
 - `base_branch` — **MUST once the git branch exists**. The branch this feature branch was created from, appended by execute-protocol Phase 3 via `git symbolic-ref --short HEAD` immediately before `git checkout -b`. Absent between Stage 1 (which writes `context.md` without it) and the first build. This is the **per-branch authoritative base record** consumed by the Base branch resolution chain in § Branch Rules — it survives global `.hq/settings.json` drift across worktrees / stacked PRs (the failure mode that motivates this field). When absent, consumers fall back to the next step in the resolution chain.
+- `run_id` — **optional**. The current `/hq:loop` invocation's identifier, set at loop entry (`commands/loop.md § Telemetry`) and shared by every telemetry writer. Absent on `context.md` files predating telemetry; `hq-event.sh` falls back to `<branch-dir>-unknown`.
 - `gh` — path to the local `hq:task` snapshot (`gh/task.json`, written by execute-protocol Phase 3). Present only when `source` is set.
 
 **Lifecycle**:
@@ -541,6 +543,10 @@ All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/`:
 - **`read-context.sh`** — print the current branch's `context.md`, or `none`.
 
 **Rule**: individual checkbox toggles during execution call `plan-check-item.sh`. Structural plan edits (e.g., a J5 plan-append disposition, a J8-approved plan revision) edit `plan.md` directly.
+
+## Telemetry
+
+Run analytics are **dual-written**: human-readable records (decision reports, FBs, retro) stay in the project `.hq/`; a structured event row additionally lands in the **central sink `~/.hq/events.jsonl`** via `scripts/hq-event.sh` (closed kind catalog + emission points: `commands/loop.md § Telemetry`). Aggregation key is the normalized origin (`owner/repo`); branch / worktree path are attributes, so worktree churn never fragments history. The helper is non-blocking — telemetry failures warn and never gate the pipeline. Events carry titles / ids / verdicts, never diff content or code. A sqlite query layer over the JSONL is deferred work (`plan.md §12.5 E7`).
 
 ## Feedback Loop
 
