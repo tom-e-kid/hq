@@ -1,47 +1,45 @@
 # HQ Workflow
 
-This document is the **orientation map** for the hq workflow — how the commands fit together and where each artifact lives. It deliberately stays at overview altitude: the authoritative specifications live in `plugin/v3/rules/workflow.md` (cross-cutting rules, loaded on demand by each command) and in each command / skill file. When this document and a spec disagree, the spec wins.
+This document is the **orientation map** for the hq workflow — how the pipeline fits together and where each artifact lives. It deliberately stays at overview altitude: the authoritative specifications live in `plugin/v3/commands/loop.md` (the orchestrator + judgments), `plugin/v3/rules/` (cross-cutting rules + stage protocols), and each skill / agent file. When this document and a spec disagree, the spec wins.
 
 ## Overview
 
-hq separates a feature from idea to merge into command-scoped operations. **Two user interventions** anchor the flow — everything else is autonomous:
+**`/hq:loop`** is the single entry point. The model running it — the **root agent** — orchestrates the pipeline and makes its semantic judgments (J1–J8, each with a written decision record); subagents gather evidence and execute. The design premise: the root agent out-judges a typical human developer on these calls, so the human's attention is reserved for three interaction systems:
 
-1. **Approve the plan** (at `/hq:draft`'s commit-or-pushback gate) — the fully-composed plan body is presented verbatim in-chat; the user's `go` creates the plan file. The file remains directly editable before `/hq:start`.
-2. **Review the PR** (after `/hq:start`) — the user inspects the produced PR and decides the next move (merge, `/hq:triage`, `/hq:respond`, `/hq:archive`).
+1. **The Stage 1 gate** — the fully-composed plan body is presented verbatim; `go` continues, `stop` saves the plan and ends, pushback re-converges.
+2. **Root-initiated consults** (rare) — J3 finds a gap outside the plan's scope; J8 detects divergence and proposes a plan revision (or safe-cancels on decline).
+3. **The Stage 7 feedback confirmation** — `hq:feedback` Issues are created only from user-selected candidates.
+
+The PR is created **last** (Stage 5), after triage — it is the final proposal, and its body is written for the human reviewer (motivation / approach / changes), not as an agent task-list dump.
 
 Core artifacts:
 
 - **`hq:task`** — GitHub Issue (label `hq:task`): the requirement ("what"). Optional trigger.
-- **`hq:plan`** — local file `.hq/tasks/<branch-dir>/plan.md`: the implementation plan ("how"). Created by `/hq:draft`, identified by its branch name, executed by `/hq:start`. Durable via the PR body's `## Implementation Plan` snapshot from PR creation onward.
-- **`hq:pr`** — the PR that realizes an `hq:plan`. Labeled `hq:pr`; body carries the workflow sections (`## Manual Verification` / `## Known Issues` / `## Implementation Plan`) and `Refs #<task>` when a parent task exists.
-- **`hq:feedback`** — GitHub Issue for residual problems carved out of a PR's Known Issues. Created only by `/hq:triage` (and `/hq:respond` for external review comments).
+- **`hq:plan`** — local file `.hq/tasks/<branch-dir>/plan.md`: the implementation plan ("how"). Created at Stage 1, identified by its branch name. The loop's internal work log — never embedded in the PR; archived with the task folder.
+- **`hq:pr`** — the PR that ships a plan. Labeled `hq:pr`; body = narrative + `## Manual Verification` + post-triage `## Known Issues` + `Refs #<task>`.
+- **`hq:feedback`** — GitHub Issue for escalated residuals. Created only with explicit user confirmation (loop Stage 7, or `/hq:respond`).
 
-## Command Map
+## Pipeline map
 
 ```
-                 (intervention #1)              (intervention #2)
-                approve plan body                 review hq:pr
-                        ↓                              ↓
- [hq:task] ─/hq:draft─→ plan.md ─/hq:start─→ hq:pr ──┬─ merge ──────────/hq:archive────────→ (tasks/done/)
-            (optional)  (.hq/tasks/<dir>/)           ├─ close w/o merge ─/hq:archive cancel→ (tasks/canceled/)
-                                                     │
-                                                     ├─ /hq:triage   (Known Issues from PR body)
-                                                     └─ /hq:respond  (external review comments)
+/hq:loop <input>                          root agent = orchestrator + judge
+│
+├─ Stage 0 RESUME   (root, J1)   artifacts → entry stage (plan? built? triaged? shipped?)
+├─ Stage 1 PLAN     (root+user)  draft-protocol: survey → brainstorm (J2) → go/stop gate → plan.md
+├─ Stage 2 BUILD    (executor)   execute-protocol: branch → implement → acceptance sweep
+├─ Stage 3 REVIEW   (root+agents) J3 build review → J4 selection → reviewers in parallel → FBs
+├─ Stage 4 TRIAGE   (root)       J5 per-FB disposition → J8 convergence at exit:
+│                                  converged → micro-fix + integrity re-check → Stage 5
+│                                  continue  → Stage 2 (budget-bounded)
+│                                  diverging → plan-revision consult / safe cancel
+├─ Stage 5 SHIP     (root, J6)   PR = final proposal (pr skill; narrative body)
+├─ Stage 6 RETRO    (distiller)  retrospective + start-memory distillation
+└─ Stage 7 REPORT   (root+user)  judgment audit trail + feedback confirmation (J7)
+
+Post-PR tools: /hq:respond (external review comments) · /hq:archive (done / cancel)
 ```
 
-- **Creation path**: `/hq:draft` → `/hq:start` → (merge) → `/hq:archive`.
-- **Orchestrated path**: `/hq:loop [input]` runs draft → execute → auto-triage → report in one command, keeping three interaction points (the draft `go` gate, rare executor consults, the final feedback confirmation). Autonomous stages run as subagents (`executor` / `auto-triager`); re-execution is bounded by `loop_max_iterations`. Spec: `plugin/v3/commands/loop.md`, `hq:workflow § Loop`.
-- **Cancel path**: `/hq:archive cancel` closes the PR (if open) and archives the task folder under `.hq/tasks/canceled/`. The plan is a local file — there is no plan Issue to close in either path; the parent `hq:task` is never touched.
-- **Response tools** (user-directed, zero or more times, any order): `/hq:triage` for in-PR Known Issues, `/hq:respond` for external review comments.
-
-## Lifecycle
-
-1. **`/hq:draft [hq:task]`** — intake (optional task fetch + wide-impact survey) → interactive brainstorm with the Simplicity gatekeeper → compose the plan body → **commit-or-pushback gate** (`go`) → write `.hq/tasks/<branch-dir>/plan.md` + `context.md`. The branch name is derived here from the plan title; the git branch is NOT created. Spec: `plugin/v3/rules/draft-protocol.md`.
-2. **`/hq:start [branch]`** — autonomous: resolve plan (no argument = current branch; otherwise `find-plan.sh` query) → create branch → execute Plan items (one commit each) → Acceptance sweep (Phase 4↔5 mini-loop, capped) → Self-Review → Quality Review (judgment-selected agent subset; pure review, no auto-fix) → PR creation (workflow sections + plan snapshot) → Retrospective → Distillation → report. Spec: `plugin/v3/rules/start-protocol.md`.
-3. **Review the PR.** Optionally:
-   - **`/hq:triage <PR>`** — per-item strict-interactive triage of `## Known Issues`: (1) add to plan (appends to the local `plan.md`; re-run `/hq:start` to resume), (2) leave, (3) escalate to `hq:feedback` (`Refs #<PR>`), (4) fix in place under a regression gate. Spec: `plugin/v3/rules/triage-protocol.md`.
-   - **`/hq:respond`** — autonomously fix / escalate / dismiss external review comments. Spec: `plugin/v3/commands/respond.md`.
-4. **Merge**, then **`/hq:archive`** (done mode) — verifies merge + no pending FBs, archives the task folder to `.hq/tasks/done/`, deletes the local branch.
+Full stage + judgment spec: `commands/loop.md`. Visual: `docs/hq-loop-flow.html`.
 
 ## Where things live
 
@@ -49,22 +47,25 @@ Core artifacts:
 .hq/tasks/<branch-dir>/plan.md        # the hq:plan — single source of truth (gitignored)
 .hq/tasks/<branch-dir>/context.md     # focus: source (task #), branch, base_branch
 .hq/tasks/<branch-dir>/gh/task.json   # hq:task snapshot (only when a parent exists)
-.hq/tasks/<branch-dir>/feedbacks/     # pending FB files → moved to done/ at PR creation
-.hq/retro/<branch-dir>.md             # per-run retrospective (Phase 9)
-.hq/start-memory.md                   # distilled repo learnings (Phase 10 writes, Phase 4/6/7 read)
+.hq/tasks/<branch-dir>/feedbacks/     # pending FBs → done/ with a disposition line at Stage 4
+.hq/tasks/<branch-dir>/reports/       # J1–J8 decision records (the root's audit surface)
+.hq/retro/<branch-dir>.md             # per-run retrospective (Stage 6)
+.hq/start-memory.md                   # distilled repo learnings (Stage 6 writes; Phase 4 + J3/J4/J5 read)
 ```
 
-`<branch-dir>` = branch name with `/` → `-`. Everything under `.hq/` is per-clone and gitignored; the plan's durability handoff is the PR body snapshot.
+`<branch-dir>` = branch name with `/` → `-`. Everything under `.hq/` is per-clone and gitignored.
 
-Helper scripts (`plugin/v3/scripts/`): `plan-check-item.sh` (checkbox toggle), `find-plan.sh` (branch lookup), `read-context.sh`, `phase-timing.sh`, `quality-review.sh`.
+Helper scripts (`plugin/v3/scripts/`): `plan-check-item.sh` (checkbox toggle), `find-plan.sh` (branch lookup), `read-context.sh`, `phase-timing.sh` (slots 4–10; mapping in `loop.md § Timing slots`), `quality-review.sh` (J3/J4 event records).
+
+Agents (`plugin/v3/agents/`): `executor` (build; model inherit) · `code-reviewer` / `security-scanner` (sonnet) / `integrity-checker` (review) · `retro-distiller` (sonnet) · `review-comment-analyzer` (used by `/hq:respond`).
 
 ## Key design decisions (with spec pointers)
 
-- **Plan body contract** — flat 5-section structure (`## Why` / `## Approach` / `## Editable surface` / `## Plan` / `## Acceptance`) + optional `## Manual Verification`; `## Editable surface` is the AI agent fence with inline tags (`[新規]` / `[改修]` / `[削除]` / `[silent-break]`); exactly one `[auto] [primary]` acceptance signal at the strongest start-executable tier. Spec: `hq:workflow § hq:plan`.
-- **Local Plan Principle** — the plan file is the single source of truth; no GitHub sync during execution. Spec: `hq:workflow § Local Plan Principle`.
-- **Two user interventions only** — the draft gate and PR review. `/hq:start` is autonomous after pre-flight, with a single sanctioned `pause-consult` exception (Phase 6 significant-gap). Spec: `rules/start-protocol.md § Stop Policy`.
-- **Pure-review Quality Review** — Phase 7 agents (`code-reviewer` / `security-scanner` / `integrity-checker`) never auto-fix; every FB flows to the PR's `## Known Issues`, grouped by action priority. Fix decisions are human-gated in `/hq:triage`. Spec: `hq:workflow § Feedback Loop`.
-- **PR body = 2 layers** — the narrative layer is project-overridable via `.hq/pr.md`; the workflow sections (`## Manual Verification` / `## Known Issues` / `## Implementation Plan` / `Refs` trailer) are English-fixed invariants. Spec: `hq:workflow § PR Body Structure`, `skills/pr/SKILL.md`.
-- **Learning loop** — Phase 9 writes the retrospective, Phase 10 distills repo-specific cautions into the char-bounded `.hq/start-memory.md`, which Phase 4 (implementation), Phase 6 (Self-Review), and Phase 7 (Agent Selection) read on the next run. Spec: `hq:workflow § Retrospective`.
-- **Project overrides** — every command / skill / agent may consult `.hq/<name>.md` for project-local guidance; overrides augment, Invariants govern. Spec: `hq:workflow § Project Overrides`.
-- **Loop composition** — `/hq:loop` composes the three protocols instead of duplicating them: draft runs inline (interactive by definition), execute / triage run as subagents with per-role `model:` assignment. Auto-triage applies gate-derived dispositions without per-item confirmation but never creates Issues — feedback candidates are user-confirmed at the final report. Spec: `hq:workflow § Loop`.
+- **Root agent as judge** — semantic calls (state interpretation, design gates, build review, reviewer selection, triage dispositions, convergence, PR narrative) are J1–J8, decided by the root with recorded rationale; agents never make final calls. Spec: `commands/loop.md`.
+- **Plan body contract** — flat 5-section structure with `## Editable surface` as the AI agent fence and exactly one `[auto] [primary]` acceptance signal at the strongest executor-executable tier. Spec: `hq:workflow § hq:plan`.
+- **Local Plan Principle** — plan.md is the single source of truth; no GitHub copy; not embedded in the PR. Spec: `hq:workflow § Local Plan Principle`.
+- **PR-last + reviewer-focused body** — triage precedes the PR; `## Known Issues` carries only post-triage residual; the narrative (`.hq/pr.md`-overridable) carries motivation / approach / deviations. Spec: `hq:workflow § PR Body Structure`, `skills/pr/SKILL.md`.
+- **Pure-review reviewers + root-owned fixes** — reviewer agents only produce FBs; every fix is a J5 decision executed by the executor's fix-directive mode under the regression gate. Spec: `hq:workflow § Feedback Loop`.
+- **J8 convergence over mechanical caps** — the loop re-enters on the root's trajectory judgment; `loop_max_iterations` is only a runaway backstop; divergence blocks with a plan-revision proposal or safe-cancels via the archive-cancel route. Spec: `commands/loop.md § Stage 4`.
+- **Learning loop** — Stage 6's retro-distiller (a different party from the judge — hindsight without self-grading) writes the retrospective and re-distills `.hq/start-memory.md`, read by the next run's build and judgments. Spec: `hq:workflow § Retrospective`.
+- **Project overrides** — `.hq/<name>.md` files supply project guidance; overrides augment, Invariants govern. Spec: `hq:workflow § Project Overrides`.
