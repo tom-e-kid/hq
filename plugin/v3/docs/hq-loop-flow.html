@@ -191,23 +191,24 @@
     <!-- STAGE 4 -->
     <section class="stage root">
       <div class="card">
-        <div class="card-head"><span class="stage-no">STAGE 4</span><h2>Triage — PR を作る前に裁く</h2>
+        <div class="card-head"><span class="stage-no">STAGE 4</span><h2>Triage + 収束判定 — PR を作る前に裁く</h2>
           <span class="runner"><span class="chip j">root model</span><span class="chip a">verifier agent（必要時のみ）</span></span></div>
         <ul class="steps">
           <li class="judge"><span class="pnum">J5</span><div class="pbody"><b>FB ごとの disposition 判断</b><span class="tag j">ROOT</span><span class="sub">対象は<b>ローカル FB ファイル</b>（PR body ではない — PR はまだ無い）。validity → ownership → scope/risk の順序ゲートとバイアス則（不明は安全側）を<b>判断の事前分布</b>として、plan の意図・build の実態・budget・severity に照らして root が決定する。エージェントの機械的手続きではない。証拠不足の FB は読み取り専用の verifier agent を単発起動して補強してよい。</span></div></li>
           <li><span class="pnum">·</span><div class="pbody"><b>disposition の行き先</b><span class="sub"><b>fix now</b> → fix-directive queue（regression gate 必須）／ <b>plan 追記</b> → <code>plan.md</code> append — どちらも Stage 2 再突入・budget 消費 ／ <b>accept</b> → 残存リスト（PR の Known Issues へ）／ <b>escalate</b> → feedback candidate（Issue はまだ作らない）。</span></div></li>
+          <li class="judge"><span class="pnum">J8</span><div class="pbody"><b>収束判定 — この Stage の出口判断</b><span class="tag j">ROOT</span><span class="sub">J5 を終えた root がそのまま FB の<b>軌跡</b>を判断する（毎サイクル・初回含む）: <b>収束</b>（残存が micro-fix 相当のみ — 初回 triage がそうなら iteration 0 で収束）／ <b>継続</b>（実質的だが有界）／ <b>発散</b>（修正が新たな不具合・設計論点を生んでいる — 兆候: 修正済み箇所への同等以上 severity の FB、plan 前提と矛盾する FB、fix→新 FB 連鎖、primary 反復失敗）。分岐の行き先は下のボックス。</span></div></li>
         </ul>
         <div class="uses"><b>USES</b> commands/loop.md §Triage Judgment（順序ゲート + バイアス則の新しい置き場）· rules/feedback.md · .hq/triage.md（override — 判断の事前分布ヒント）</div>
       </div>
     </section>
 
-    <!-- J8 CONVERGENCE JUDGMENT -->
-    <div class="decision">
+    <!-- J8 ROUTING -->
+    <div class="decision" style="--ok:var(--judge)">
       <div class="dec-box" style="border-color:rgba(180,142,199,.6)">
-        <h3><span style="color:var(--judge);font-family:var(--mono);font-size:12px;margin-right:8px">J8</span>収束判定（root）— <b>毎サイクルの Stage 4 直後に発火</b>（初回含む）。機械的な回数上限ではなく FB の軌跡を意味的に判断する</h3>
-        <div class="branch"><span class="arr">↓</span><span><b>収束</b> — 残るのは些細な指摘のみ（低 severity・新たな設計論点なし）。<b>初回 triage の FB が全部 micro-fix 相当なら iteration 0 で収束扱い</b>。→ executor の micro-fix パス 1 回（regression gate 必須）→ <b>integrity-checker のみ micro-diff スコープで再走</b>（「些細な修正」が壊しうる唯一の軸 = 残存参照・consumer・surface 整合の再確認）+ root の micro-diff 目視 → <b>Stage 5 へ</b>。Stage 3–4 のフル再走はしない。</span></div>
-        <div class="branch"><span class="arr">↺</span><span class="loopback"><b>継続</b> — 実質的だが有界な対応が残り budget もある → <b>Stage 2 に再突入</b>（Stage 3–4 も再走）。<code>loop_max_iterations</code>（既定 2）は暴走時のハードバックストップとして残る。</span></div>
-        <div class="branch"><span class="arr">⛔</span><span><b style="color:var(--user)">発散</b> — 修正が新たな不具合・検討事項を生んでいる（兆候: 修正済み箇所への同等以上の severity の FB、plan の前提と矛盾する FB、fix→新 FB の連鎖、primary の反復失敗）→ <b>計画自体の欠陥仮説</b>。ループをブロックし、問題分析 + 計画上の根本原因 + <b>計画見直し案</b>を verbatim で人間に提示（介入 ②）:<br>
+        <h3><span style="color:var(--judge);font-family:var(--mono);font-size:12px;margin-right:8px">J8 の 3 分岐</span>判定者は <span class="chip j" style="vertical-align:1px">root model</span> — 上の Stage 4 出口判断の行き先</h3>
+        <div class="branch"><span class="arr">↓</span><span><b>収束</b> → executor の micro-fix パス 1 回（regression gate 必須）→ <b>integrity-checker のみ micro-diff スコープで再走</b>（「些細な修正」が壊しうる唯一の軸 = 残存参照・consumer・surface 整合の再確認）+ root の micro-diff 目視 → <b>Stage 5 へ</b>。Stage 3–4 のフル再走はしない。</span></div>
+        <div class="branch"><span class="arr">↺</span><span class="loopback"><b>継続</b> → <b>Stage 2 に再突入</b>（Stage 3–4 も再走）。<code>loop_max_iterations</code>（既定 2）は暴走時のハードバックストップとして残る。</span></div>
+        <div class="branch"><span class="arr">⛔</span><span><b style="color:var(--user)">発散</b> → <b>計画自体の欠陥仮説</b>としてループをブロック。root が問題分析 + 計画上の根本原因 + <b>計画見直し案</b>を verbatim で人間に提示（介入 ②）:<br>
         ・<b>承認</b> → plan.md を改訂（影響 item を再オープン）、budget リセット → Stage 2 からやり直し<br>
         ・<b>却下 / 中止</b> → <b>安全キャンセル</b> — archive cancel 経路を read-and-follow（PR は未作成なので task フォルダ → <code>.hq/tasks/canceled/</code>、branch 強制削除、memory クリア）→ 経緯を報告して終了。</span></div>
       </div>

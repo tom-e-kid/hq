@@ -379,7 +379,8 @@ Added 2026-07-04 after the Phase 1–3 implementation and before any real run. O
 │       escalate       → feedback candidate (user-confirmed at Stage 7)
 │     evidence gap → root MAY launch a read-only verification agent for that FB
 │
-├─ Re-entry / convergence judgment (J8, root — replaces the mechanical loop decision):
+├─ Convergence judgment (J8, root — **the exit judgment of Stage 4**, replacing the
+│     mechanical loop decision):
 │     fires after EVERY Stage 2→3→4 cycle — including the first (a first triage whose
 │     FBs are all micro-fix-grade converges at iteration 0). Root judges the trajectory:
 │     • CONVERGED — residual is trivial (low-severity, no new design questions):
@@ -429,7 +430,7 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 | J5 | Stage 4 | per-FB disposition + fix-directive composition + budget allocation | regression gate on fixes; iteration cap; no autonomous Issue creation |
 | J6 | Stage 5 | PR narrative: what the human reviewer needs (motive, approach, deviations) | workflow sections + labels + Refs trailer invariants; `.hq/pr.md` |
 | J7 | Stage 7 | candidate presentation quality (grouping, rationale) | Issue creation itself is user-gated |
-| J8 | after each Stage 2–4 cycle (incl. the first) | **convergence judgment**: converged (micro-fix → integrity-checker re-run → Ship) / continue (re-enter) / diverging (plan-defect hypothesis → block, propose plan revision, or safe-cancel on user decline) | regression gate on the micro-pass; integrity-checker re-run is mandatory after any micro-fix; `loop_max_iterations` hard backstop; plan revision and cancel are both user-gated |
+| J8 | Stage 4 exit (every cycle, incl. iteration 0) | **convergence judgment**: converged (micro-fix → integrity-checker re-run → Ship) / continue (re-enter) / diverging (plan-defect hypothesis → block, propose plan revision, or safe-cancel on user decline) | regression gate on the micro-pass; integrity-checker re-run is mandatory after any micro-fix; `loop_max_iterations` hard backstop; plan revision and cancel are both user-gated |
 
 ### 11.3 File-level deltas
 
