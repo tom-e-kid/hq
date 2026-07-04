@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Quality Review event recorder & summarizer for /hq:start Phase 6 (Self-Review) and Phase 7 (Quality Review).
+# Quality Review event recorder & summarizer for the hq loop's Stage 3 judgments (J3 build review, J4 agent selection; event names are historical).
 # Subcommands:
 #   record <event-type> [key=val ...]   append a JSONL event line
 #   summary                              print Self-Review Gate / Agent Selection / Initial breakdown

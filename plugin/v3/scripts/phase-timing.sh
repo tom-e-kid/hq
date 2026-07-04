@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase timing helper for /hq:start.
+# Phase timing helper for the hq loop (slot->stage mapping: commands/loop.md § Timing slots).
 # Subcommands:
 #   stamp <phase> <event>   append a timing event to the branch-local JSONL
 #   summary                 print wall-clock duration per phase + total
@@ -7,11 +7,10 @@
 # JSONL path: .hq/tasks/<branch-dir>/phase-timings.jsonl
 # Event format: {"phase":"<N>","event":"<start|end>","ts":<unix_secs>}
 #
-# Scope: Phase 4-10 only. Phase 1-3 are structurally unmeasurable on the feature
-# branch's JSONL (fresh start: Phase 1/2 stamps land in caller branch's JSONL,
-# Phase 3 stamp pair is split across the Phase 3 step 2 branch switch; auto-resume:
-# Phase 1's start lands in caller, end in feature, and Phase 2/3 are skipped).
-# Phase 11 (Report) emits the summary itself, so it does not self-stamp either.
+# Scope: measurement slots 4-10 (numbers are historical; see loop.md for the
+# slot -> stage mapping). Executor prep phases are structurally unmeasurable on
+# the feature branch's JSONL because stamp pairs would split across the branch
+# switch; the loop's report stage emits the summary itself and is not stamped.
 #
 # Durations are wall-clock and include any idle / interrupted time between
 # a `start` stamp and its matching `end` stamp across auto-resume sessions.
@@ -50,7 +49,7 @@ case "$cmd" in
     [[ $# -eq 2 ]] || usage
     phase="$1"
     event="$2"
-    [[ "$phase" =~ ^([4-9]|10)$ ]] || { echo "error: <phase> must be 4-10 (Phase 1-3 / 11 are not measured — see file header)" >&2; exit 2; }
+    [[ "$phase" =~ ^([4-9]|10)$ ]] || { echo "error: <slot> must be 4-10 (see commands/loop.md § Timing slots)" >&2; exit 2; }
     [[ "$event" == "start" || "$event" == "end" ]] || { echo "error: <event> must be 'start' or 'end'" >&2; exit 2; }
     jsonl=$(resolve_jsonl)
     mkdir -p "$(dirname "$jsonl")"
@@ -99,9 +98,9 @@ case "$cmd" in
         for (i = 4; i <= 10; i++) {
           ph = i ""
           if (phase_seen[ph]) {
-            printf "Phase %s: %s\n", ph, fmt(phase_dur[ph] + 0)
+            printf "Slot %s: %s\n", ph, fmt(phase_dur[ph] + 0)
           } else {
-            printf "Phase %s: (no data)\n", ph
+            printf "Slot %s: (no data)\n", ph
           }
         }
         print ""
