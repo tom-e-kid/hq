@@ -58,7 +58,7 @@ Read `.hq/tasks/<branch-dir>/context.md` for the **current branch** (branch-dir 
 
 - `source` — `hq:task` Issue number (may be absent — plans without a parent task)
 - `branch` — original branch name (should match current branch)
-- `base_branch` — the branch this feature branch was created from (captured at `/hq:start` Phase 3 — see `hq:workflow § Focus`). **Hold this in conversation state** — Phase 5 archives `context.md` away, and Phase 6 needs the base to check out of the feature branch.
+- `base_branch` — the branch this feature branch was created from (captured at execute-protocol Phase 3 — see `hq:workflow § Focus`). **Hold this in conversation state** — Phase 5 archives `context.md` away, and Phase 6 needs the base to check out of the feature branch.
 
 If `context.md` is not found, ABORT with a message explaining that no `.hq/tasks/` entry matches the current branch and that `/hq:archive` closes out the current branch's task folder — the user can switch to the correct branch and retry.
 
@@ -74,7 +74,7 @@ Hold the PR number, state, and URL in conversation state — later phases (and t
 
 **Done mode** acceptance:
 
-- No PR → ABORT (`PR not created — complete /hq:start first.`)
+- No PR → ABORT (`PR not created — complete the /hq:loop run first.`)
 - `OPEN` → ABORT (`PR #<n> is still open. Retry after merge: <url>`)
 - `CLOSED` (not merged) → ABORT (`PR #<n> was closed without merging. To archive as canceled, run: /hq:archive cancel — URL: <url>`)
 - `MERGED` → proceed
@@ -102,10 +102,10 @@ find .hq/tasks/<branch-dir>/feedbacks -maxdepth 1 -type f -name 'FB*.md' 2>/dev/
   Cannot archive — pending FB files:
     - FB003.md
     - FB005.md
-  → These should have been moved to feedbacks/done/ during /hq:start PR creation.
+  → These should have been triaged to feedbacks/done/ at /hq:loop Stage 4.
     Resolve or move them manually, then retry.
   ```
-  This is defensive — in a normal `/hq:start` → PR flow, all FBs are moved to `done/` when the PR is created. Pending files here indicate an abnormal state.
+  This is defensive — in a normal loop run, every FB is moved to `done/` with a disposition at Stage 4 (before the PR exists). Pending files here indicate an abnormal state.
 
 **Cancel mode**:
 
@@ -209,7 +209,7 @@ Mode-aware summary.
 - **Stop on pre-check failure** — never force-archive. The user must resolve prerequisites themselves.
 - **Explicit `cancel` argument is the confirmation** — no extra interactive prompt. Mistyping is handled by the strict argument parser (only empty or `cancel` accepted).
 - **Mode is set once at Phase 0 (argument parsing) and never changes** — every phase branches on the same mode value.
-- **No `hq:feedback` creation** — this command does NOT escalate anything. Escalation happens via `/hq:triage` during PR review, before merge.
+- **No `hq:feedback` creation** — this command does NOT escalate anything. Escalation happens at `/hq:loop` Stage 7 (user-confirmed) or via `/hq:respond`.
 - **Never push / force-push** — all git operations are local.
 - **Never delete remote branches** — symmetric across modes. `gh pr close` runs without `--delete-branch`.
 - **Never use `git branch -D` on the base branch** — always switch off the feature branch first.

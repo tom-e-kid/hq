@@ -9,48 +9,43 @@ description: Create a pull request for the current branch
 
 If `.hq/pr.md` exists, its instructions govern the **narrative layer** of the PR body (see § Override scope below). The **workflow-layer Invariants** are fixed by the HQ workflow and cannot be overridden by `.hq/pr.md` or any project-level configuration — they apply to every PR this skill creates whenever their triggering condition holds.
 
+### Design premise — what a PR body is for
+
+The PR body serves the **human reviewer**, who should spend attention on the essence: the motivation, the chosen approach (including what changed against the original intent during implementation), and the changes. It is NOT a dump of the agent's task list — the plan file stays a local work artifact and is never embedded. When `.hq/pr.md` supplies format instructions, follow them; the refocus premise governs the default composition, not the project's own format authority.
+
 ### Override scope (allowed)
 
-The PR body has two layers — a **narrative layer** authored from `.hq/pr.md` (or defaults) and a **workflow sections layer** auto-injected by `/hq:start` Phase 8. See `hq:workflow § PR Body Structure` for the 2-layer model.
+The PR body has two layers — a **narrative layer** authored from `.hq/pr.md` (or defaults) and a **workflow sections layer** injected at creation time. Projects MAY use `.hq/pr.md` to redefine the narrative layer in full:
 
-Projects MAY use `.hq/pr.md` to redefine the **narrative layer** in full:
-
-- Narrative section heading names (e.g., `## 概要` / `## 変更` / `## メモ` instead of the default `## Summary` / `## Changes` / `## Notes`)
-- Narrative section structure (number of sections, ordering, addition of project-specific sections, removal of defaults)
+- Narrative section heading names (e.g., `## 概要` / `## 変更` / `## メモ` instead of the defaults)
+- Narrative section structure (number of sections, ordering, additions, removals)
 - Natural language of the narrative (Japanese / English / any conversation language)
-- Prose style inside narrative sections (tone, level of detail, bullet vs paragraph)
-- Title-line conventions (prefix style, length cap, wording)
+- Prose style inside narrative sections; title-line conventions (prefix style, length cap, wording)
 
-If `.hq/pr.md` gives only prose-style hints (no heading redefinitions), the pr skill keeps the default narrative headings and applies the hints inside them. Either authoring style is valid — `.hq/pr.md` is guidance for narrative composition, not a strict template specification.
+If `.hq/pr.md` gives only prose-style hints (no heading redefinitions), keep the default narrative headings and apply the hints inside them.
 
 ### Invariants (NOT overridable)
 
-The following are invariants of the HQ workflow. `.hq/pr.md` MUST NOT suppress, rename, reformat, or otherwise alter these — they must appear in every PR this skill creates whenever their triggering condition is met:
-
-- **`hq:manual` label** — when the plan has a `## Manual Verification` section with items at PR creation time, the PR MUST carry the `hq:manual` label in addition to `hq:pr`.
-- **`## Manual Verification` section** — when the plan has a `## Manual Verification` section with items at PR creation time, they MUST be listed verbatim under a section literally named `## Manual Verification`.
-- **`## Known Issues` section** — when pending FB files exist at PR creation time, their titles + brief descriptions MUST be listed under a section literally named `## Known Issues`, in the 3-category action-priority structure with a leading `**Triage summary**` line (see `hq:workflow § PR Body Structure § Invariants`).
-- **FB atomic move to `feedbacks/done/`** — any FB file whose content is surfaced in `## Known Issues` MUST be moved to `feedbacks/done/` as part of the same PR-creation operation. Surfacing without moving (or moving without surfacing) is forbidden.
-- **`## Implementation Plan` section** — every PR MUST carry the full `plan.md` content verbatim inside a `<details>` block under a section literally named `## Implementation Plan` (the plan's durable record — the local plan file is gitignored).
+- **`hq:pr` label** — every PR created by this skill carries it.
+- **`hq:manual` label + `## Manual Verification` section** — when the plan has `## Manual Verification` items at PR creation time, they MUST appear verbatim under a section literally named `## Manual Verification`, and the PR MUST carry the `hq:manual` label.
+- **`## Known Issues` section** — when the caller passes triaged residual entries (accepted limitations / pending escalations), they MUST appear under a section literally named `## Known Issues`, unmodified.
 - **`Refs #<task>` trailer** — required when the plan has a parent `hq:task` (`context.md` `source:`); omitted entirely when no parent exists.
-- **`hq:pr` label** — every PR created by this skill MUST carry the `hq:pr` label.
 - **Milestone / project inheritance** — if the source `hq:task` has a milestone or project(s), the PR MUST inherit them via `--milestone` / `--project` flags.
+- **No plan embed** — the plan file's checklist is never copied into the PR body; its motivation/approach content reaches the reviewer through the narrative.
 
-If `.hq/pr.md` content appears to contradict any Invariant, the Invariant wins. Flag the conflict to the user after PR creation so the override file can be corrected.
+If `.hq/pr.md` content appears to contradict an Invariant, the Invariant wins. Flag the conflict to the user after PR creation so the override file can be corrected.
 
 ### Invocation mode
 
-This skill has two modes. In **both modes** the pr skill is the **narrative composer** — it renders the narrative layer from `.hq/pr.md` (or defaults) and the Invariants are enforced. The difference is who supplies the workflow sections:
+- **From `/hq:loop`** (Stage 5 Ship — the normal path): the caller (root agent) composes the narrative itself (J6 — motivation / approach incl. build-time deviations / changes, honoring `.hq/pr.md`) and passes a **workflow sections pack**: the `## Manual Verification` block (when the plan has reviewer-owned checks), the `## Known Issues` block (post-triage residual), the `Refs` trailer (when a parent task exists), and the label / milestone / project flags. This skill validates the Invariants, assembles narrative + pack, and runs `gh pr create`. Do NOT edit or recompose the pack.
+- **Standalone** (user invokes `/pr` directly on an ad-hoc branch): compose the entire body from git + session context — narrative per `.hq/pr.md` or defaults; workflow sections from local state where it exists (`.hq/tasks/<branch-dir>/plan.md` `## Manual Verification`; pending `feedbacks/` entries listed under `## Known Issues` with `[<Severity>] [<origin>]` tags); `Refs #<task>` when `context.md` has `source:`.
 
-- **Standalone** (user invokes `/pr` directly): the skill composes the **entire** PR body from git + session context — narrative (from `.hq/pr.md` or defaults) plus workflow sections (from the local plan file's `## Manual Verification` / `## Acceptance`, `feedbacks/`, and the plan snapshot) plus trailer. Apply `.hq/pr.md` to the narrative layer per § Override scope.
-- **From `/hq:start`** (Phase 8 PR Creation delegation): the caller passes a **workflow sections pack** — pre-rendered `## Manual Verification` block (when the plan has reviewer-owned checks), `## Known Issues` block, `## Implementation Plan` block, `Refs` trailer line (when a parent `hq:task` exists), and label flags (`hq:pr`, optionally `hq:manual`). The pr skill renders the **narrative** from `.hq/pr.md` (or defaults), then **appends the workflow sections pack verbatim**, then runs `gh pr create` with the resolved labels and flags. `.hq/pr.md` is applied to the narrative layer per § Override scope; the workflow sections pack is invariant by construction (the caller built it from the plan and FB files).
-
-**`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v3/rules/workflow.md` (plugin-internal source of truth). Read it with the Read tool when this skill starts so the body composer (Standalone mode) and the trailer / label / inheritance Invariants have PR Body Structure, Naming Conventions, Issue Hierarchy, etc. available. From `/hq:start` mode the rule was already loaded by the caller, but a defensive Read is harmless. All `hq:workflow § <name>` citations refer to sections of that file.
+**`hq:workflow`** — shorthand for `${CLAUDE_PLUGIN_ROOT}/plugin/v3/rules/workflow.md`. Read it when this skill starts (PR Body Structure, Naming Conventions, Language). All `hq:workflow § <name>` citations refer to it.
 
 ## Context
 
 - Branch: !`git rev-parse --abbrev-ref HEAD`
-- Base branch: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. `<branch-dir>` is the current branch with `/` → `-`. The `context.md` step is the **authoritative per-branch record** captured at branch creation time and is the load-bearing input for `gh pr create --base <base>` in Step 7 — without it, stacked PRs and worktree-parallel runs silently target the wrong base.
+- Base branch: resolve per `hq:workflow § Branch Rules` — `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. The `context.md` step is the **authoritative per-branch record** captured at branch creation — the load-bearing input for `gh pr create --base <base>`; without it, stacked PRs and worktree-parallel runs silently target the wrong base.
 - Commits: run `git log --oneline <base-branch>..HEAD` using the Base branch above
 - Changed files: run `git diff <base-branch>...HEAD --stat` using the Base branch above
 - Uncommitted changes: !`git status --short`
@@ -59,109 +54,65 @@ This skill has two modes. In **both modes** the pr skill is the **narrative comp
 
 ## Instructions
 
-### Mode detection (do this first)
+1. **Check preconditions** — uncommitted changes → warn and ask (From-loop mode: the caller guarantees a clean tree; a dirty tree is a caller bug — stop and report). No commits ahead of base → abort. PR already exists → show the URL and stop.
 
-Before running any step below, determine invocation mode:
+2. **Push the branch** if not yet pushed: `git push -u origin HEAD`.
 
-- **From `/hq:start`** — the caller passes a **workflow sections pack** (pre-rendered `## Manual Verification` when applicable, `## Known Issues`, `Closes` / `Refs` trailer, and label / milestone / project flags). The pr skill **skips Step 4** (workflow-section composition — already prepared by the caller) and executes Steps 1, 2, 3, 5, 6, 7, 8, 9. In Step 5 it renders the **narrative** from `.hq/pr.md` (or defaults) and **appends the caller's workflow sections pack verbatim**. See `## Project Overrides` § Invocation mode.
-- **Standalone** — invoked directly (user typed `/pr`, no caller pack available). Execute all steps. Step 4 builds the workflow sections from the local plan cache + `feedbacks/`; Step 5 renders the narrative and assembles narrative + workflow sections + trailer.
+3. **Resolve traceability** — read `.hq/tasks/<branch-dir>/context.md`: `source` (optional parent `hq:task`), `branch`. Missing file on an ad-hoc branch → no traceability; skip `Refs` and inheritance.
 
-1. **Check preconditions**:
-   - If there are uncommitted changes, warn the user and ask whether to proceed or commit first
-   - If there are no commits ahead of the base branch, abort — nothing to PR
-   - If a PR already exists, show the URL and ask the user what to do
+4. **Compose the body**:
 
-2. **Push the branch** if it hasn't been pushed yet:
-   - `git push -u origin HEAD`
-
-3. **Resolve traceability** — read `.hq/tasks/<branch-dir>/context.md` (branch name: `/` → `-`). Extract `source` (optional) and `branch` fields; the plan is the sibling `plan.md`. If not found, check your memory for focus info. If neither exists, ask the user whether a parent `hq:task` exists (and its number).
-
-4. **(Standalone mode only — From `/hq:start` receives these as the workflow sections pack)** **Compose workflow sections from local state**:
-
-   - **`## Manual Verification`** — read the plan's `## Manual Verification` section from `.hq/tasks/<branch-dir>/plan.md`. If it has items, include them verbatim under `## Manual Verification`. If the section is absent or empty, omit this section.
-
-   - **`## Known Issues`** — check `.hq/tasks/<branch-dir>/feedbacks/` (pending only, not `done/`). For each FB file, read the frontmatter `severity:` and `skill:` fields and emit an entry of the form `- [<Severity>] [<originating-agent>] <title> — <brief description>` under the appropriate action-priority category — `### Must Address (Critical / High)` / `### Recommended (Medium)` / `### Optional (Low)` — with a leading `**Triage summary**` line counting the items per category. Empty categories are omitted; within each category preserve insertion order. This structure is invariant — see `hq:workflow § ## PR Body Structure § Invariants`. If no pending FBs, omit this section.
-
-   - **`## Implementation Plan`** — the full `.hq/tasks/<branch-dir>/plan.md` content verbatim, wrapped in `<details><summary>Plan snapshot at PR creation</summary> … </details>`. Always emitted (Invariant — the PR body is the plan's durable record).
-
-   **FB files that are surfaced in `## Known Issues` MUST be moved to `feedbacks/done/`** as part of PR creation — the PR body becomes the source of truth for residual issues. Do NOT create `hq:feedback` Issues from this skill. Escalation to `hq:feedback` happens later via `/hq:triage` during PR review.
-
-5. **Render narrative + assemble final body** (both invocation modes):
-
-   - **Title**: derive from the `hq:plan` title (the `# `-heading first line of `.hq/tasks/<branch-dir>/plan.md`). Format: `<type>: <description>` (remove the `(plan)` scope). Keep under 70 characters. `.hq/pr.md` MAY adjust title conventions per § Override scope.
-   - **Narrative layer**: read `.hq/pr.md` (already loaded into context above) and render the narrative section accordingly:
-     - If `.hq/pr.md` defines explicit narrative section headings (e.g., `## 概要` / `## 変更`), use those headings, language, and structure verbatim.
-     - If `.hq/pr.md` gives only prose-style hints (no heading redefinitions), use the **default narrative** with the hints applied inside it:
-
-       ```
-       ## Summary
-       <1-3 sentences explaining what and why>
-
-       ## Changes
-       <bullet list of key changes>
-
-       ## Notes
-       <optional: caveats, design decisions, follow-up items — omit section if empty>
-       ```
-
-     - If `.hq/pr.md` is absent (`none`), use the default narrative as shown.
-     - The narrative is authored in the **conversation language** by default — `.hq/pr.md` may override the language.
-   - **Workflow sections**:
-     - **From `/hq:start`**: take the caller-provided **workflow sections pack** verbatim — `## Manual Verification` (when present), `## Known Issues` (when present), `## Implementation Plan` (always), and the `Refs` trailer (when present). Do NOT edit or recompose these.
-     - **Standalone**: use the sections built in Step 4 (`## Manual Verification`, `## Known Issues`, `## Implementation Plan`) and append a trailer line of `Refs #<hq:task>` when the plan has a parent (omit entirely when no parent exists).
-   - **Final assembly**:
+   - **Title**: `<type>: <description>` — from the plan title (the plan file's `# ` heading, `(plan)` scope removed) when a plan exists; otherwise derive from the commits. ≤ 70 chars. `.hq/pr.md` MAY adjust conventions.
+   - **Narrative layer** (default headings; `.hq/pr.md` may redefine per § Override scope):
 
      ```
-     <narrative layer — heading set and language from .hq/pr.md or defaults>
+     ## Summary
+     <what this PR achieves and why — the pain and the motivation, readable by someone new to the area>
 
-     ## Manual Verification  <!-- omitted when the plan has no ## Manual Verification items -->
-     ...
+     ## Approach
+     <the chosen design and why; rejected alternatives worth naming; deviations from the original plan discovered during implementation, with reasons>
 
-     ## Known Issues  <!-- omitted when no pending FBs -->
-     ...
+     ## Changes
+     <bullet list of key changes>
+     ```
 
-     ## Implementation Plan  <!-- always present -->
-     <details><summary>Plan snapshot at PR creation</summary>
-     ...
-     </details>
+     Conversation language by default. Write for newcomers; explain WHY, not just what.
+   - **Workflow sections** (English-fixed headings; From-loop: the caller's pack verbatim):
+
+     ```
+     ## Manual Verification   <!-- only when the plan has [manual] items -->
+     - [ ] [manual] <item, verbatim from the plan>
+
+     ## Known Issues          <!-- only when triaged residual exists -->
+     - [<Severity>] [<origin>] <title> — accepted: <reason>
+     - [<Severity>] [<origin>] <title> — escalation pending user confirmation
 
      ---
-     Refs #<hq:task issue number>  <!-- omitted when plan has no parent hq:task -->
+     Refs #<task>             <!-- only when a parent hq:task exists -->
      ```
 
-     Omit empty `## Manual Verification` / `## Known Issues` sections; `## Implementation Plan` is never omitted. The `Refs #` line (and its `---` separator) is emitted only when the plan has a parent `hq:task`.
+     `## Known Issues` entries are **post-triage residual** — accepted limitations and pending escalations. There is no "process me later" backlog; escalation lines are finalized by the loop's Stage 7 (`escalated: #N` after the user confirms, or `accepted: escalation declined by user`).
 
-   **Language**: the **narrative** follows `.hq/pr.md` (or the conversation language by default). The **workflow section headings** (`## Manual Verification` / `## Known Issues` / `## Implementation Plan`) and **markers** (`Refs #<task>`) MUST stay in English (each has an injection or parse contract — see `hq:workflow` § Language). File paths, identifiers, and code fences stay as-is.
+5. **Resolve milestone and project** *(only when `source` is set)* — from `.hq/tasks/<branch-dir>/gh/task.json`, falling back to `gh issue view <source> --json milestone,projectItems`. Include `--milestone` / `--project` flags accordingly.
 
-6. **Resolve milestone and project** *(only when `source` is set — skip entirely when the plan has no parent `hq:task`)* — read the cached task data from `.hq/tasks/<branch-dir>/gh/task.json`. Extract the milestone title and project title(s) from `projectItems`. If the cache file does not exist, fall back to `gh issue view <source> --json milestone,projectItems`. If a milestone exists, include `--milestone "<milestone>"` when creating the PR. If project(s) exist, include `--project "<project>"` (repeat for each).
-
-7. **Create the PR** — pass the resolved base branch explicitly via `--base <base>`. Resolution chain (per `hq:workflow § Branch Rules`): `.hq/tasks/<branch-dir>/context.md` `base_branch:` → `.hq/settings.json` `base_branch` → `git symbolic-ref --short refs/remotes/origin/HEAD` → `main`. Omitting `--base` makes `gh pr create` default to origin's HEAD, which silently targets `main` even for stacked PRs / non-main bases — always pass the flag explicitly.
+6. **Create the PR** — always pass `--base "<base>"` explicitly (omitting it makes `gh` default to origin's HEAD and silently mis-target stacked PRs):
 
    ```
    gh pr create --base "<base>" --title "<title>" --body "$(cat <<'EOF'
    <body>
    EOF
-   )" --label "hq:pr" [--label "hq:manual"] --milestone "<milestone if exists>" --project "<project if exists>"
+   )" --label "hq:pr" [--label "hq:manual"] [--milestone "<m>"] [--project "<p>" ...]
    ```
 
-   Always apply the `hq:pr` label. Additionally apply `--label "hq:manual"` when the plan has a `## Manual Verification` section with items (detected during Step 4 composition, or signalled by the caller in `/hq:start` mode). Create any missing labels lazily (see `hq:workflow` § Issue Hierarchy) — `hq:manual` has a lazy-create entry there.
+   Create missing labels lazily (`hq:workflow § Issue Hierarchy`).
 
-8. **Move escalated FB files to `done/`** — for each FB file referenced in the `## Known Issues` section of the PR body, move the corresponding file from `feedbacks/` to `feedbacks/done/`. This is atomic with PR creation: if the PR is created successfully with those entries in the body, the files MUST move.
-
-9. **Return the PR URL**.
+7. **Return the PR URL.**
 
 ## Rules
 
-- Derive "what changed" from git. Derive "why" from session context (conversation history, the local plan file if present).
-- **Always explain WHY** — not just what was changed, but the motivation and reasoning behind the implementation decisions.
-- **Write for newcomers** — assume the reader is joining the project for the first time. Provide enough context so the PR is self-explanatory.
-- The `Refs #` line is required when a parent `hq:task` exists (`context.md` `source:`). If `source` is set but the task cannot be resolved, ask the user before proceeding.
-- If the source `hq:task` issue has a milestone, the PR must inherit it. `hq:feedback` issues do NOT inherit milestones (but `hq:feedback` is not created from this skill — only via `/hq:triage`).
-- If the source `hq:task` issue has project(s), the PR must inherit them via `--project`.
-- Match the language and tone of existing PRs in this repo.
-- Do NOT fabricate changes not present in the diff.
-- Keep the summary focused — details go in the Changes section.
-- **No `hq:feedback` creation** — this skill does NOT create `hq:feedback` Issues. Residual problems flow to the PR body's `## Known Issues` section, to be triaged later via `/hq:triage`.
-- **FB escalation is atomic** — if an FB file's content appears in the PR body, the file MUST be moved to `feedbacks/done/`.
-- **Always pass `--base <base>` to `gh pr create`** — base resolution follows `hq:workflow § Branch Rules` (`.hq/tasks/<branch-dir>/context.md` `base_branch:` first). Omitting the flag makes `gh pr create` fall back to origin's default HEAD, which silently mis-targets stacked PRs / non-main bases. This is the failure mode the per-branch `context.md` `base_branch:` field is designed to eliminate; the explicit `--base` flag closes the loop.
-- **Workflow-layer Invariants are not overridable** — see `## Project Overrides` § Invariants. `.hq/pr.md` cannot override the `hq:manual` label (when the plan has `## Manual Verification` items), the `## Manual Verification` / `## Known Issues` / `## Implementation Plan` sections, the FB atomic move, the `Refs #<task>` trailer, the `hq:pr` label, or milestone / project inheritance. The **narrative layer**, by contrast, is fully overridable by `.hq/pr.md` — heading names, language, structure, and prose are all in scope (see § Override scope). In `/hq:start` invocation mode the caller passes a workflow sections pack which is appended verbatim by Step 5; only the narrative layer is composed by the pr skill in that mode.
+- Derive "what changed" from git; derive "why" from the plan's `## Why` / `## Approach` and the run's decision context — never fabricate changes not in the diff.
+- The narrative is the reviewer's surface: motivation and approach first, mechanics second. The plan checklist is not reviewer material.
+- `Refs #` only with a resolvable parent task; ask before proceeding if `source` is set but unresolvable.
+- `hq:feedback` Issues are never created here.
+- Always pass `--base` explicitly.
+- Workflow-layer Invariants are not overridable; the narrative layer is fully `.hq/pr.md`-overridable.

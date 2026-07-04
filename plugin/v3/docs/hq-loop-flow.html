@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>hq:loop フロー全体図</title>
+<title>hq:loop フロー全体図（Phase 5 予定モデル）</title>
 <style>
   :root{
     --bg:#141922; --panel:#1c2330; --panel2:#212a3a; --line:#2a3345;
     --ink:#d6deea; --muted:#8b96a8; --faint:#5c6678;
     --user:#e8a33d; --user-dim:rgba(232,163,61,.12);
     --agent:#6fb3d2; --agent-dim:rgba(111,179,210,.10);
+    --judge:#b48ec7; --judge-dim:rgba(180,142,199,.10);
     --ok:#8fbf9a;
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
   }
@@ -21,30 +22,32 @@
     font-size:14.5px;line-height:1.75;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 96px}
+  .wrap{max-width:940px;margin:0 auto;padding:48px 24px 96px}
+
+  .banner{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--user);border:1px dashed rgba(232,163,61,.5);border-radius:6px;padding:8px 14px;display:inline-block;margin-bottom:22px}
 
   header.hero{margin-bottom:36px}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--agent);text-transform:uppercase;margin:0 0 10px}
-  h1{font-size:30px;line-height:1.3;margin:0 0 14px;font-weight:700;text-wrap:balance}
-  .lede{color:var(--muted);max-width:42em;margin:0}
-  .lede code{font-family:var(--mono);font-size:.92em;color:var(--ink)}
+  h1{font-size:29px;line-height:1.3;margin:0 0 14px;font-weight:700;text-wrap:balance}
+  .lede{color:var(--muted);max-width:44em;margin:0}
+  .lede b{color:var(--ink)}
+  .lede code, .interactions code{font-family:var(--mono);font-size:.92em;color:var(--ink)}
 
   .legend{display:flex;flex-wrap:wrap;gap:10px 22px;margin:26px 0 0;padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
   .legend .item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
   .dot{width:10px;height:10px;border-radius:2px;flex:none}
-  .dot.u{background:var(--user)} .dot.a{background:var(--agent)} .dot.m{background:var(--faint)}
+  .dot.u{background:var(--user)} .dot.a{background:var(--agent)} .dot.m{background:var(--faint)} .dot.j{background:var(--judge)}
+  .interactions{margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .interactions b{color:var(--user);font-weight:600}
 
   /* spine */
   .flow{position:relative;margin-top:44px}
   .flow::before{content:"";position:absolute;left:26px;top:0;bottom:0;width:2px;background:var(--line)}
-
-  .stage{position:relative;margin:0 0 0 62px;padding:0 0 34px}
-  .stage::before{ /* node on the spine */
-    content:"";position:absolute;left:-43px;top:26px;width:16px;height:16px;border-radius:50%;
-    background:var(--bg);border:3px solid var(--faint);
-  }
+  .stage{position:relative;margin:0 0 0 62px;padding:0 0 30px}
+  .stage::before{content:"";position:absolute;left:-43px;top:26px;width:16px;height:16px;border-radius:50%;background:var(--bg);border:3px solid var(--faint)}
   .stage.interactive::before{border-color:var(--user)}
   .stage.agent::before{border-color:var(--agent)}
+  .stage.root::before{border-color:var(--judge)}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .card-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;padding:16px 20px 12px;border-bottom:1px solid var(--line)}
@@ -54,30 +57,33 @@
   .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
   .chip.u{border-color:rgba(232,163,61,.55);color:var(--user);background:var(--user-dim)}
   .chip.a{border-color:rgba(111,179,210,.5);color:var(--agent);background:var(--agent-dim)}
-  .proto{padding:8px 20px;font-family:var(--mono);font-size:11.5px;color:var(--faint);border-bottom:1px solid var(--line)}
-  .proto b{color:var(--muted);font-weight:500}
+  .chip.j{border-color:rgba(180,142,199,.55);color:var(--judge);background:var(--judge-dim)}
 
-  ol.phases{list-style:none;margin:0;padding:10px 0}
-  ol.phases li{display:grid;grid-template-columns:44px 1fr;gap:0 12px;padding:8px 20px;align-items:baseline}
-  ol.phases li+li{border-top:1px solid rgba(42,51,69,.55)}
+  ul.steps{list-style:none;margin:0;padding:10px 0}
+  ul.steps li{display:grid;grid-template-columns:44px 1fr;gap:0 12px;padding:8px 20px;align-items:baseline}
+  ul.steps li+li{border-top:1px solid rgba(42,51,69,.55)}
   .pnum{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;padding-top:2px}
   .pbody b{font-weight:600}
   .pbody .sub{display:block;color:var(--muted);font-size:13px;margin-top:2px}
-  .pbody .sub code, .note code, .pbody code{font-family:var(--mono);font-size:.9em;color:#b9c6d9;background:rgba(255,255,255,.04);padding:1px 5px;border-radius:3px}
+  .pbody code, .uses code, .dec-box code, .art p code{font-family:var(--mono);font-size:.9em;color:#b9c6d9;background:rgba(255,255,255,.04);padding:1px 5px;border-radius:3px}
 
   li.gate{background:var(--user-dim);border-left:3px solid var(--user)}
   li.gate .pnum{color:var(--user)}
-  .gate-tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:#141922;background:var(--user);border-radius:3px;padding:1px 7px;margin-left:8px;vertical-align:1px;font-weight:700}
+  li.judge{background:var(--judge-dim);border-left:3px solid var(--judge)}
+  li.judge .pnum{color:var(--judge);font-weight:700}
+  li.subagent{background:rgba(111,179,210,.06);border-left:3px solid rgba(111,179,210,.5)}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;border-radius:3px;padding:1px 7px;margin-left:8px;vertical-align:1px;font-weight:700}
+  .tag.u{color:#141922;background:var(--user)}
+  .tag.j{color:#141922;background:var(--judge)}
 
-  li.subloop{background:rgba(111,179,210,.06);border-left:3px solid rgba(111,179,210,.5)}
+  .uses{padding:9px 20px 11px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--faint);line-height:1.9}
+  .uses b{color:var(--muted);font-weight:500;letter-spacing:.08em}
 
-  /* connector between stages */
-  .conn{margin:0 0 0 62px;padding:0 0 34px;position:relative;color:var(--muted);font-size:13px}
+  .conn{margin:0 0 0 62px;padding:0 0 30px;position:relative;color:var(--muted);font-size:13px}
   .conn::before{content:"↓";position:absolute;left:-48px;top:-4px;color:var(--faint);font-size:15px}
-  .conn .note{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:10px 16px;display:inline-block}
+  .conn .note{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:9px 16px;display:inline-block}
 
-  /* loop decision */
-  .decision{margin:0 0 0 62px;padding:0 0 34px;position:relative}
+  .decision{margin:0 0 0 62px;padding:0 0 30px;position:relative}
   .decision::before{content:"";position:absolute;left:-41px;top:20px;width:12px;height:12px;background:var(--bg);border:3px solid var(--ok);transform:rotate(45deg)}
   .dec-box{background:var(--panel2);border:1px dashed var(--faint);border-radius:8px;padding:16px 20px}
   .dec-box h3{margin:0 0 8px;font-size:14px;font-weight:700}
@@ -86,18 +92,14 @@
   .dec-box .branch b{color:var(--ink);font-weight:600}
   .loopback{color:var(--agent)}
 
-  /* artifacts footer */
   .artifacts{margin-top:52px}
   .artifacts h2{font-size:16px;margin:0 0 14px}
-  .art-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .art-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
   .art{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 16px}
   .art .path{font-family:var(--mono);font-size:11.5px;color:var(--agent);word-break:break-all}
   .art p{margin:6px 0 0;font-size:12.5px;color:var(--muted);line-height:1.6}
 
-  .interactions{margin-top:8px;font-size:12.5px;color:var(--muted)}
-  .interactions b{color:var(--user);font-weight:600}
-
-  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:11.5px;font-family:var(--mono);line-height:2}
   @media (max-width:560px){
     .flow::before{left:12px}
     .stage,.conn,.decision{margin-left:36px}
@@ -111,137 +113,160 @@
 <body>
 <div class="wrap">
   <header class="hero">
-    <p class="eyebrow">hq plugin v3 — orchestrated workflow</p>
+    <p class="eyebrow">hq plugin v3 — loop consolidation</p>
+    <div><span class="banner">Phase 5 予定フローモデル — 未実装（設計: plan.md §11）</span></div>
     <h1>/hq:loop フロー全体図</h1>
-    <p class="lede">入力（<code>hq:task</code> または自由テキスト）から、計画 → 実装 PR → 自動トリアージ → 確認済み <code>hq:feedback</code> までを 1 コマンドで駆動する。ユーザが手を動かすのは <b>3 箇所だけ</b>。それ以外は main conversation と 2 つの subagent が自律実行する。</p>
+    <p class="lede">単体コマンド（draft / start / triage）を廃止し、<code>/hq:loop</code> を唯一のパイプライン入口にする統合モデル。設計原理: <b>決定論で片付かない意味的判断はすべて root agent（loop を受け持つ session model）が下す</b>。決定論レール（スクリプト・構造ゲート・regression gate）は決定論のまま、subagent は証拠収集と実行に徹する。PR は triage 完了後に「最終対応案」として最後に作られる。</p>
     <div class="legend">
       <span class="item"><span class="dot u"></span>ユーザ介入点（非スキップ）</span>
-      <span class="item"><span class="dot m"></span>main conversation で自律実行</span>
-      <span class="item"><span class="dot a"></span>subagent で自律実行</span>
+      <span class="item"><span class="dot j"></span>root agent の意味的判断（J1–J7・決定記録必須）</span>
+      <span class="item"><span class="dot a"></span>subagent 実行</span>
+      <span class="item"><span class="dot m"></span>決定論ステップ</span>
     </div>
-    <p class="interactions">介入点: <b>① Stage 1 の brainstorm + go ゲート</b> / <b>② executor の consult-needed 往復</b>（Self-Review が significant-gap のときのみ・稀） / <b>③ Stage 4 の feedback 確認</b></p>
+    <p class="interactions">ユーザ介入は <b>3 系統</b>: ① Stage 1 の brainstorm + go/stop ゲート ／ ② root が consult を選んだとき — J3(build 受け入れ)・J5(triage)・<b>J8(発散時の計画見直し提案 / 安全キャンセル)</b> ／ ③ Stage 7 の feedback 確認。root の判断 J1–J8 はすべて <code>.hq/tasks/&lt;dir&gt;/reports/</code> に決定記録を残す。<br>
+    <b>進捗の常時可視化</b>: loop 開始時に Stage 0–7 を TaskCreate でタスク化し、stage 境界で更新。J8 再突入は <code>Build (iteration 2)</code> のように追加、長い stage は <code>Build — item 3/5</code> と件数更新、subagent も同じタスク UI に報告 — <b>タスク一覧を見ればいまループのどこにいるか常にわかる</b>。</p>
   </header>
 
   <div class="flow">
 
-    <!-- STAGE 1 -->
-    <section class="stage interactive">
+    <!-- STAGE 0 -->
+    <section class="stage root">
       <div class="card">
-        <div class="card-head">
-          <span class="stage-no">STAGE 1</span>
-          <h2>Draft — 計画を作る</h2>
-          <span class="runner"><span class="chip u">interactive</span><span class="chip">main conversation</span></span>
-        </div>
-        <div class="proto">spec: <b>rules/draft-protocol.md</b>（/hq:draft と同一プロトコルを inline 実行）</div>
-        <ol class="phases">
-          <li><span class="pnum">P1</span><div class="pbody"><b>Intake + 影響範囲サーベイ</b>
-            <span class="sub">hq:task があれば取得（<code>hq:wip</code> ゲート）。セッション前の会話文脈を引き継ぎ、3 本のサーベイを必ず実行 — 過去 commit（<code>git log</code>）/ 関連マージ済み PR / 中心シンボル grep。ゼロ件も明示報告。</span></div></li>
-          <li class="gate"><span class="pnum">P2</span><div class="pbody"><b>Brainstorm + Simplicity gatekeeper</b><span class="gate-tag">対話</span>
-            <span class="sub">探索主導の対話。ゲート質問: 再利用 vs 新規 / 最小解比較 / 波及コスト / plan 分割（結合度テスト）。<code>[primary]</code> は最強 tier の start 実行可能シグナルに収束するまで exit しない（hedging 禁止）。</span></div></li>
-          <li class="gate"><span class="pnum">P3</span><div class="pbody"><b>Compose → consumer coverage check → commit-or-pushback gate</b><span class="gate-tag">go ①</span>
-            <span class="sub">plan body を全文 verbatim で提示。<code>go</code> で確定 / 違和感なら P2 に戻って再収束（再提示必須）。承認した本文がそのままファイルになる — drift なし。</span></div></li>
-          <li><span class="pnum">P4</span><div class="pbody"><b>plan ファイル作成</b>
-            <span class="sub">title から branch 名を導出（<code>&lt;type&gt;/&lt;slug&gt;</code> ≤40 字）→ <code>.hq/tasks/&lt;branch-dir&gt;/plan.md</code> + <code>context.md</code>（source / branch）を書く。git branch はまだ作らない。</span></div></li>
-          <li><span class="pnum">P5</span><div class="pbody"><b>Report</b><span class="sub">ファイルパスと branch 名を確定。plan はこの時点で直接編集可能。</span></div></li>
-        </ol>
+        <div class="card-head"><span class="stage-no">STAGE 0</span><h2>Resume — 現在地を判定</h2>
+          <span class="runner"><span class="chip j">root model</span></span></div>
+        <ul class="steps">
+          <li><span class="pnum">·</span><div class="pbody"><b>状態検出（決定論）</b><span class="sub"><code>plan.md</code> の有無・checkbox 状態・PR の有無から入口を機械判定: plan なし → Stage 1 ／ 未チェック項目あり → Stage 2 ／ FB 未トリアージ → Stage 3–4 ／ PR 済み → Stage 7 か <code>/hq:respond</code>・<code>/hq:archive</code> を案内。旧 /hq:start・/hq:triage のユースケースはここに吸収される。</span></div></li>
+          <li class="judge"><span class="pnum">J1</span><div class="pbody"><b>曖昧な状態の解釈</b><span class="tag j">ROOT</span><span class="sub">artifacts が矛盾する・複数解釈がありうるとき（例: branch はあるが plan が手編集されている）、どの stage に入るかを root が判断する。</span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> commands/loop.md · scripts/read-context.sh · scripts/find-plan.sh</div>
       </div>
     </section>
 
-    <div class="conn"><span class="note">branch 名をキーに executor を起動（<code>subagent_type: hq:executor</code> / mode: agent / iteration + budget を prompt で渡す）</span></div>
+    <!-- STAGE 1 -->
+    <section class="stage interactive">
+      <div class="card">
+        <div class="card-head"><span class="stage-no">STAGE 1</span><h2>Plan — 計画を作る</h2>
+          <span class="runner"><span class="chip u">interactive</span><span class="chip j">root model</span></span></div>
+        <ul class="steps">
+          <li><span class="pnum">1</span><div class="pbody"><b>Intake + 影響範囲サーベイ</b><span class="sub">hq:task（任意・<code>hq:wip</code> ゲート）+ 会話文脈 + 3 本のサーベイ（過去 commit / merged PR / symbol grep）。</span></div></li>
+          <li class="judge"><span class="pnum">J2</span><div class="pbody"><b>Brainstorm + Simplicity gate</b><span class="tag j">ROOT</span><span class="sub">再利用 vs 新規 / 最小解比較 / 波及コスト / plan 分割 / <code>[primary]</code> tier の確定 — すべて root の設計判断としてユーザと対話しながら下す。決定論の枠（body schema・tag set・primary 1 本ルール）は不変。</span></div></li>
+          <li class="gate"><span class="pnum">◆</span><div class="pbody"><b>commit-or-pushback gate</b><span class="tag u">go / stop ①</span><span class="sub">plan body を verbatim 提示。<code>go</code> = 続行 ／ <b><code>stop</code> = plan だけ保存して終了</b>（旧 /hq:draft 単体のユースケース）／ 違和感 = brainstorm へ戻る。</span></div></li>
+          <li><span class="pnum">·</span><div class="pbody"><b>plan ファイル作成</b><span class="sub">branch 名導出 → <code>.hq/tasks/&lt;branch-dir&gt;/plan.md</code> + <code>context.md</code>。branch 名はもはや内部詳細 — ユーザが意識する場面はない。</span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> rules/draft-protocol.md · rules/workflow.md §hq:plan · .hq/draft.md（override）</div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="note">executor を起動 — mode: <code>fresh</code>（初回）/ <code>fix-directive</code>（J3・J5 の指示リストを実行）</span></div>
 
     <!-- STAGE 2 -->
     <section class="stage agent">
       <div class="card">
-        <div class="card-head">
-          <span class="stage-no">STAGE 2</span>
-          <h2>Execute — 実装して PR を作る</h2>
-          <span class="runner"><span class="chip a">executor agent</span><span class="chip">model: inherit</span></span>
-        </div>
-        <div class="proto">spec: <b>rules/start-protocol.md</b> — agent mode（/hq:start と同一プロトコル。逸脱は「ユーザに聞けない」ことへの対処のみ）</div>
-        <ol class="phases">
-          <li><span class="pnum">P1</span><div class="pbody"><b>Pre-flight</b><span class="sub">branch 解決（<code>find-plan.sh</code>）。git branch が既にあれば auto-resume — checkbox 状態から再開フェーズを決定。</span></div></li>
-          <li><span class="pnum">P2</span><div class="pbody"><b>Load plan</b><span class="sub">ローカル <code>plan.md</code> + <code>context.md</code> を読む。<code>source:</code> があれば hq:task を fetch。</span></div></li>
-          <li><span class="pnum">P3</span><div class="pbody"><b>Execution prep</b><span class="sub">base 解決 → <code>git checkout -b</code> → <code>context.md</code> に <code>base_branch</code> 追記 → <code>gh/task.json</code> → focus をメモリへ。</span></div></li>
-          <li class="subloop"><span class="pnum">P4</span><div class="pbody"><b>Execute（Plan item ごとに 1 commit）</b>
-            <span class="sub"><code>.hq/start-memory.md</code>（過去 run の蒸留知見）を先に読む → item ごとに Before Edit → 実装 → Before Commit → checkbox toggle → commit。詰まったら FB を書いて続行（continue-report）。</span></div></li>
-          <li class="subloop"><span class="pnum">P5</span><div class="pbody"><b>Acceptance sweep（検証のみ・修正しない）</b>
-            <span class="sub"><code>[auto]</code> 項目を 1 件ずつ実行・toggle（バッチ禁止）。失敗 → P4 loopback で修正（item ごと retry cap 2）→ 再 sweep。cap 超過は FB + <code>[x]</code>-anyway。<code>[primary]</code> 失敗は最上位で報告。</span></div></li>
-          <li class="gate"><span class="pnum">P6</span><div class="pbody"><b>Self-Review（3 軸の自己評価）</b><span class="gate-tag">consult ②</span>
-            <span class="sub">Plan 整合 / 範囲外影響 / トンネルビジョン。pass → 続行、minor-gap → FB、<b>significant-gap → <code>consult-needed</code> を返して停止</b> — orchestrator がユーザに質問 → 回答を載せて再起動（auto-resume で P6 に着地）。</span></div></li>
-          <li><span class="pnum">P7</span><div class="pbody"><b>Quality Review（pure review — 自動修正なし）</b>
-            <span class="sub">Step 1: judgment mode で agent 選抜（credential 検出は security-scanner 強制）。Step 2: <code>code-reviewer</code> / <code>security-scanner</code> / <code>integrity-checker</code> を並列起動。全 finding は FB 化されるだけ — 修正判断は人間へ。</span></div></li>
-          <li><span class="pnum">P8</span><div class="pbody"><b>PR 作成</b>
-            <span class="sub">ゲート（全 checkbox）→ workflow sections pack を組み立て: <code>## Manual Verification</code> / <code>## Known Issues</code>（3 カテゴリ + FB→done/ をアトミック移動）/ <code>## Implementation Plan</code>（plan 全文スナップショット = 恒久記録）/ <code>Refs #task</code>。pr skill の手順を read-and-follow で実行。</span></div></li>
-          <li><span class="pnum">P9</span><div class="pbody"><b>Retrospective</b><span class="sub"><code>.hq/retro/&lt;branch-dir&gt;.md</code> — FB ごとの検出妥当性 / 実装時予防可能性 + P6/P7 判断の hindsight。</span></div></li>
-          <li><span class="pnum">P10</span><div class="pbody"><b>Distillation</b><span class="sub">retro から repo 固有の教訓を <code>.hq/start-memory.md</code>（1500 字上限）へ蒸留 → <b>次 iteration の P4/P6/P7 が読む</b>（学習ループ）。</span></div></li>
-          <li><span class="pnum">P11</span><div class="pbody"><b>構造化リターン</b><span class="sub"><code>status / pr_url / fb_summary / phase_timing / distilled_learnings</code> — orchestrator がレポートに整形。</span></div></li>
-        </ol>
+        <div class="card-head"><span class="stage-no">STAGE 2</span><h2>Build — 実装する</h2>
+          <span class="runner"><span class="chip a">executor agent</span><span class="chip">model: inherit</span></span></div>
+        <ul class="steps">
+          <li><span class="pnum">1</span><div class="pbody"><b>Prep</b><span class="sub">base 解決 → <code>git checkout -b</code> → <code>context.md</code> に <code>base_branch</code> 追記 → <code>gh/task.json</code>。resume 時は checkbox 状態から続きへ。</span></div></li>
+          <li class="subagent"><span class="pnum">2</span><div class="pbody"><b>Execute（Plan item ごとに 1 commit）</b><span class="sub"><code>.hq/start-memory.md</code>（蒸留知見）を先読み → Before Edit → 実装 → Before Commit → toggle → commit。fix-directive mode では root の指示リストを同じ規律で実行。詰まりは FB 化して続行。</span></div></li>
+          <li class="subagent"><span class="pnum">3</span><div class="pbody"><b>Acceptance sweep（検証のみ）</b><span class="sub"><code>[auto]</code> を 1 件ずつ実行・toggle（バッチ禁止）。失敗 → 修正して再 sweep（item ごと retry cap）。cap 超過は FB + <code>[x]</code>-anyway。</span></div></li>
+          <li><span class="pnum">4</span><div class="pbody"><b>構造化リターン</b><span class="sub">結果 + <code>self_notes</code>（実装者としての残懸念 — J3 の証拠になる）。<b>PR は作らない。レビューもしない。</b>実装だけが責務。</span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> rules/execute-protocol.md（旧 start-protocol の P1–P5）· scripts/plan-check-item.sh · scripts/phase-timing.sh · .hq/start.md（override）</div>
       </div>
     </section>
-
-    <div class="conn"><span class="note">PR 番号 + 残り iteration budget を渡して auto-triager を起動（<code>subagent_type: hq:auto-triager</code>）</span></div>
 
     <!-- STAGE 3 -->
-    <section class="stage agent">
+    <section class="stage root">
       <div class="card">
-        <div class="card-head">
-          <span class="stage-no">STAGE 3</span>
-          <h2>Auto-triage — Known Issues を自動処理</h2>
-          <span class="runner"><span class="chip a">auto-triager agent</span><span class="chip">model: sonnet</span></span>
-        </div>
-        <div class="proto">spec: <b>rules/triage-protocol.md</b> — auto mode（/hq:triage と同じ liveness + ordered gate。per-item 確認だけを外し、補償柵を入れる）</div>
-        <ol class="phases">
-          <li><span class="pnum">P1</span><div class="pbody"><b>Load PR</b><span class="sub"><code>headRefName</code> → <code>&lt;branch-dir&gt;</code> → ローカル plan を回収。<code>## Implementation Plan</code> の存在を確認。</span></div></li>
-          <li><span class="pnum">P2</span><div class="pbody"><b>Parse Known Issues</b><span class="sub">Triage summary + Must Address / Recommended / Optional の 3 カテゴリを item 化。</span></div></li>
-          <li><span class="pnum">P3</span><div class="pbody"><b>Liveness → ordered gate で disposition 導出（確認なしで適用）</b>
-            <span class="sub">Gate 0 解決済み→<b>2</b> ／ Gate 1 偽陽性→<b>2</b> ／ Gate 2 別オーナー→<b>3</b> ／ Gate 3 自明+低影響→<b>4</b>、実質的→<b>1</b>。バイアス則: 不明は安全側（validity 不明→2、scope 不明→1）。<br>
-            auto mode の逸脱: <b>3（escalate）は絶対に適用しない</b> — candidate として収集し Issue は作らない ／ <b>1（plan 追記）は budget 残 かつ Must Address のみ</b>（Medium/Low は 2 に降格、budget 切れの Must Address は candidate 化）。</span></div></li>
-          <li><span class="pnum">P4</span><div class="pbody"><b>Apply</b><span class="sub">4 の修正（regression gate: format/build/test、2 回失敗で revert・open 据え置き）→ 1 の <code>plan.md</code> 追記 → PR body を単一 <code>gh pr edit</code> で変換。</span></div></li>
-          <li><span class="pnum">P5</span><div class="pbody"><b>構造化リターン</b><span class="sub">per-item 監査証跡（gate / SHA / 降格ノート）+ <code>feedback_candidates</code> + <code>plan_gained_items</code>。</span></div></li>
-        </ol>
+        <div class="card-head"><span class="stage-no">STAGE 3</span><h2>Review — 品質を検分する</h2>
+          <span class="runner"><span class="chip j">root model</span><span class="chip a">reviewer agents ×3</span></span></div>
+        <ul class="steps">
+          <li class="judge"><span class="pnum">J3</span><div class="pbody"><b>Build 受け入れレビュー</b><span class="tag j">ROOT</span><span class="sub">plan 整合 / 範囲外影響 / トンネルビジョンの 3 軸で diff + executor の <code>self_notes</code> を検分。旧 Self-Review の後継だが、<b>root はコードを書いていないので構造的に第三者</b> — 自己採点バイアスが設計から消える。判定: pass ／ fix-directive → Stage 2 ／ ユーザに consult ②。</span></div></li>
+          <li class="judge"><span class="pnum">J4</span><div class="pbody"><b>Reviewer agent 選抜</b><span class="tag j">ROOT</span><span class="sub">diff の性質から起動サブセットを判断（credential 検出 → security-scanner 強制はハードフロアのまま）。</span></div></li>
+          <li class="subagent"><span class="pnum">·</span><div class="pbody"><b>並列レビュー実行</b><span class="sub"><code>code-reviewer</code>（inherit）/ <code>security-scanner</code>（sonnet）/ <code>integrity-checker</code>（inherit）— pure review、finding は FB ファイル化されるだけ。修正判断は一切しない。</span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> agents/code-reviewer.md · agents/security-scanner.md · agents/integrity-checker.md · scripts/quality-review.sh · rules/feedback.md · .hq/code-review.md / .hq/security-scan.md / .hq/integrity-check.md（overrides）</div>
       </div>
     </section>
 
-    <!-- LOOP DECISION -->
-    <div class="decision">
-      <div class="dec-box">
-        <h3>ループ判定（orchestrator）</h3>
-        <div class="branch"><span class="arr">↺</span><span class="loopback"><b>Stage 2 に再突入</b> — <code>plan_gained_items: true</code> かつ 再突入回数 &lt; <code>loop_max_iterations</code>（既定 2）。executor は auto-resume で追記された未チェック Plan item から実行。</span></div>
-        <div class="branch"><span class="arr">↓</span><span><b>Stage 4 へ</b> — 追記なし、または budget 消化。cap はハード上限: 積み残しの Must Address は feedback candidate として必ず浮上（silent drop 禁止）。</span></div>
+    <!-- STAGE 4 -->
+    <section class="stage root">
+      <div class="card">
+        <div class="card-head"><span class="stage-no">STAGE 4</span><h2>Triage + 収束判定 — PR を作る前に裁く</h2>
+          <span class="runner"><span class="chip j">root model</span><span class="chip a">verifier agent（必要時のみ）</span></span></div>
+        <ul class="steps">
+          <li class="judge"><span class="pnum">J5</span><div class="pbody"><b>FB ごとの disposition 判断</b><span class="tag j">ROOT</span><span class="sub">対象は<b>ローカル FB ファイル</b>（PR body ではない — PR はまだ無い）。validity → ownership → scope/risk の順序ゲートとバイアス則（不明は安全側）を<b>判断の事前分布</b>として、plan の意図・build の実態・budget・severity に照らして root が決定する。エージェントの機械的手続きではない。証拠不足の FB は読み取り専用の verifier agent を単発起動して補強してよい。</span></div></li>
+          <li><span class="pnum">·</span><div class="pbody"><b>disposition の行き先</b><span class="sub"><b>fix now</b> → fix-directive queue（regression gate 必須）／ <b>plan 追記</b> → <code>plan.md</code> append — どちらも Stage 2 再突入・budget 消費 ／ <b>accept</b> → 残存リスト（PR の Known Issues へ）／ <b>escalate</b> → feedback candidate（Issue はまだ作らない）。</span></div></li>
+          <li class="judge"><span class="pnum">J8</span><div class="pbody"><b>収束判定 — この Stage の出口判断</b><span class="tag j">ROOT</span><span class="sub">J5 を終えた root がそのまま FB の<b>軌跡</b>を判断する（毎サイクル・初回含む）: <b>収束</b>（残存が micro-fix 相当のみ — 初回 triage がそうなら iteration 0 で収束）／ <b>継続</b>（実質的だが有界）／ <b>発散</b>（修正が新たな不具合・設計論点を生んでいる — 兆候: 修正済み箇所への同等以上 severity の FB、plan 前提と矛盾する FB、fix→新 FB 連鎖、primary 反復失敗）。分岐の行き先は下のボックス。</span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> commands/loop.md §Triage Judgment（順序ゲート + バイアス則の新しい置き場）· rules/feedback.md · .hq/triage.md（override — 判断の事前分布ヒント）</div>
+      </div>
+    </section>
+
+    <!-- J8 ROUTING -->
+    <div class="decision" style="--ok:var(--judge)">
+      <div class="dec-box" style="border-color:rgba(180,142,199,.6)">
+        <h3><span style="color:var(--judge);font-family:var(--mono);font-size:12px;margin-right:8px">J8 の 3 分岐</span>判定者は <span class="chip j" style="vertical-align:1px">root model</span> — 上の Stage 4 出口判断の行き先</h3>
+        <div class="branch"><span class="arr">↓</span><span><b>収束</b> → executor の micro-fix パス 1 回（regression gate 必須）→ <b>integrity-checker のみ micro-diff スコープで再走</b>（「些細な修正」が壊しうる唯一の軸 = 残存参照・consumer・surface 整合の再確認）+ root の micro-diff 目視 → <b>Stage 5 へ</b>。Stage 3–4 のフル再走はしない。</span></div>
+        <div class="branch"><span class="arr">↺</span><span class="loopback"><b>継続</b> → <b>Stage 2 に再突入</b>（Stage 3–4 も再走）。<code>loop_max_iterations</code>（既定 2）は暴走時のハードバックストップとして残る。</span></div>
+        <div class="branch"><span class="arr">⛔</span><span><b style="color:var(--user)">発散</b> → <b>計画自体の欠陥仮説</b>としてループをブロック。root が問題分析 + 計画上の根本原因 + <b>計画見直し案</b>を verbatim で人間に提示（介入 ②）:<br>
+        ・<b>承認</b> → plan.md を改訂（影響 item を再オープン）、budget リセット → Stage 2 からやり直し<br>
+        ・<b>却下 / 中止</b> → <b>安全キャンセル</b> — archive cancel 経路を read-and-follow（PR は未作成なので task フォルダ → <code>.hq/tasks/canceled/</code>、branch 強制削除、memory クリア）→ 経緯を報告して終了。</span></div>
       </div>
     </div>
 
-    <!-- STAGE 4 -->
+    <!-- STAGE 5 -->
+    <section class="stage root">
+      <div class="card">
+        <div class="card-head"><span class="stage-no">STAGE 5</span><h2>Ship — 最終対応案として PR を作る</h2>
+          <span class="runner"><span class="chip j">root model</span><span class="chip">pr skill（read-and-follow）</span></span></div>
+        <ul class="steps">
+          <li class="judge"><span class="pnum">J6</span><div class="pbody"><b>PR ナラティブの構成判断</b><span class="tag j">ROOT</span><span class="sub">人間のレビュアーが読むべきものに集中: <b>動機（Why）・選択した方針と棄却案・build 中に判明した計画からの逸脱・変更点</b>。plan（エージェントのタスクリスト）は埋め込まない — plan は <code>.hq/tasks/</code> に残りアーカイブされる内部作業物。<code>.hq/pr.md</code> のフォーマット指示があれば従う。</span></div></li>
+          <li><span class="pnum">·</span><div class="pbody"><b>PR body（新デフォルト）</b><span class="sub"><code>## Summary</code> / <code>## Approach</code>（+逸脱）/ <code>## Changes</code>（ナラティブ・override 可）＋ <code>## Manual Verification</code>（<code>[manual]</code> 項目・<code>hq:manual</code> label）＋ <code>## Known Issues</code>（<b>triage 済み残存のみ</b>: accepted limitation と escalated リンク — 「あとで処理する」ものはもう無い）＋ <code>Refs #task</code>。</span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> skills/pr/SKILL.md（改訂版）· .hq/pr.md（override）· gh pr create</div>
+      </div>
+    </section>
+
+    <!-- STAGE 6 -->
+    <section class="stage agent">
+      <div class="card">
+        <div class="card-head"><span class="stage-no">STAGE 6</span><h2>Retro — 学習を蒸留する</h2>
+          <span class="runner"><span class="chip a">retro-distiller agent</span><span class="chip">model: sonnet</span></span></div>
+        <ul class="steps">
+          <li><span class="pnum">·</span><div class="pbody"><b>Retrospective + Distillation</b><span class="sub">run 全体（build + review + <b>triage の J5 判断</b>を含む）を retro 化 → repo 固有の教訓を <code>.hq/start-memory.md</code>（1500 字上限）へ蒸留。次 run の Stage 2（実装時注意）と root の J3/J4/J5（判断の事前知識）が読む。</span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> agents/retro-distiller.md（新設）· rules/workflow.md §Retrospective · reports/ · feedbacks/done/ · phase-timings.jsonl → .hq/retro/&lt;branch-dir&gt;.md · .hq/start-memory.md</div>
+      </div>
+    </section>
+
+    <!-- STAGE 7 -->
     <section class="stage interactive">
       <div class="card">
-        <div class="card-head">
-          <span class="stage-no">STAGE 4</span>
-          <h2>Report + Feedback 確認 — 締める</h2>
-          <span class="runner"><span class="chip u">interactive</span><span class="chip">main conversation</span></span>
-        </div>
-        <div class="proto">spec: <b>commands/loop.md § Stage 4</b> — ループ内で唯一 <code>hq:feedback</code> Issue を作れる場所</div>
-        <ol class="phases">
-          <li><span class="pnum">1</span><div class="pbody"><b>作業レポート</b>
-            <span class="sub">PR URL / iteration ごとの executor サマリ（primary 結果・Self-Review・agent 選抜・FB 数・phase timing）/ triage 監査証跡（各 item → 適用 disposition・SHA）/ 各 run の蒸留知見 — 学習ループが回っているかを可視化。</span></div></li>
-          <li class="gate"><span class="pnum">2</span><div class="pbody"><b>Feedback candidates の確認</b><span class="gate-tag">確認 ③</span>
-            <span class="sub">蓄積された candidate（title / severity / origin / rationale）を提示 → ユーザが multi-select（「作らない」も有効な回答）。選択分のみ <code>gh issue create --label hq:feedback</code>（body に <code>Refs #PR</code>）→ PR の該当行を <code>escalated: #N</code> に変換。却下分は「dropped by user decision」として報告。</span></div></li>
-          <li><span class="pnum">3</span><div class="pbody"><b>次の一手</b><span class="sub">PR をレビュー / merge → <code>/hq:archive</code>（done）。やめるなら <code>/hq:archive cancel</code>。</span></div></li>
-        </ol>
+        <div class="card-head"><span class="stage-no">STAGE 7</span><h2>Report — 締める</h2>
+          <span class="runner"><span class="chip u">interactive</span><span class="chip j">root model</span></span></div>
+        <ul class="steps">
+          <li class="judge"><span class="pnum">J7</span><div class="pbody"><b>報告の構成</b><span class="tag j">ROOT</span><span class="sub">PR URL / iteration ごとの実行・判断サマリ / <b>J5 の監査証跡</b>（各 FB → 判断と根拠、事前分布からの divergence を明示）/ 蒸留された学習 — 学習ループの回転を可視化。</span></div></li>
+          <li class="gate"><span class="pnum">◆</span><div class="pbody"><b>Feedback 確認</b><span class="tag u">確認 ③</span><span class="sub">escalate candidate を提示 → ユーザが multi-select（「作らない」も有効）。選択分のみ <code>gh issue create --label hq:feedback</code>（<code>Refs #PR</code>）→ PR の該当行を <code>escalated: #N</code> に変換。<b>Issue 作成は人間ゲートのまま — ここだけは root も代行しない。</b></span></div></li>
+        </ul>
+        <div class="uses"><b>USES</b> commands/loop.md §Stage 7 · gh issue create / gh pr edit</div>
       </div>
     </section>
   </div>
 
   <section class="artifacts">
-    <h2>ステージを流れる成果物</h2>
+    <h2>成果物と残るコマンド</h2>
     <div class="art-grid">
-      <div class="art"><span class="path">.hq/tasks/&lt;branch-dir&gt;/plan.md</span><p>hq:plan の単一情報源（gitignore 下）。Stage 1 が作り、Stage 2 が checkbox を進め、Stage 3 の disposition 1 が追記する。</p></div>
-      <div class="art"><span class="path">PR body</span><p>Manual Verification / Known Issues / <b>Implementation Plan（plan 全文スナップショット = 恒久レコード）</b> / Refs #task。Stage 3 が Known Issues 行を変換。</p></div>
-      <div class="art"><span class="path">.hq/tasks/&lt;branch-dir&gt;/feedbacks/</span><p>実行中の FB ファイル。PR 作成時に <code>## Known Issues</code> へ昇格し <code>done/</code> へアトミック移動。</p></div>
-      <div class="art"><span class="path">.hq/retro/&lt;branch-dir&gt;.md → .hq/start-memory.md</span><p>P9 が retro を書き、P10 が 1500 字に蒸留。次 run の P4（実装）/ P6（Self-Review）/ P7（agent 選抜）が読む学習ループ。</p></div>
+      <div class="art"><span class="path">.hq/tasks/&lt;branch-dir&gt;/plan.md</span><p>root と executor の作業台帳（gitignore 下）。PR には埋め込まない — 本質（Why/Approach）は J6 が PR ナラティブへ昇華する。archive で done/ へ。</p></div>
+      <div class="art"><span class="path">feedbacks/ → PR ## Known Issues</span><p>FB は <b>PR 作成前</b>に J5 で裁かれる。PR に載るのは triage 済み残存（accepted / escalated）のみ。done/ への移動は disposition 確定時。</p></div>
+      <div class="art"><span class="path">.hq/tasks/&lt;dir&gt;/reports/</span><p>J1–J7 の決定記録。「root が何をどう判断したか」の監査面。Stage 6 の retro と Stage 7 の報告が消費する。</p></div>
+      <div class="art"><span class="path">残るコマンド</span><p><code>/hq:loop</code>（唯一のパイプライン入口）・<code>/hq:respond</code>（外部レビューコメント対応）・<code>/hq:archive</code>（done / cancel）。draft / start / triage の単体コマンドと auto-triager agent は廃止。</p></div>
     </div>
   </section>
 
-  <footer>hq plugin v3 — specs: rules/draft-protocol.md · rules/start-protocol.md · rules/triage-protocol.md · commands/loop.md · rules/workflow.md §Loop</footer>
+  <footer>
+    Phase 5 予定モデル（未実装）— 設計: plugin/v3/docs/plan.md §11<br>
+    specs: commands/loop.md（Stage 0–7 + J1–J7）· rules/draft-protocol.md · rules/execute-protocol.md · rules/workflow.md · rules/feedback.md · skills/pr/SKILL.md · agents/{executor, code-reviewer, security-scanner, integrity-checker, retro-distiller}.md
+  </footer>
 </div>
 
 </body>
