@@ -35,9 +35,11 @@ When the user provides only a branch name:
 
 ### After script completion
 
-Guide the user regarding `.claude/settings.local.json`:
-- If `.claude/settings.local.json` exists in the main repo, check whether similar settings are needed for the new worktree
-- Do not auto-copy because it may contain absolute paths. Ask the user to decide
+The script symlinks local (gitignored) files back to the main repo — `.claude/settings.local.json`, the `.hq/*.md` overrides + `start-memory.md`, `.hq/retro/`, `.hq/tasks/`, and dev `.env*` — so there is a single source of truth and loop write-back (retro, start-memory, task archive) lands in the main repo. No manual copy step is needed.
+
+Mention to the user only when relevant:
+- `.env*` values are shared via symlink. If the worktree needs a *different* dev env (distinct port / DB), replace the symlink with a real file.
+- `.envrc` is symlinked but direnv is path-keyed — run `direnv allow` once in the new worktree.
 
 ## Error Handling
 

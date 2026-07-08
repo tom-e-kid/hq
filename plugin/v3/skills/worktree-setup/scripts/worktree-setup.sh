@@ -15,7 +15,7 @@ usage() {
   echo ""
   echo "  <base-branch>          Base branch for the worktree (the part after @ in the directory name)"
   echo "  --branch <name>        Name of the new branch to derive from the base"
-  echo "  --from <path>          Source directory to copy files from (default: main repo)"
+  echo "  --from <path>          Source directory to link files from (default: main repo)"
   exit 1
 }
 
@@ -48,15 +48,10 @@ done
 
 # === Identify the main repo ===
 
+# --git-common-dir points at the shared .git (the main repo's .git, even when run
+# from a worktree). The main repo is its parent directory in both cases.
 git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd)
-
-# For .git/worktrees/xxx, the main repo is the parent of .git
-if [[ "$git_common_dir" == */.git ]]; then
-  main_repo=$(dirname "$git_common_dir")
-else
-  # The main repo's .git directory itself
-  main_repo=$(dirname "$git_common_dir")
-fi
+main_repo=$(dirname "$git_common_dir")
 
 repo_name=$(basename "$main_repo")
 parent_dir=$(dirname "$main_repo")
@@ -129,43 +124,54 @@ else
   fi
 fi
 
-# === Copy files ===
+# === Link local files ===
+#
+# Local (gitignored) files are symlinked back to $source_dir rather than copied, so
+# there is a single source of truth and loop write-back (retro, start-memory, task
+# archive) reaches the main repo instead of being orphaned when the worktree is
+# removed. Tracked files (e.g. .claude/settings.json) are NOT handled here — they
+# already arrive via the branch checkout.
 
 echo ""
-echo ">> copying configuration files..."
-copied_files=()
+echo ">> linking local files..."
+linked_files=()
 
-# .claude/settings.json
-if [[ -f "$source_dir/.claude/settings.json" ]]; then
-  mkdir -p "$worktree_dir/.claude"
-  cp "$source_dir/.claude/settings.json" "$worktree_dir/.claude/settings.json"
-  copied_files+=(".claude/settings.json")
-fi
+# link_into_worktree <relative-path>: symlink $source_dir/<rel> → worktree, no-op if absent.
+link_into_worktree() {
+  local rel="$1"
+  local src="$source_dir/$rel"
+  [[ -e "$src" ]] || return 0
+  local dest="$worktree_dir/$rel"
+  mkdir -p "$(dirname "$dest")"
+  ln -s "$src" "$dest"
+  linked_files+=("$rel")
+}
 
-# .claude/rules/ (any project-local rules dropped here by the user)
-if [[ -d "$source_dir/.claude/rules" ]]; then
-  mkdir -p "$worktree_dir/.claude"
-  cp -R "$source_dir/.claude/rules" "$worktree_dir/.claude/rules"
-  copied_files+=(".claude/rules/")
-fi
+# Per-machine Claude permissions — so the worktree inherits the allow-list under
+# auto mode. main-repo-pinned absolute paths simply don't match in the worktree
+# (harmless); generic patterns still apply.
+link_into_worktree ".claude/settings.local.json"
 
-# .hq/ project override files (keep in sync with plugin/v3/rules/workflow.md § Project Overrides)
-for hq_override in draft.md start.md triage.md respond.md pr.md loop.md code-review.md security-scan.md integrity-check.md xcodebuild-config.md; do
-  if [[ -f "$source_dir/.hq/$hq_override" ]]; then
-    mkdir -p "$worktree_dir/.hq"
-    cp "$source_dir/.hq/$hq_override" "$worktree_dir/.hq/$hq_override"
-    copied_files+=(".hq/$hq_override")
-  fi
-done
+# .hq top-level *.md — override files (draft.md, start.md, …) + start-memory.md.
+# Globbed, not a fixed list, so new override names need no change here.
+# memory.md is legacy (unreferenced by v3) and deliberately skipped.
+while IFS= read -r -d '' md; do
+  name=$(basename "$md")
+  [[ "$name" == "memory.md" ]] && continue
+  link_into_worktree ".hq/$name"
+done < <(cd "$source_dir" && find .hq -maxdepth 1 -name '*.md' -print0 2>/dev/null || true)
 
-# .env* (monorepo-aware: search every level and preserve directory structure)
+# .hq accumulate-state directories — retro history and task/plan archive stay
+# main-anchored so nothing is lost when the worktree is removed.
+link_into_worktree ".hq/retro"
+link_into_worktree ".hq/tasks"
+
+# .env* — development env only (production/staging excluded), monorepo-aware.
+# Symlinked, preserving directory structure. NOTE: .envrc is linked but direnv is
+# path-keyed — run `direnv allow` once in the new worktree.
 while IFS= read -r -d '' env_file; do
-  # ./path/.envrc → path/.envrc
   rel_path="${env_file#./}"
-  target_dir=$(dirname "$worktree_dir/$rel_path")
-  mkdir -p "$target_dir"
-  cp "$source_dir/$rel_path" "$worktree_dir/$rel_path"
-  copied_files+=("$rel_path")
+  link_into_worktree "$rel_path"
 done < <(cd "$source_dir" && find . -name '.env*' \
   -not -path '*node_modules*' \
   -not -path '*/.git/*' \
@@ -176,25 +182,17 @@ done < <(cd "$source_dir" && find . -name '.env*' \
   -not -name '.env.staging*' \
   -print0 2>/dev/null || true)
 
-# === Generate .hq/settings.json ===
+# === Generate .hq/settings.json (per-worktree — base_branch is worktree-specific) ===
 
 default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "")
 if [[ -n "$default_branch" && "$base_branch" != "$default_branch" ]]; then
   mkdir -p "$worktree_dir/.hq"
-  # Merge into an existing .hq/settings.json, or create a new one
-  if [[ -f "$worktree_dir/.hq/settings.json" ]]; then
-    # Already copied: append base_branch
-    tmp=$(mktemp)
-    # Strip trailing } → drop trailing blank lines → add trailing comma to the last line
-    sed -e '$d' "$worktree_dir/.hq/settings.json" \
-      | sed -e '/^[[:space:]]*$/d' -e '$s/$/,/' > "$tmp"
-    echo "  \"base_branch\": \"$base_branch\"" >> "$tmp"
-    echo "}" >> "$tmp"
-    mv "$tmp" "$worktree_dir/.hq/settings.json"
-  else
-    echo "{\"base_branch\": \"$base_branch\"}" > "$worktree_dir/.hq/settings.json"
-  fi
-  copied_files+=(".hq/settings.json (base_branch: $base_branch)")
+  cat > "$worktree_dir/.hq/settings.json" <<EOF
+{
+  "base_branch": "$base_branch"
+}
+EOF
+  linked_files+=(".hq/settings.json (generated, base_branch: $base_branch)")
 fi
 
 # === Completion report ===
@@ -204,9 +202,9 @@ echo "=== Setup complete ==="
 echo "Worktree: $worktree_dir"
 echo ""
 
-if [[ ${#copied_files[@]} -gt 0 ]]; then
-  echo "Copied/generated files:"
-  for f in "${copied_files[@]}"; do
+if [[ ${#linked_files[@]} -gt 0 ]]; then
+  echo "Linked/generated files:"
+  for f in "${linked_files[@]}"; do
     echo "  $f"
   done
   echo ""
