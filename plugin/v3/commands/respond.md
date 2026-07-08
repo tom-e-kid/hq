@@ -52,26 +52,27 @@ Fetch all review threads on the PR via GraphQL (`reviewThreads` — thread-level
 
 ```bash
 gh api graphql -f query='
-  query($owner: String!, $repo: String!, $pr: Int!, $cursor: String) {
+  query($owner: String!, $repo: String!, $pr: Int!, $endCursor: String) {
     repository(owner: $owner, name: $repo) {
       pullRequest(number: $pr) {
-        reviewThreads(first: 50, after: $cursor) {
+        reviewThreads(first: 50, after: $endCursor) {
           pageInfo { hasNextPage endCursor }
           nodes {
             id
             isResolved
             isOutdated
             comments(first: 50) {
+              pageInfo { hasNextPage }
               nodes { databaseId author { login } body path line }
             }
           }
         }
       }
     }
-  }' -F owner=<owner> -F repo=<repo> -F pr=<pr_number>
+  }' -F owner='{owner}' -F repo='{repo}' -F pr=<pr_number> --paginate
 ```
 
-Paginate until `hasNextPage` is false.
+`--paginate` handles the cursor threading automatically — the query must keep the `$endCursor: String` variable name and the outer `pageInfo { hasNextPage endCursor }` for it to work. `{owner}` / `{repo}` are gh's magic placeholders: pass them literally (curly braces); gh resolves them from the current repository.
 
 ### Unaddressed filter
 
@@ -81,6 +82,8 @@ A thread is **unaddressed** when both hold:
 - the thread's **last comment is not ours** — "ours" = the PR author login from Context (`gh pr view --json author`), not `git config user.name`.
 
 This deliberately includes threads where a reviewer followed up after our earlier reply — a reply from us does not close the conversation; only resolution or the reviewer going silent does.
+
+When a thread's `comments` connection is truncated (its `pageInfo.hasNextPage` is true), the fetched last comment may not be the thread's actual last — treat the thread as unaddressed conservatively and note the truncation in the Phase 8 report.
 
 If there are **zero unaddressed threads** → report that and stop.
 
