@@ -113,6 +113,8 @@ scope/risk : trivial + clearly-correct + low blast-radius → FIX
 
 Asymmetric-cost biases: a wrong fix costs a quality incident; a deferral costs a re-review. When uncertain, lean **dismiss-with-evidence over fix** and **escalate over fix**. Over-fixing is the historical failure mode.
 
+For each `escalate-candidate`, assign a **severity** (Critical / High / Medium / Low) as part of the disposition, recorded in the decision record — Phase 7 presents this already-judged value, never improvising one.
+
 **Consolidated decision record** — write one Markdown record covering all threads to `.hq/tasks/<branch-dir>/reports/respond-<YYYY-MM-DD-HHMM>.md` (branch-dir: `/` → `-`): what was judged, the evidence weighed, and the per-thread decision + rationale (including where you departed from the analyzer's recommendation, and why). When the branch has no task folder (a PR not produced by the loop), write the record to the repo-local scratch equivalent **`.hq/respond/<branch-dir>/respond-<YYYY-MM-DD-HHMM>.md`** instead. Skip the record only when `.hq/` itself is absent (project not bootstrapped) — and say so in the Phase 8 report.
 
 ## Phase 5: Execute fixes (executor agent — regression-gated)
