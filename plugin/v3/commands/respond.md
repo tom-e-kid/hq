@@ -100,6 +100,8 @@ Pass each agent:
 
 See the agent definition (`agents/review-comment-analyzer.md`) for its analysis process and return contract.
 
+An analyzer agent that fails gets one re-launch; a second failure means that thread is reported unprocessed in Phase 8 and skipped from Phase 4.
+
 ## Phase 4: Judge (root — your disposition per thread)
 
 For each analyzed thread, **you** assign the disposition. The analyzer's recommendation is input to your judgment, not the decision — validate its evidence against your own knowledge of the plan, the diff, and the repo before adopting it. Judge with the same priors as the loop's J5 (`commands/loop.md § Triage judgment criteria`), in order:
@@ -145,6 +147,8 @@ After all fixes are committed and the gate passed: `git push`.
 
 Reply tone: respectful and professional — reviewers (human or automated) are trying to help. Reply language: match the reviewer's language (Copilot comments in English → English replies), per the conversation-language principle of `hq:workflow § Language`; `.hq/respond.md` may adjust tone / language.
 
+A failed reply or resolve call gets one retry; a second failure is reported unprocessed in Phase 8, never silently dropped.
+
 ## Phase 7: Escalation confirmation (interactive — the single user gate)
 
 Runs **only when escalate-candidates exist** — and then it is **non-skippable, auto mode notwithstanding**. `hq:feedback` Issues are created only here, only for user-selected candidates — you never create one alone (`hq:workflow § Loop` invariants).
@@ -163,6 +167,8 @@ Present the candidates (title / severity / origin thread / rationale) via `AskUs
 2. Reply to the thread with the issue link (e.g., "Valid concern — beyond this PR's scope; tracked in <issue-url>."). **Do not resolve.**
 
 **For each declined candidate**: reply honestly — the concern is valid, it is out of this PR's scope, and it is not being tracked at this time. **Do not resolve.** Do not fabricate a tracking promise that does not exist.
+
+A failed `gh issue create` or reply gets one retry; a second failure is reported unprocessed in Phase 8 — the candidate and the user's decision still appear in the report.
 
 ## Phase 8: Report
 
