@@ -180,7 +180,7 @@ Summarize for the user:
 - **Dismiss**: count + one-line evidence summary each
 - **Escalated**: count + issue links; declined candidates noted
 - **Decision record**: path (or why it was skipped — `.hq/` absent)
-- **Unprocessed**: anything that could not be processed, with reason (e.g., un-fixed directive, failed reply)
+- **Unprocessed**: anything that could not be processed or carries a caveat, with reason (e.g., un-fixed directive, failed reply, truncated comment fetch)
 
 ## Rules
 
