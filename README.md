@@ -72,7 +72,7 @@ For the orientation map see [plugin/v3/docs/workflow.md](plugin/v3/docs/workflow
 | `security-scanner`        | sonnet  | Pure detection; outputs a scan report |
 | `integrity-checker`       | inherit | External grep — `[削除]` residuals + unmatched consumers; also re-runs scoped to the J8 micro-fix diff |
 | `retro-distiller`         | sonnet  | Writes the retrospective (incl. hindsight on the root's judgments) and re-distills `.hq/start-memory.md` |
-| `review-comment-analyzer` | inherit | Read-only classification of PR review comments — Fix / Feedback / Dismiss |
+| `review-comment-analyzer` | sonnet  | Read-only analysis of PR review threads — returns evidence + recommendation; the `/hq:respond` root judges the disposition |
 
 ### Root-agent judgments (J1–J8)
 
