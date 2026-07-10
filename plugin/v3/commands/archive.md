@@ -13,9 +13,9 @@ This command closes out the current work branch in one of two modes:
 | **done** (default) | `/hq:archive` | PR is `MERGED` | `.hq/tasks/done/<branch-dir>/` | n/a (already merged) |
 | **cancel** | `/hq:archive cancel` | PR is `OPEN` / `CLOSED` / absent (anything except `MERGED`) | `.hq/tasks/canceled/<branch-dir>/` | `gh pr close` (when still open) |
 
-In **done mode** the command verifies the PR is merged, then archives + cleans up. In **cancel mode** the command closes the PR (if still open) without merging, archives the task folder to `canceled/`, then cleans up the local branch. The plan is a local file that travels with the archived folder — there is no plan Issue to close in either mode.
+The table above is the authoritative mode reference. The plan is a local file that travels with the archived folder — there is no plan Issue to close in either mode.
 
-If the pre-checks for the selected mode fail, the command **stops** and reports what remains. The explicit `cancel` argument is itself the confirmation — once pre-checks pass, the command proceeds unconditionally in either mode.
+**Invoked two ways in the loop-centric V3 world**: (a) directly by the user as `/hq:archive [cancel]`, and (b) as the loop's J8 safe-cancel subroutine — `/hq:loop` Stage 4 reads `commands/archive.md` and executes its **cancel mode** when the user aborts a diverging run (it tolerates the no-PR case). Both paths run the same phases below.
 
 **Security**: This command deletes the local branch and (in cancel mode) closes the PR on GitHub. It never pushes, never force-pushes, never deletes remote branches, and never touches branches other than the current feature branch.
 
@@ -206,15 +206,11 @@ Mode-aware summary.
 
 ## Rules
 
+Invariants not already stated by the phases above or the Security note:
+
 - **Stop on pre-check failure** — never force-archive. The user must resolve prerequisites themselves.
 - **Explicit `cancel` argument is the confirmation** — no extra interactive prompt. Mistyping is handled by the strict argument parser (only empty or `cancel` accepted).
-- **Mode is set once at Phase 0 (argument parsing) and never changes** — every phase branches on the same mode value.
+- **Mode is set once at argument parsing (`## Argument Parsing`) and never changes** — every phase branches on the same mode value.
 - **No `hq:feedback` creation** — this command does NOT escalate anything. Escalation happens at `/hq:loop` Stage 7 (user-confirmed) or via `/hq:respond`.
-- **Never push / force-push** — all git operations are local.
-- **Never delete remote branches** — symmetric across modes. `gh pr close` runs without `--delete-branch`.
 - **Never use `git branch -D` on the base branch** — always switch off the feature branch first.
-- **Never touch the parent `hq:task` Issue** — task-level requirements outlive a single canceled plan.
 - **Never use `--no-verify`** — not applicable here, but the general hook-bypass prohibition stands.
-- **Timestamp collisions** — if `.hq/tasks/<done|canceled>/<branch-dir>/` already exists, append a timestamp suffix rather than overwriting.
-- **Cancel mode aborts on `MERGED` PR** — a merged PR cannot be "canceled"; the user must run plain `/hq:archive` to finalize.
-- **Done mode aborts on any non-`MERGED` state** — including `CLOSED` (not merged), which is redirected to `/hq:archive cancel`.
