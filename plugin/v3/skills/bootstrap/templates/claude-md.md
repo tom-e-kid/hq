@@ -24,13 +24,6 @@
 <!-- BEGIN HQ — managed by hq:bootstrap. Manual edits in this section are overwritten on re-run. -->
 ## HQ
 
-### Verification
-
-Untested code is a guess. After every change:
-
-- Run/build the code, trigger the changed feature, check for errors.
-- **UI** → interact with the element. **API** → make the call. **Data** → query the DB. **Config** → restart and verify.
-
 ### Build
 
 {{build_pointer}}

@@ -105,13 +105,14 @@ Prerequisite: `gh` CLI authenticated (`gh auth status`).
 
 Run `/hq:bootstrap` once when initializing a new project. The skill **never silently skips or overwrites** — every change is confirmed with the user before applying. Safe to re-run; the HQ-managed block in `CLAUDE.md` is the only piece that bootstrap owns end-to-end, and even there a one-line diff summary is surfaced before write.
 
-**Interactive build / test config** — the skill detects the project type (`*.xcodeproj` / `Package.swift` / `package.json` / `go.mod`) and proposes the matching install / dev / build / test / lint / format commands. The user then picks a **test strategy** — Unit (run autonomously) / E2E (Playwright via `hq:e2e-web`) / Manual (human-verified) — which is recorded into the HQ block.
+**Interactive build / test config** — the skill detects the project type (`*.xcodeproj` / `Package.swift` / `package.json` / `go.mod`) and proposes the matching install / dev / build / test / lint / format commands. The user then picks a **test strategy** — who runs verification and where checks route: Executor-run tests (the executor runs the test command autonomously as `[auto]` acceptance) / E2E via `hq:e2e-web` (browser outcomes verified `[auto]` with Playwright) / Reviewer-deferred (deterministic checks route to the PR's `## Manual Verification`) — which is recorded into the HQ block and seeded into `.hq/draft.md` as planning priors.
 
 | Target | What bootstrap does |
 |--------|---------------------|
 | `CLAUDE.md` | Create from template if missing. If present with `<!-- BEGIN HQ --> ... <!-- END HQ -->` markers, refresh only that block; the rest is user territory. If present without markers, ask before appending. |
 | `.claude/settings.local.json` | Add `attribution: { commit: "", pr: "" }` (suppresses the default commit / PR footer). Existing values are never overwritten. |
 | `.gitignore` | Append `.hq/` (the HQ working directory — plan, task context, FBs, decision records, retro) if missing. |
+| `.hq/draft.md` | Seed draft-protocol priors from the chosen test strategy (primary-tier preference, `## Manual Verification` routing). Per-clone (gitignored); if the file exists, a diff summary is shown and overwrite is confirmed. |
 | `.hq/xcodebuild-config.md` *(Xcode projects only)* | Delegated to the `hq:xcodebuild-config` skill — interactively captures Build / Run commands. |
 
 ## Design Philosophy
