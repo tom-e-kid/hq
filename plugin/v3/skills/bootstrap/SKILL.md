@@ -22,6 +22,7 @@ Use Claude Code's task UI (`TaskCreate` / `TaskUpdate`) to show progress. At the
 | Set up CLAUDE.md | Setting up CLAUDE.md |
 | Ensure attribution in settings.local.json | Ensuring attribution |
 | Update .gitignore | Updating .gitignore |
+| Seed .hq/draft.md | Seeding .hq/draft.md |
 
 Set each task to `in_progress` when starting and `completed` when done.
 
@@ -50,15 +51,15 @@ Goal: collect the information needed to fill CLAUDE.md `## Commands` and the HQ 
 
 **Test strategy:**
 
-Use `AskUserQuestion` to ask:
+The choice decides **who runs verification and where checks route** in the acceptance model (`hq:workflow § hq:plan § ## Acceptance` / `§ ## Manual Verification`). Use `AskUserQuestion` to ask:
 
-> How should this project be tested by Claude when verifying a change?
+> Who runs test verification in this project, and where do checks route?
 >
-> 1. **Unit** — Claude runs the test command automatically before claiming a change is done.
-> 2. **E2E** — Claude runs end-to-end checks (Playwright, hq:e2e-web, etc.) before claiming a change is done.
-> 3. **Manual** — A human runs tests; Claude reports what changed and waits for confirmation.
+> 1. **Executor-run tests** — the executor may run the project's test command autonomously; plans should prefer a Tier 1 behavioral `[primary]` via that command.
+> 2. **E2E via hq:e2e-web** — browser outcomes are verifiable `[auto]` via Playwright (`hq:e2e-web`); they belong in `## Acceptance`, not `## Manual Verification`.
+> 3. **Reviewer-deferred** — the project defers test execution to the human reviewer: deterministic checks route to the PR's `## Manual Verification` section, and the executor-side `[primary]` lands on the strongest structural signal.
 
-Record the choice (and the resolved test command, if applicable) for use in Task 2's HQ section.
+Record the choice (and the resolved test command, if applicable) for use in Task 2's HQ section and Task 5's `.hq/draft.md` seed.
 
 **Output**: hold the gathered info in conversation context — Task 2 reads it.
 
@@ -79,7 +80,7 @@ The HQ section is delimited by `<!-- BEGIN HQ -->` ... `<!-- END HQ -->` and is 
 #### Branch B — file exists, HQ markers present
 
 1. Read the file. Compute the new HQ block from Task 1.
-2. Show the user a one-line summary of what changes (e.g. "test strategy: Manual → Unit (`bun test`)"). If the new block is identical to the existing one, report "no change needed" and skip.
+2. Show the user a one-line summary of what changes (e.g. "test strategy: Reviewer-deferred → Executor-run (`bun test`)"). If the new block is identical to the existing one, report "no change needed" and skip.
 3. Use `AskUserQuestion`:
    - **Title**: `Overwrite HQ section in CLAUDE.md?`
    - **Reason**: "the HQ section is bootstrap-managed; re-running keeps it in sync with the latest workflow."
@@ -91,7 +92,7 @@ The HQ section is delimited by `<!-- BEGIN HQ -->` ... `<!-- END HQ -->` and is 
 1. Compute the new HQ block from Task 1.
 2. Use `AskUserQuestion`:
    - **Title**: `Append HQ section to CLAUDE.md?`
-   - **Reason**: "no HQ markers found; the HQ workflow expects a `## HQ` block (Verification / Build / Test Strategy). Bootstrap appends it at the end of the file."
+   - **Reason**: "no HQ markers found; the HQ workflow expects a `## HQ` block (Build / Test Strategy). Bootstrap appends it at the end of the file."
    - **Options**: `Append` / `Skip`.
 3. If approved, append the block. Do not modify the rest.
 
@@ -102,9 +103,9 @@ The HQ section is delimited by `<!-- BEGIN HQ -->` ... `<!-- END HQ -->` and is 
   - Other → `See \`## Commands\` above.`
   - Mixed (Xcode + other) → `Xcode: see [.hq/xcodebuild-config.md](.hq/xcodebuild-config.md). Other targets: see \`## Commands\` above.`
 - `{{test_strategy}}`:
-  - Unit → `Unit — run \`<test command>\` before claiming a change is done.`
-  - E2E → `E2E — run end-to-end checks (e.g. Playwright, hq:e2e-web) before claiming a change is done.`
-  - Manual → `Manual — tests are run by a human. Report what was changed; do not claim "verified" without human confirmation.`
+  - Executor-run → `Executor-run — the executor runs \`<test command>\` autonomously as [auto] acceptance; plans prefer a behavioral (Tier 1) [primary] via this command.`
+  - E2E → `E2E — browser outcomes are verified [auto] via hq:e2e-web (Playwright); they belong in ## Acceptance, not ## Manual Verification.`
+  - Reviewer-deferred → `Reviewer-deferred — test execution belongs to the PR reviewer via the PR's ## Manual Verification section; the executor-side [primary] uses the strongest structural signal.`
 
 ### 3. settings.local.json
 
@@ -153,3 +154,31 @@ Note: detection-based permission entries are no longer added. Auto mode covers m
   - **Reason**: "`.hq/` is the HQ working directory (task context, FB files, scan reports). It is local-only and should not be committed."
   - **Options**: `Append` / `Skip`.
 - If approved, append `.hq/` to the file.
+
+### 5. Seed .hq/draft.md
+
+**Target**: `<project_root>/.hq/draft.md`
+
+`.hq/draft.md` is the draft-protocol override file (`hq:workflow § Project Overrides`) — an augmenting prior read at loop Stage 1 brainstorm time. Seeding it wires the Task 1 test-strategy answer into planning, so each plan's brainstorm does not re-discover the same project facts.
+
+**Content**: 2–4 lines of free prose derived from the Task 1 answer:
+
+- The primary-tier preference (e.g. "primary prefers a Tier 1 behavioral check via `bun test`").
+- For **Reviewer-deferred** projects: which deterministic checks the project defers to the reviewer (i.e. what routes to `## Manual Verification`).
+
+The seed content must stay **priors-grade** — lean cues and defaults the brainstorm layers in, never category-level pre-decisions (per `hq:workflow § Project Overrides`, overrides supply priors, not decisions).
+
+#### Branch A — file missing
+
+- `mkdir -p .hq`, create the file with the seed content. Report the path.
+
+#### Branch B — file exists
+
+1. Read the existing file and show the user a diff summary against the new seed — the user may have hand-edited it.
+2. Use `AskUserQuestion`:
+   - **Title**: `Overwrite .hq/draft.md?`
+   - **Reason**: "re-seeding replaces the draft-protocol priors with the latest Task 1 answer; hand-edited content would be lost."
+   - **Options**: `Overwrite` / `Skip`.
+3. If approved, overwrite. If skipped, leave the file untouched.
+
+Note: `.hq/draft.md` is per-clone (gitignored via Task 4) — teammates' fresh clones re-seed it by running `/hq:bootstrap`.
