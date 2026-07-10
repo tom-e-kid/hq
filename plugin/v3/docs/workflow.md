@@ -29,7 +29,7 @@ Core artifacts:
 ├─ Stage 2 BUILD    (executor)   execute-protocol: branch → implement → acceptance sweep
 ├─ Stage 3 REVIEW   (root+agents) J3 build review → J4 selection → reviewers in parallel → FBs
 ├─ Stage 4 TRIAGE   (root)       J5 per-FB disposition → J8 convergence at exit:
-│                                  converged → micro-fix + integrity re-check → Stage 5
+│                                  converged → micro-fix + integrity re-check + spot-check record → Stage 5
 │                                  continue  → Stage 2 (budget-bounded)
 │                                  diverging → plan-revision consult / safe cancel
 ├─ Stage 5 SHIP     (root, J6)   PR = final proposal (pr skill; narrative body)
