@@ -8,12 +8,8 @@ A development hub for AI-assisted workflows across multiple projects.
 - **plugin/v3/** — Active plugin version (commands, agents, skills)
 - **plugin/v2/** — Legacy — frozen, do not modify
 - **plugin/v1/** — Legacy — do not modify
-- **tools/** — CLI tools (Go binary)
 
-## Building Tools
-
-- `mise run build` — Build `tools/cli` binary to `tools/bin/hq`
-- `mise run install` — Build and install to `~/.local/bin/hq`
+CLI tools formerly under `tools/` were split out to [github.com/tom-e-kid/hqdb](https://github.com/tom-e-kid/hqdb) (commit `7ab6454`). This repository has no build step — it is plugin (markdown) only.
 
 ## Plugin Development
 
