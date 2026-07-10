@@ -57,7 +57,7 @@ The choice decides **who runs verification and where checks route** in the accep
 >
 > 1. **Executor-run tests** — the executor may run the project's test command autonomously; plans should prefer a Tier 1 behavioral `[primary]` via that command.
 > 2. **E2E via hq:e2e-web** — browser outcomes are verifiable `[auto]` via Playwright (`hq:e2e-web`); they belong in `## Acceptance`, not `## Manual Verification`.
-> 3. **Reviewer-deferred** — the project defers test execution to the human reviewer: deterministic checks route to the PR's `## Manual Verification` section, and the executor-side `[primary]` lands on the strongest structural signal.
+> 3. **Reviewer-deferred** — the project defers test execution to the human reviewer: deterministic checks route to the PR's `## Manual Verification` section, and the executor-side `[primary]` lands on the strongest executor-executable tier (anchored-semantic when an external ground truth exists, else structural).
 
 Record the choice (and the resolved test command, if applicable) for use in Task 2's HQ section and Task 5's `.hq/draft.md` seed.
 
@@ -105,7 +105,7 @@ The HQ section is delimited by `<!-- BEGIN HQ -->` ... `<!-- END HQ -->` and is 
 - `{{test_strategy}}`:
   - Executor-run → `Executor-run — the executor runs \`<test command>\` autonomously as [auto] acceptance; plans prefer a behavioral (Tier 1) [primary] via this command.`
   - E2E → `E2E — browser outcomes are verified [auto] via hq:e2e-web (Playwright); they belong in ## Acceptance, not ## Manual Verification.`
-  - Reviewer-deferred → `Reviewer-deferred — test execution belongs to the PR reviewer via the PR's ## Manual Verification section; the executor-side [primary] uses the strongest structural signal.`
+  - Reviewer-deferred → `Reviewer-deferred — test execution belongs to the PR reviewer via the PR's ## Manual Verification section; the executor-side [primary] uses the strongest executor-executable tier (anchored-semantic when an external ground truth exists, else structural).`
 
 ### 3. settings.local.json
 
