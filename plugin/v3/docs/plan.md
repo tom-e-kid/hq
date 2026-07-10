@@ -438,7 +438,7 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 | J5 | Stage 4 | per-FB disposition + fix-directive composition + budget allocation | regression gate on fixes; iteration cap; no autonomous Issue creation |
 | J6 | Stage 5 | PR narrative: what the human reviewer needs (motive, approach, deviations) | workflow sections + labels + Refs trailer invariants; `.hq/pr.md` |
 | J7 | Stage 7 | candidate presentation quality (grouping, rationale) | Issue creation itself is user-gated |
-| J8 | Stage 4 exit (every cycle, incl. iteration 0) | **convergence judgment**: converged (micro-fix → integrity-checker re-run → Ship) / continue (re-enter) / diverging (plan-defect hypothesis → block, propose plan revision, or safe-cancel on user decline) | regression gate on the micro-pass; integrity-checker re-run is mandatory after any micro-fix; `loop_max_iterations` hard backstop; plan revision and cancel are both user-gated |
+| J8 | Stage 4 exit (every cycle, incl. iteration 0) | **convergence judgment**: converged (micro-fix → integrity-checker re-run + spot-check record → Ship) / continue (re-enter) / diverging (plan-defect hypothesis → block, propose plan revision, or safe-cancel on user decline) | regression gate on the micro-pass; integrity-checker re-run is mandatory after any micro-fix; the spot-check record is unconditional; `loop_max_iterations` hard backstop; plan revision and cancel are both user-gated |
 
 ### 11.3 File-level deltas
 
@@ -458,7 +458,7 @@ Every judgment leaves a decision record under `.hq/tasks/<branch-dir>/reports/` 
 - `commands/{draft,start,triage}.md` and `rules/triage-protocol.md` and `agents/auto-triager.md` do not exist; `rules/execute-protocol.md` and `agents/retro-distiller.md` exist; `plugin.json` reflects the agent set.
 - `rg -n "Implementation Plan" plugin/v3/skills/pr/SKILL.md plugin/v3/rules/workflow.md` → zero hits (D8).
 - `rg -n "/hq:draft|/hq:start|/hq:triage" plugin/v3/ --glob '!plugin/v3/docs/plan.md' --glob '!plugin/v3/docs/hq-loop-flow.html'` → zero hits (both excluded docs reference the old names only as history).
-- loop.md contains all eight judgment IDs (J1–J8) with decision-record contracts, including J8's three outcomes (converged path mandating the integrity-checker re-run), the safe-cancel route, and the per-stage Progress Tracking contract.
+- loop.md contains all eight judgment IDs (J1–J8) with decision-record contracts, including J8's three outcomes (converged path mandating the integrity-checker re-run and the unconditional spot-check record), the safe-cancel route, and the per-stage Progress Tracking contract.
 - Manual Verification: one full dogfood run — plan-only exit (`stop`) works; a triage fix-directive round-trips through the executor; a simulated diverging run reaches the J8 block with a plan-revision proposal, and declining it lands in `.hq/tasks/canceled/`; PR carries the refocused body; retro-distiller writes both artifacts.
 
 ## 12. Phase 6 — Central telemetry sink (`~/.hq/`)
