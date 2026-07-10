@@ -455,7 +455,7 @@ Stage 1 PLAN    (root+user, J2)     draft-protocol inline → plan.md; gate: go 
 Stage 2 BUILD   (executor agent)    execute-protocol: fresh | fix-directive → commits + acceptance + FBs
 Stage 3 REVIEW  (root J3, J4)       build acceptance review → reviewer agents in parallel → FBs
 Stage 4 TRIAGE  (root J5; J8 exit)  per-FB disposition on local FBs (fix / plan / accept / escalate-candidate)
-   J8: converged → micro-fix + integrity-checker re-run → Stage 5
+   J8: converged → micro-fix + integrity-checker re-run + spot-check record → Stage 5
        continue  → Stage 2 re-entry (budget-bounded)
        diverging → block: plan-revision proposal to the user, or safe cancel (archive cancel route)
 Stage 5 SHIP    (root J6)           PR created as the FINAL PROPOSAL — narrative body via pr skill

@@ -389,6 +389,14 @@ Added 2026-07-04 after the Phase 1–3 implementation and before any real run. O
 │         surface-integrity check — the one reviewer whose axis a "trivial" fix can
 │         still break) + root spot-check of the micro-diff → Stage 5. No full
 │         Stage 3–4 re-run.
+│         Spot-check record (unconditional): the J8 decision record (or an addendum
+│         to it) MUST record the spot-check — the surface(s) checked, the
+│         verification method (eyeball or command), and, when a command was run,
+│         the command and its result.
+│         Continue re-grading: a fix whose correctness the spot-check cannot
+│         cheaply confirm is not micro-fix-grade — re-grade the verdict to Continue
+│         (budget exhausted → force-close applies: ESCALATE candidate, never a
+│         silent drop).
 │     • CONTINUE — substantive but bounded follow-ups, budget remains → Stage 2
 │         (Stage 3–4 re-run after). loop_max_iterations stays as the hard backstop.
 │     • DIVERGING — fixes spawn new defects / new design questions (signals: same-or-
