@@ -37,6 +37,8 @@ When the user provides only a branch name:
 
 The script symlinks local (gitignored) files back to the main repo — `.claude/settings.local.json`, the `.hq/*.md` overrides + `start-memory.md`, `.hq/retro/`, `.hq/tasks/`, and dev `.env*` — so there is a single source of truth and loop write-back (retro, start-memory, task archive) lands in the main repo. No manual copy step is needed.
 
+`.hq/settings.json` is the one exception: it is **copied**, not symlinked, with `base_branch` set to the branch the worktree has checked out (the new branch in new-branch mode, otherwise the base branch). Any branch cut inside the worktree diverges from that branch, and the source repo's base branch is checked out elsewhere — `git checkout <base>` in execute-protocol Phase 3 would fail against it. Other keys in the source file are preserved (requires `jq`; without it the script warns and writes a `base_branch`-only file).
+
 Mention to the user only when relevant:
 - `.env*` values are shared via symlink. If the worktree needs a *different* dev env (distinct port / DB), replace the symlink with a real file.
 - `.envrc` is symlinked but direnv is path-keyed — run `direnv allow` once in the new worktree.
