@@ -182,17 +182,33 @@ done < <(cd "$source_dir" && find . -name '.env*' \
   -not -name '.env.staging*' \
   -print0 2>/dev/null || true)
 
-# === Generate .hq/settings.json (per-worktree — base_branch is worktree-specific) ===
+# === Write .hq/settings.json (per-worktree — copied, not symlinked) ===
+#
+# base_branch is worktree-specific, so this file cannot be shared with $source_dir.
+# It is copied (other keys preserved) with base_branch overridden to the branch this
+# worktree has checked out: any branch cut inside the worktree diverges from that
+# branch, and execute-protocol Phase 3 runs `git checkout <base>` — pointing it at
+# the source's base would fail, since that branch is checked out elsewhere.
 
-default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || echo "")
-if [[ -n "$default_branch" && "$base_branch" != "$default_branch" ]]; then
-  mkdir -p "$worktree_dir/.hq"
+worktree_branch="${new_branch:-$base_branch}"
+src_settings="$source_dir/.hq/settings.json"
+
+mkdir -p "$worktree_dir/.hq"
+if [[ -f "$src_settings" ]] && command -v jq >/dev/null 2>&1; then
+  jq --arg b "$worktree_branch" '.base_branch = $b' "$src_settings" \
+    > "$worktree_dir/.hq/settings.json"
+  linked_files+=(".hq/settings.json (copied, base_branch: $worktree_branch)")
+else
+  if [[ -f "$src_settings" ]]; then
+    echo "WARNING: jq not found — writing a minimal .hq/settings.json; other keys in"
+    echo "         $src_settings are NOT carried over."
+  fi
   cat > "$worktree_dir/.hq/settings.json" <<EOF
 {
-  "base_branch": "$base_branch"
+  "base_branch": "$worktree_branch"
 }
 EOF
-  linked_files+=(".hq/settings.json (generated, base_branch: $base_branch)")
+  linked_files+=(".hq/settings.json (generated, base_branch: $worktree_branch)")
 fi
 
 # === Completion report ===
