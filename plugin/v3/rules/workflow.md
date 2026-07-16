@@ -215,7 +215,7 @@ An `hq:plan` is the implementation plan that drives work on a branch. It is a **
 
 **Two readers, one body.** The same body serves two audiences, and the readability investment is split deliberately so it stays complete-but-not-bloated for both:
 
-- **Human reviewer** (including a developer unfamiliar with this area) reads `## Why` + `## Approach` to decide whether to approve. These two sections carry the **reader self-sufficiency** bar below: the reader should grasp the problem and the chosen mechanism from them alone, without spelunking the diff. When the design is structural, a figure / snippet is the readability tool — not optional decoration.
+- **Human reviewer** (including a developer unfamiliar with this area) reads `## Why` + `## Approach` to decide whether to approve. These two sections carry the **reader self-sufficiency** bar below: the reader should grasp the problem and the chosen mechanism from them alone, without spelunking the diff. When the design is structural, a figure / snippet is the readability tool — not optional decoration. Introduce any internal identifier (symbol, file path, marker, FB id) with a one-clause plain-language gloss on first use, or demote it to a parenthetical — an unfamiliar reader cannot resolve a bare id.
 - **The executor / root judgments / `integrity-checker`** consume `## Editable surface` / `## Plan` / `## Acceptance` as the agent fence. These stay terse (≤1行 per entry / item) — that compression is a functional requirement, not a stylistic one. Do **not** spend prose on them.
 
 Figures and intent snippets live in `## Approach` and are **excluded from its sentence count** (see below), so the readability investment in Why/Approach never fights the volume bounds.
@@ -466,10 +466,32 @@ Stage 7 REPORT  (root+user, J7)     judgment audit trail + feedback candidates �
 Invariants:
 
 - **PR-last** — triage precedes PR creation; the PR's `## Known Issues` holds only post-triage residual (accepted limitations / escalation status).
-- **Three user interaction systems**: the Stage 1 gate, root-initiated consults (J3 / J5 / J8 — including the J8 plan-revision / safe-cancel gate), and the Stage 7 feedback confirmation. All non-skippable.
+- **Three user interaction systems**: the Stage 1 gate, root-initiated consults (J3 / J5 / J8 — including the J8 plan-revision / safe-cancel gate), and the Stage 7 feedback confirmation. All non-skippable. Root-initiated consults follow `§ Consult Format`.
 - **`hq:feedback` creation is user-gated** at Stage 7 (and `/hq:respond` for external review comments) — the root never creates one alone.
 - **J8 is the loop control** — semantic convergence judgment; `loop_max_iterations` (default 2) is only the runaway backstop.
 - `/hq:respond` and `/hq:archive` remain standalone post-PR tools.
+
+## Consult Format
+
+Governs every **root-composed consult** — a free-form explanation the root writes to ask the user for a decision it cannot take alone: the **J3 needs-the-user** call and the **J8 diverging** plan-revision / safe-cancel gate. It does NOT govern gates that present a pre-structured artifact verbatim (the Stage 1 commit-or-pushback gate shows the plan body, which carries its own reader self-sufficiency contract — `## hq:plan` § *Two readers, one body*) nor the Stage 7 feedback multi-select (a structured pick, not an explanation).
+
+**The bar — self-containment.** A reader who has opened NO other file (FB, decision record, plan, ROADMAP) must be able to answer from the consult text alone: (1) what is being built, (2) what went wrong, (3) what you propose, (4) what they must decide. If answering any of the four needs an external file, the consult is incomplete.
+
+**Structure — fixed slot order.** Fill every slot; scale each slot's depth per *Depth* below:
+
+1. **Heading** — one line: current state + the decision requested.
+2. **What this is** — the object of the decision in 1–2 sentences, assuming no prior knowledge. State it before any internal id or symbol appears.
+3. **What happened** — the causal sequence in time order (did X → problem Y surfaced → fixed it → the fix broke Z), not a flat list of symptoms. The chain the reader can follow.
+4. **Concrete instance** — for each factual claim the decision rests on, one real `input → wrong outcome`, not an abstract description. A claim with no instance is unverified. When the defect is structural (a control-path, a path-resolution, a state-ordering issue), a ≤6-line ASCII figure of the bad flow beats prose — the same tool as `## hq:plan` § *Figure expected for structural changes*.
+5. **Root cause** — your reading of the underlying cause, stated as a judgment and kept separate from the symptoms in slots 3–4.
+6. **Proposal** — the direction in one sentence first, details after.
+7. **Decision block** — the options enumerated last, each paired with its consequence (what happens if chosen).
+
+**Glossing.** Every internal identifier or symbol (FB id, function name, file path, marker) is introduced on first use with a plain-language gloss, or demoted to a parenthetical. Never lead with a bare id.
+
+**Depth is adaptive; structure is not.** The slot order is fixed; each slot's length flexes. A low-stakes consult (one bounded decision, the user already holds the context) may compress slots 2–5 to a sentence each or fold them — but slots 1, 6, 7 are always present. A high-stakes or surprising consult (plan-defect divergence, safe-cancel, or any consult after a long autonomous stretch where the user has lost the thread) writes all seven in full, because the reader's context gap is largest exactly there.
+
+**Commitment.** The proposal is a position, not a menu (go-gate discipline): present the one revision you would apply, not a set of alternatives to pick among. The decision block offers accept / push back / stop — never "which of these should I do?".
 
 ## PR Body Structure
 
