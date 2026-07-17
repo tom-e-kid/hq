@@ -119,7 +119,7 @@ Stamp slot 6. Two judgments, then evidence collection:
 
 - **pass** → continue to J4.
 - **fixable gap** → compose a fix-directive list → Stage 2 (`fix-directive`) → re-enter J3 on return.
-- **needs the user** (a decision outside the plan's scope) → consult (interaction ②), then proceed per the answer.
+- **needs the user** (a decision outside the plan's scope) → consult (interaction ②) per `hq:workflow § Consult Format`, then proceed per the answer.
 
 Record the decision record + `quality-review.sh record self_review_gate result=<pass|minor_gap|significant_gap>` (minor gaps: write the FB yourself — it joins the Stage 4 pool).
 
@@ -160,7 +160,7 @@ Judge the **trajectory**, not just the queue:
 
 - **Converged** — the queue holds only micro-fix-grade work (trivial, clearly-correct, low blast-radius; no new design questions). A first triage that looks like this converges at iteration 0. → dispatch the queue as one `fix-directive` micro-pass (executor, regression-gated) → **re-run `integrity-checker` alone, scoped to the micro-diff** (the one axis a trivial fix can still break: residuals / consumers / fence integrity) → spot-check the micro-diff yourself → Stage 5. No full Stage 3–4 re-run. **Spot-check record (unconditional)**: the J8 decision record (or an addendum to it) MUST record the spot-check — the surface(s) checked, the verification method (eyeball or command), and, when a command was run, the command and its result. **Continue re-grading**: a fix whose correctness the spot-check cannot cheaply confirm is not micro-fix-grade — re-grade the verdict to Continue (budget exhausted → force-close applies: ESCALATE candidate, never a silent drop).
 - **Continue** — substantive but bounded follow-ups, and re-entries used < `loop_max_iterations` → dispatch the directive queue → Stage 2 (`fix-directive` / plan-append) → Stage 3–4 re-run on return.
-- **Diverging** — the fixes are generating new problems. Signals: same-or-higher-severity FBs on surfaces already fixed, findings contradicting the plan's assumptions, fix→new-FB chains across iterations, repeated `[primary]` failure. This is a **plan-defect hypothesis** → block the loop and consult the user (interaction ②): present the problem analysis, the root cause as you read it, and a **concrete revised-plan proposal verbatim** (go-gate discipline — a position, not a menu).
+- **Diverging** — the fixes are generating new problems. Signals: same-or-higher-severity FBs on surfaces already fixed, findings contradicting the plan's assumptions, fix→new-FB chains across iterations, repeated `[primary]` failure. This is a **plan-defect hypothesis** → block the loop and consult the user (interaction ②). Compose the consult per `hq:workflow § Consult Format` at **full depth** (a plan-defect divergence is the high-stakes case the format is built for), ending in a **concrete revised-plan proposal verbatim** (a position, not a menu).
   - User approves (possibly after pushback rounds) → apply the revision to `plan.md`, re-open affected items, **reset the iteration budget** → Stage 2.
   - User declines / aborts → **safe cancel**: Read `commands/archive.md` and execute its **cancel mode** (it tolerates the no-PR case: task folder → `.hq/tasks/canceled/`, feature branch force-deleted, memory cleared) → report what was attempted, what was learned, and end.
 - Budget exhausted while not diverging → force-close: remaining queue items become ACCEPT (with `deferred: budget` notes) or ESCALATE candidates — **never silent drops** — then Stage 5.
