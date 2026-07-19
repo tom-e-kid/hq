@@ -66,7 +66,7 @@ Every run additionally emits structured events to the **central sink** `~/.hq/ev
 
 | kind | when | payload |
 |---|---|---|
-| `run_start` | loop entry, after run_id lands | `entry_stage=<0-7>` |
+| `run_start` | loop entry, after run_id lands | `entry_stage=<0-7>` `model=<the root's exact model id, e.g. claude-fable-5, from your environment context>` |
 | `gate` | Stage 1 gate resolution | `answer=<go\|stop>` `pushbacks=<n>` |
 | `j_decision` | each J1–J8 decision-record write | `judgment=<J1..J8>` `verdict=<...>` `record=<path>` |
 | `disposition` | each J5 per-FB decision | `fb=<id>` `severity=<S>` `origin=<agent>` `disposition=<fix\|plan\|accept\|escalate>` `prior_departure=<true\|false>` |
@@ -123,9 +123,9 @@ Stamp slot 6. Two judgments, then evidence collection:
 
 Record the decision record + `quality-review.sh record self_review_gate result=<pass|minor_gap|significant_gap>` (minor gaps: write the FB yourself — it joins the Stage 4 pool).
 
-**J4 — reviewer selection.** Choose the subset of `{code-reviewer, security-scanner, integrity-checker}` whose axes apply to this diff (executable code / credential-adjacent content / `[削除]`-consumer-fence signals). **Hard floor**: a literal credential prefix in the diff (`AKIA[0-9A-Z]{16}`, `sk-…`, `ghp_…`, `Bearer …`) forces `security-scanner` — no judgment waives it. Record + `quality-review.sh record agent_selection …`.
+**J4 — reviewer selection.** Choose the subset of `{code-reviewer, security-scanner, integrity-checker}` whose axes apply to this diff (executable code / credential-adjacent content / `[削除]`-consumer-fence signals). **The empty set is a first-class verdict** — lightweight review, where J3 alone carries the review and the stage proceeds directly to Stage 4. Lean empty when the diff matches a low-yield profile — a mechanical / repetitive change following an established in-repo pattern, a prose-only or config-only diff with no matching axis, or a change whose true outcome is routed to `## Manual Verification` so static review adds no signal — **and** the lean is corroborated by `.hq/start-memory.md` judgment cautions or this repo's past runs (repeated zero-FB reviews on the same profile). An agent with no matching axis trades tokens for noise; do not launch one as insurance. **Hard floor**: a literal credential prefix in the diff (`AKIA[0-9A-Z]{16}`, `sk-…`, `ghp_…`, `Bearer …`) forces `security-scanner` — no judgment waives it, the empty-set verdict included. Record + `quality-review.sh record agent_selection …` — an empty selection is recorded with its rationale, never silently skipped.
 
-Launch the selected agents **in parallel** (single Agent-tool batch). They are pure review: FB files land in `feedbacks/`, nothing is fixed. `security-scanner` findings you deem actionable: synthesize FBs (severity from its report, default Medium, `skill: /security-scan`). Record `initial_review` events per agent. Stamp slot 6 end.
+Launch the selected agents **in parallel** (single Agent-tool batch). When the selection is empty, there is nothing to launch — stamp slot 6 end and enter Stage 4 (the pool then holds only build continue-reports and J3 findings). They are pure review: FB files land in `feedbacks/`, nothing is fixed. `security-scanner` findings you deem actionable: synthesize FBs (severity from its report, default Medium, `skill: /security-scan`). Record `initial_review` events per agent. Stamp slot 6 end.
 
 ## Stage 4: Triage (your judgment — J5, then J8 at exit)
 
@@ -144,6 +144,8 @@ scope/risk : trivial + clearly-correct + low blast-radius → FIX NOW
 ```
 
 Asymmetric-cost biases: a wrong fix costs a quality incident, a deferral costs a re-review — when uncertain, lean ACCEPT over FIX, ESCALATE over PLAN APPEND. Evidence gap on validity → you MAY launch one read-only verification agent (general-purpose, scoped prompt) for that FB before judging; don't guess. Over-fixing is the historical failure mode — any hesitation on "clearly correct" routes away from FIX NOW.
+
+**Low batch lane.** Critical / High / Medium FBs get the full one-at-a-time treatment above. **Low FBs are judged in one batch pass**: read them together, apply the same validity → ownership → scope criteria, and record each outcome as a single disposition line in the consolidated J5 record — no per-FB deliberation section. This trims record depth, not authority: every Low still receives its own judgment, its own `disposition:` line in the FB file, and its own `disposition` telemetry event. A Low that turns out to carry a real design question is promoted out of the batch and judged individually. Rationale: Lows are the plurality of findings and the large majority are mechanically fixable — per-FB ceremony on them is triage's dominant time cost.
 
 Disposition mechanics:
 

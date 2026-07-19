@@ -132,6 +132,28 @@ The plan is a local file — there is no plan Issue to close; the abandoned `pla
 
 ## Phase 5: Archive Task Folder
 
+### Worktree salvage check (linked worktrees only)
+
+`worktree-setup.sh` symlinks `.hq/tasks/` and `.hq/retro/` back to the main repo, so archives from a skill-created worktree land main-side automatically. A worktree created **without** the skill holds these as plain local directories — archiving into them orphans the run's artifacts (FBs, decision records, retro, distilled learnings) the moment the worktree is removed. This has happened in practice; the salvage below is the defense.
+
+Detect before moving:
+
+```bash
+main_repo=$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd)")
+toplevel=$(git rev-parse --show-toplevel)
+```
+
+When `toplevel` ≠ `main_repo` (this is a linked worktree) **and** `.hq/tasks` is not a symlink (`[[ -L .hq/tasks ]]` false), redirect the archive:
+
+1. Use `"$main_repo/.hq/tasks/<done|canceled>"` as the `archive_root` below (create it with `mkdir -p`).
+2. After the move, salvage retro artifacts: if `.hq/retro` is a real local directory, copy `.hq/retro/<branch-dir>*` (file or directory, if present) to `"$main_repo/.hq/retro/"` — skip entries that already exist main-side.
+3. Salvage distilled learnings: if `.hq/start-memory.md` is a real local file and differs from `"$main_repo/.hq/start-memory.md"`, merge the learnings the main copy lacks into the main copy within its char budget — a judgment merge, not a blind overwrite (the main copy may have advanced through other runs).
+4. Note the redirection (and what was salvaged) in the Phase 8 report.
+
+When the check does not fire (main repo, or a symlinked worktree), proceed unchanged.
+
+### Move
+
 Pick the archive root based on mode:
 
 - done mode → `.hq/tasks/done`
