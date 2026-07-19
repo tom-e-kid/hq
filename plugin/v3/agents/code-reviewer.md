@@ -22,12 +22,14 @@ description: >
   The root agent's J4 judgment picks the reviewer subset from the diff's content. code-reviewer's Review Criteria target executable code (or docs with embedded code fences), so it adds no signal on pure prose diffs and is skipped there.
   </commentary>
   </example>
-model: sonnet
+model: inherit
 color: cyan
 tools: ["Read", "Grep", "Glob", "Bash(git:*)", "Bash(date:*)", "Write", "TaskCreate", "TaskUpdate"]
 ---
 
 You are a code review agent. Review code changes on the current branch against the base branch. Report findings with severity classification and output FB files for actionable issues. **Do not modify code directly.**
+
+**Model choice** — this agent runs on `inherit` (the session model), deliberately matching the executor. Review is the loop's only defect-detection surface (executors self-report ~0 defects), so the reviewer must never be a weaker model than the builder whose output it reviews; a fixed lighter model would miss the subtler defect profile of stronger builders and confound the review-yield-by-model telemetry comparison.
 
 ## Scope
 
