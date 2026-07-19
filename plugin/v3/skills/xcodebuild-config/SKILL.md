@@ -50,6 +50,7 @@ description: Used when building and running with xcodebuild. Reads config from .
    - **iPad** devices sorted by screen size (smallest first)
 2. Present as a numbered list.
 3. Ask the user to pick one. Suggest the **smallest iPhone** as default.
+4. Check whether the chosen device name also exists in other runtimes (this is the default — Xcode creates one device set per runtime). If it does, tell the user that a name-only `simctl` reference would be ambiguous, and that the Run Command therefore resolves the device by name **and** OS.
 
 ### Phase 4 — Select Scheme
 
@@ -62,13 +63,21 @@ description: Used when building and running with xcodebuild. Reads config from .
    ```
    xcodebuild build -<project|workspace> <file> -scheme <scheme> -destination 'platform=iOS Simulator,name=<device>,OS=<version>'
    ```
-2. Build the run command sequence (boot simulator, install app, launch):
+2. Build the run command sequence (resolve UDID, boot simulator, install app, launch). `simctl` accepts only a device name or a UDID — a bare name is ambiguous when the same device exists in multiple runtimes, so resolve the UDID at run time from name + OS:
    ```
-   xcrun simctl boot '<device name>'
+   UDID=$(xcrun simctl list devices available -j | python3 -c "
+   import json, sys
+   devices = json.load(sys.stdin)['devices']
+   matches = [d['udid'] for rt, ds in devices.items() if rt.endswith('.iOS-<dashed OS version>') for d in ds if d['name'] == '<device name>']
+   if not matches: sys.exit('no available simulator: <device name> (iOS <version>)')
+   print(matches[0])
+   ")
+   xcrun simctl boot "$UDID"
    open -a Simulator
-   xcrun simctl install '<device name>' <path to .app in DerivedData>
-   xcrun simctl launch '<device name>' <bundle identifier>
+   xcrun simctl install "$UDID" <path to .app in DerivedData>
+   xcrun simctl launch "$UDID" <bundle identifier>
    ```
+   - `<dashed OS version>` is the OS version with dots replaced by dashes (e.g., `26.5` → `26-5`), matching the runtime identifier suffix `com.apple.CoreSimulator.SimRuntime.iOS-26-5`. Keep the leading `.` in `endswith` so the suffix cannot match another platform's runtime.
    - The .app path is typically: `~/Library/Developer/Xcode/DerivedData/<project>-*/Build/Products/Debug-iphonesimulator/<scheme>.app`
    - If the exact DerivedData path is uncertain, detect it from build settings: `xcodebuild -showBuildSettings ... | grep BUILT_PRODUCTS_DIR`
 3. Show the generated commands to the user.
@@ -96,18 +105,26 @@ description: Used when building and running with xcodebuild. Reads config from .
    ## Run Command
 
    \`\`\`
-   xcrun simctl boot '<device name>'
+   UDID=$(xcrun simctl list devices available -j | python3 -c "
+   import json, sys
+   devices = json.load(sys.stdin)['devices']
+   matches = [d['udid'] for rt, ds in devices.items() if rt.endswith('.iOS-<dashed OS version>') for d in ds if d['name'] == '<device name>']
+   if not matches: sys.exit('no available simulator: <device name> (iOS <version>)')
+   print(matches[0])
+   ")
+   xcrun simctl boot "$UDID"
    open -a Simulator
-   xcrun simctl install '<device name>' <path to .app>
-   xcrun simctl launch '<device name>' <bundle identifier>
+   xcrun simctl install "$UDID" <path to .app>
+   xcrun simctl launch "$UDID" <bundle identifier>
    \`\`\`
    ```
 
-5. Optionally run a test build to verify the command works if the user requests it.
+5. Optionally run a test build to verify the command works if the user requests it. When verifying the Run Command, also confirm the booted device's OS matches the configured OS (`xcrun simctl list devices | grep Booted`) — a mismatch means the device resolution is wrong.
 
 ## Rules
 
 - Always use `name=` and `OS=` in the destination string — never use `id=` (UDIDs break when simulators are recreated).
+- Never persist a UDID in the config file for the same reason. The Run Command resolves the UDID at run time from name + OS — a bare device name is ambiguous because Xcode creates same-named devices in every runtime, and `simctl` has no OS qualifier.
 - If no simulators are available for the deployment target OS, warn the user and suggest installing the runtime via `xcodebuild -downloadPlatform iOS`.
 - Do not modify any project files — this skill is read-only.
 - Keep interactions concise. Use numbered lists for selection, accept numbers as input.
