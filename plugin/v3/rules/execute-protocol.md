@@ -70,8 +70,8 @@ If you discover mid-phase that an earlier commit needs fixing, prefer a new `fix
 Wall-clock stamps let the loop report where a run spent its time. This protocol stamps **measurement slots 4 (Execute) and 5 (Acceptance)** — the slot numbers are historical; the slot → stage mapping for the whole loop is defined at `commands/loop.md § Timing slots`. Each measured phase opens with an **entry stamp** and closes with an **exit stamp** — mandatory executed steps, not annotations: the entry stamp is the phase's first action, the exit stamp its last.
 
 ```
-bash plugin/v3/scripts/phase-timing.sh stamp <N> start   # entry stamp — first action of Phase <N>
-bash plugin/v3/scripts/phase-timing.sh stamp <N> end     # exit stamp  — last action of Phase <N>
+bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/phase-timing.sh" stamp <N> start   # entry stamp — first action of Phase <N>
+bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/phase-timing.sh" stamp <N> end     # exit stamp  — last action of Phase <N>
 ```
 
 Each call appends one line to `.hq/tasks/<branch-dir>/phase-timings.jsonl`. Phases 1–3 are not stamped (fresh runs cross the branch switch mid-phase, splitting stamp pairs across JSONL files). Durations are wall-clock and include idle time between matching stamps — deliberately: they measure elapsed time, not active work.
@@ -135,7 +135,7 @@ Keep the task payload (when a parent exists) in conversation state; it is writte
 
 ## Phase 4: Execute
 
-**Entry stamp — run first, before any other Phase 4 action:** `bash plugin/v3/scripts/phase-timing.sh stamp 4 start`
+**Entry stamp — run first, before any other Phase 4 action:** `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/phase-timing.sh" stamp 4 start`
 
 Phase 4 runs in three entry forms:
 
@@ -184,11 +184,11 @@ The orchestrator has handed a directive list. For each directive:
 
 Then run Phase 5 **scoped to the acceptance items the directives name** (plus any plan-append items' derived checks). If no directive names an acceptance item, run format + build once as the minimum gate and skip the sweep.
 
-**Exit stamp — run last, after every other Phase 4 action:** `bash plugin/v3/scripts/phase-timing.sh stamp 4 end`
+**Exit stamp — run last, after every other Phase 4 action:** `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/phase-timing.sh" stamp 4 end`
 
 ## Phase 5: Acceptance
 
-**Entry stamp — run first, before any other Phase 5 action:** `bash plugin/v3/scripts/phase-timing.sh stamp 5 start`
+**Entry stamp — run first, before any other Phase 5 action:** `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/phase-timing.sh" stamp 5 start`
 
 Phase 5 is a **sweep only** — it verifies; it does not fix. Fixing happens in Phase 4 (loopback entry). Keeping "does the implementation meet the plan?" and "what needs to change to meet it?" in separate phases makes root-cause analysis easier — a batch of failures often points to a shared cause that's obvious only when all of them are visible at once.
 
@@ -230,7 +230,7 @@ Acceptance failures are treated as **all actionable** within this protocol (fix 
 
 Running Acceptance at the end of the build is intentional: the loop reviews quality (Stage 3) on a known-working baseline.
 
-**Exit stamp — run last, after every other Phase 5 action:** `bash plugin/v3/scripts/phase-timing.sh stamp 5 end`
+**Exit stamp — run last, after every other Phase 5 action:** `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/phase-timing.sh" stamp 5 end`
 
 ## Return Contract
 
