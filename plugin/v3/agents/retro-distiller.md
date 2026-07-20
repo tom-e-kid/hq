@@ -68,7 +68,7 @@ Stamp timing slots 9 (Step 1) and 10 (Step 2) via `bash "${CLAUDE_PLUGIN_ROOT}/p
 
 ## Return contract
 
-**Telemetry (before returning):** emit one event — `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/hq-event.sh" retro hindsight="<judgment_hindsight headline>" start_memory_delta="<summary>" plugin_findings=<n>`. Non-blocking by contract.
+**Telemetry (before returning):** emit one event — `bash "${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/hq-event.sh" retro hindsight="<one-line headline of ## Judgment Hindsight>" start_memory_delta="<summary>" plugin_findings=<n>`. Non-blocking by contract.
 
 Final message, exactly:
 
