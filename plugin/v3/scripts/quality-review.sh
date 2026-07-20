@@ -12,7 +12,9 @@
 #   initial_review    agent=<name> fb_count=<n> severity=C:n,H:n,M:n,L:n
 #
 # All key=val pairs become JSON string fields. The schema is append-only —
-# unknown keys are preserved in the JSONL but ignored by `summary`.
+# unknown keys are preserved in the JSONL but ignored by `summary`. The keys
+# listed above per event type are required: `record` fails fast when one is
+# missing (an empty value, e.g. launched=, satisfies the requirement).
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -86,21 +88,34 @@ case "$cmd" in
     [[ $# -ge 1 ]] || usage
     event="$1"
     shift
+    required_keys=()
     case "$event" in
-      self_review_gate|agent_selection|initial_review) ;;
+      self_review_gate) required_keys=(result) ;;
+      agent_selection)  required_keys=(mode launched skipped) ;;
+      initial_review)   required_keys=(agent fb_count severity) ;;
       *) echo "error: unknown event type '$event'" >&2; exit 2 ;;
     esac
     jsonl=$(resolve_jsonl)
-    mkdir -p "$(dirname "$jsonl")"
     ts=$(date +%s)
     line='{"event":"'"$(json_escape "$event")"'","ts":'"$ts"
+    seen_keys=" "
     for kv in "$@"; do
       key=${kv%%=*}
       val=${kv#*=}
       [[ "$key" == "$kv" ]] && { echo "error: argument '$kv' must be in key=val form" >&2; exit 2; }
+      seen_keys+="${key} "
       line+=',"'"$(json_escape "$key")"'":"'"$(json_escape "$val")"'"'
     done
     line+='}'
+    missing=""
+    for rk in "${required_keys[@]}"; do
+      [[ "$seen_keys" == *" ${rk} "* ]] || missing+="${rk} "
+    done
+    if [[ -n "$missing" ]]; then
+      echo "error: event '$event' missing required key(s): ${missing% }" >&2
+      exit 2
+    fi
+    mkdir -p "$(dirname "$jsonl")"
     printf '%s\n' "$line" >> "$jsonl"
     ;;
   summary)
