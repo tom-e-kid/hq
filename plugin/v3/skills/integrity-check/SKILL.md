@@ -19,7 +19,7 @@ If `.hq/integrity-check.md` exists, its instructions take precedence over the de
 
 `code-review` looks at the hunks. `security-scan` looks at the hunks. Nothing looks at the files the hunks depend on. When a diff renames a helper, removes a command flag, or changes a rule name, downstream references that were **not touched** by the diff stay stale, and the feature ships half-wired. Mechanical `## Editable surface` ↔ diff set-diff (root-side at the build review, J3) catches half of this — diff-but-undeclared and declared-but-missing within the diff file list — but the **other half** lives in external paths the diff never touches: a deleted symbol still referenced by a doc page, a named consumer in a Plan suffix that ought to have been visited but wasn't.
 
-This skill's job is to break that blind spot via external grep. The agent-mode scope (under `/hq:loop` Stage 3) is intentionally narrow — `[削除]` residuals + unmatched consumer verification — because the root agent's build review (J3) already covers everything mechanical within the diff. The interactive `/integrity-check` mode (no plan context) falls back to a broader downstream-reference / feature-completeness sweep.
+This skill's job is to break that blind spot via external grep. The agent-mode scope (under `/hq:loop` Stage 3) is intentionally narrow — `[削除]` residuals + unmatched consumer verification + a diff-derived sweep for removed / renamed tokens the plan did not declare — because the root agent's build review (J3) already covers everything mechanical within the diff. The interactive `/integrity-check` mode (no plan context) falls back to a broader downstream-reference / feature-completeness sweep.
 
 ## Diff Scope
 
@@ -48,14 +48,15 @@ From the diff, extract every item that can be referenced from elsewhere. For eac
 
 ## Review Criteria
 
-The baseline criteria below capture the skill's three-class model — used when `/integrity-check` is invoked interactively (no plan context). The `integrity-checker` agent overrides these at runtime with a narrower **external-grep-only** scope: `[削除]` residual grep + unmatched consumer external visits. Mechanical Editable surface ↔ diff reconciliation is no longer performed by the agent — it is owned by the root agent at its build review (J3).
+The baseline criteria below capture the skill's three-class model — used when `/integrity-check` is invoked interactively (no plan context). The `integrity-checker` agent overrides these at runtime with a narrower **external-grep-only** scope: `[削除]` residual grep + unmatched consumer external visits + a diff-derived removed / renamed token sweep. Mechanical Editable surface ↔ diff reconciliation is no longer performed by the agent — it is owned by the root agent at its build review (J3).
 
 ### 1. External grep gaps (agent override — primary)
 
-When invoked by `/hq:loop` Stage 3 (or the J8 micro-diff re-check), the agent restricts itself to two failure modes that mechanical root-side checks cannot catch:
+When invoked by `/hq:loop` Stage 3 (or the J8 micro-diff re-check), the agent restricts itself to three failure modes that mechanical root-side checks cannot catch:
 
 - **`[削除]` residuals** — for each `## Editable surface` entry tagged `[削除]`, whole-repo grep for residual references. Hits outside the diff = stale references.
 - **Unmatched consumer external visits** — for `*(consumer: <name>)*` suffixes whose named consumer is not in the diff file list, read / grep the named path to verify the coordinated update landed.
+- **Diff-derived stale references** — tokens the diff itself removes or renames (per § Extraction Targets, removed / renamed directions only), whole-repo grep for the old name regardless of whether the plan declared the change. Signature-changed tokens stay out of agent scope — caller-compatibility verification is judgment work, deferred to a separate proposal.
 
 Other tag classes (`[新規]` / `[改修]` / `[silent-break]`) and in-diff consumer presence are out of scope for the agent — the root's build review (J3) covers them.
 
