@@ -19,7 +19,7 @@ CLI tools formerly under `tools/` were split out to [github.com/tom-e-kid/hqdb](
 
 This repository develops its own plugin and uses that same plugin (the `hq:*` commands, agents, and skills under `plugin/v3/`) to drive its own development workflow. Changes to the workflow are exercised here first.
 
-The workflow rules live under **`plugin/v3/rules/`**: `workflow.md` (cross-cutting source of truth, read on every invocation) plus the stage protocols `draft-protocol.md` / `execute-protocol.md` (full phase specifications, Read-and-followed by the loop and its agents). The pipeline has a single entry command — `commands/loop.md` (`/hq:loop`, Stages 0–7 + root judgments J1–J8) — with `/hq:copilot` and `/hq:archive` as post-PR tools. There is no copy, no distribution step, and no consumer-side build artifact: editing these files is the change.
+The workflow rules live under **`plugin/v3/rules/`**: `workflow.md` (cross-cutting source of truth, read on every invocation) plus the stage protocols `draft-protocol.md` / `execute-protocol.md` (full phase specifications, Read-and-followed by the loop and its agents), and `copilot-protocol.md` (the post-PR review-thread round spec, shared by `/hq:copilot` and `/hq:copilot-loop`). The pipeline has a single entry command — `commands/loop.md` (`/hq:loop`, Stages 0–7 + root judgments J1–J8) — with `/hq:copilot` / `/hq:copilot-loop` and `/hq:archive` as post-PR tools. There is no copy, no distribution step, and no consumer-side build artifact: editing these files is the change.
 
 ## Loop Value — standing evaluation point
 

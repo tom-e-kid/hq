@@ -21,7 +21,7 @@ HQ runs a feature from idea to merge through a single pipeline command — **`/h
 ├─ Stage 6 RETRO    (distiller)  retrospective + start-memory distillation
 └─ Stage 7 REPORT   (root+user)  judgment audit trail + feedback confirmation (J7)  ← user ③
 
-Post-PR tools: /hq:copilot (external review comments) · /hq:archive (done / cancel)
+Post-PR tools: /hq:copilot / /hq:copilot-loop (external review comments) · /hq:archive (done / cancel)
 ```
 
 - **`hq:task`** (GitHub Issue, optional) = trigger — what to build.
@@ -37,7 +37,8 @@ For the orientation map see [plugin/v3/docs/workflow.md](plugin/v3/docs/workflow
 | Command  | Description |
 |----------|-------------|
 | `loop`    | The pipeline — plan → build → review → triage → ship → retro, orchestrated by the root agent |
-| `copilot` | Respond to external PR review comments — fix / escalate / dismiss |
+| `copilot` | Respond to external PR review comments in one pass — fix / escalate / dismiss |
+| `copilot-loop` | Iterate `copilot` over Copilot re-review rounds — respond → push → re-request Copilot → wait → repeat (bounded by `max_rounds`, default 5) |
 | `archive` | Safely close the current branch — **done** (PR merged → `tasks/done/`) or **cancel** (`archive cancel`: closes PR without merging → `tasks/canceled/`) |
 | `swift-protocol-shadow` | Detect protocol default implementation shadowing in Swift ([flow](plugin/v3/docs/swift-protocol-shadow-flow.md)) |
 
@@ -47,6 +48,7 @@ For the orientation map see [plugin/v3/docs/workflow.md](plugin/v3/docs/workflow
 |----------|-------------|-------------|
 | `draft-protocol.md`   | loop Stage 1 (root, inline) | Intake + wide-impact survey → exploration-led brainstorm with the Simplicity gatekeeper → commit-or-pushback gate (`go` / `stop`) → plan file |
 | `execute-protocol.md` | `executor` agent | Branch → one commit per plan item → acceptance sweep (retry-capped); modes `fresh` / `fix-directive`; returns results + `self_notes` |
+| `copilot-protocol.md` | `/hq:copilot`, `/hq:copilot-loop` | One round over external PR review threads — fetch → analyze → judge → execute → reply; plus the Escalation Gate and Round Result contract |
 | `workflow.md`         | everything | Cross-cutting source of truth — terminology, plan body schema, FB lifecycle, PR body structure, retrospective schema |
 
 ### Skills (criteria & utilities)
@@ -72,7 +74,7 @@ For the orientation map see [plugin/v3/docs/workflow.md](plugin/v3/docs/workflow
 | `security-scanner`        | sonnet  | Pure detection; outputs a scan report |
 | `integrity-checker`       | inherit | External grep — `[削除]` residuals + unmatched consumers; also re-runs scoped to the J8 micro-fix diff |
 | `retro-distiller`         | sonnet  | Writes the retrospective (incl. hindsight on the root's judgments) and re-distills `.hq/start-memory.md` |
-| `review-comment-analyzer` | sonnet  | Read-only analysis of PR review threads — returns evidence + recommendation; the `/hq:copilot` root judges the disposition |
+| `review-comment-analyzer` | sonnet  | Read-only analysis of PR review threads — returns evidence + recommendation; the copilot protocol root judges the disposition |
 
 ### Root-agent judgments (J1–J8)
 
@@ -85,7 +87,7 @@ Semantic decisions the root agent makes, each with a decision record under `.hq/
 | `hq:task`     | Requirement (trigger)      | **What** needs to be done. Created by the user; consumed by loop Stage 1. Optional. |
 | `hq:pr`       | PR marker                  | Applied automatically at PR creation (Stage 5). |
 | `hq:manual`   | Reviewer verification      | Applied alongside `hq:pr` when the plan has `## Manual Verification` items — the reviewer completes them before merge. |
-| `hq:feedback` | Escalated residual         | Created only with explicit user confirmation — loop Stage 7, or `/hq:copilot`. |
+| `hq:feedback` | Escalated residual         | Created only with explicit user confirmation — loop Stage 7, or `/hq:copilot` / `/hq:copilot-loop`. |
 | `hq:doc`      | Informational note         | Research findings worth preserving. Created manually. |
 | `hq:wip`      | Drafting / automation gate | The `hq:task` is still being drafted; automation skips, interactive runs pause and confirm. |
 
