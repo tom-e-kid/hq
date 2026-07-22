@@ -19,7 +19,7 @@
 - **`hq:workflow`** — shorthand for `plugin/v3/rules/workflow.md` (this file — the plugin-internal source of truth for the workflow rule, loaded on demand by each command). Skills and commands cite sections as `hq:workflow § <section>` instead of repeating the full path.
 - **`hq:task`** — a GitHub Issue (label: `hq:task`) that describes **what** needs to be done. The requirement. **Trigger** of the workflow.
 - **`hq:plan`** — a **local plan file** at `.hq/tasks/<branch-dir>/plan.md` that describes **how** to do it. The implementation plan. **Center** of the workflow — drives execution, verification, and PR. Created at loop Stage 1 (draft protocol); identified by its branch name. One `hq:task` can have multiple `hq:plan` files (one per branch). Not a GitHub Issue, and **not embedded in the PR** — it is the loop's internal work log; its motivation / approach reach the PR reviewer through the Stage 5 narrative (see `## PR Body Structure`). It travels with the task folder to `done/` / `canceled/` on archive.
-- **`hq:feedback`** — a GitHub Issue (label: `hq:feedback`) for residual problems the loop escalates. Created only with explicit user confirmation: at `/hq:loop` Stage 7 (from triage escalate-candidates), or by `/hq:respond` for external review comments.
+- **`hq:feedback`** — a GitHub Issue (label: `hq:feedback`) for residual problems the loop escalates. Created only with explicit user confirmation: at `/hq:loop` Stage 7 (from triage escalate-candidates), or by `/hq:copilot` for external review comments.
 - **`hq:doc`** — a GitHub Issue (label: `hq:doc`) for informational notes / research findings worth preserving (not a direct task). Created manually by the user when investigation turns up something useful to retain. Not consumed by any workflow command.
 - **`hq:pr`** — a PR label applied automatically by the `pr` skill (in either invocation mode — Standalone `/pr` or from the loop's Stage 5). Marks a PR as a product of the `hq:plan` → PR workflow. Useful for filtering PRs that belong to this workflow vs ad-hoc PRs.
 - **`hq:wip`** — a GitHub Issue modifier label on `hq:task` Issues. Purpose is twofold: (1) **drafting marker** — the issue is still being shaped and not ready for automation, (2) **automation gate** — when the loop's Stage 1 receives the task automatically (e.g., from GitHub Actions), it must skip (or, in interactive invocation, pause and confirm) any Issue carrying this label.
@@ -74,7 +74,7 @@ Every hq command, skill, and agent MAY consult a project-local override file und
 | `.hq/start.md` | execute protocol (executor agent) | Project-specific execution nuance (commit / build / test notes the build phases should layer in) |
 | `.hq/triage.md` | root J5 triage judgment | Project-specific lean cues for individual findings (judgment priors) |
 | `.hq/loop.md` | `/hq:loop` (root agent) | `loop_max_iterations` / start-memory char-limit overrides, report style hints |
-| `.hq/respond.md` | `/hq:respond` | Reply tone / language, project-specific dismissal criteria |
+| `.hq/copilot.md` | `/hq:copilot` | Reply tone / language, project-specific dismissal criteria |
 | `.hq/pr.md` | `pr` skill | PR body prose style, title conventions — scope-limited by the `pr` skill's own Invariants |
 | `.hq/code-review.md` | `code-reviewer` agent | Project-specific review axes |
 | `.hq/security-scan.md` | `security-scanner` agent | Project-specific security patterns |
@@ -467,9 +467,9 @@ Invariants:
 
 - **PR-last** — triage precedes PR creation; the PR's `## Known Issues` holds only post-triage residual (accepted limitations / escalation status).
 - **Three user interaction systems**: the Stage 1 gate, root-initiated consults (J3 / J5 / J8 — including the J8 plan-revision / safe-cancel gate), and the Stage 7 feedback confirmation. All non-skippable. Root-initiated consults follow `§ Consult Format`.
-- **`hq:feedback` creation is user-gated** at Stage 7 (and `/hq:respond` for external review comments) — the root never creates one alone.
+- **`hq:feedback` creation is user-gated** at Stage 7 (and `/hq:copilot` for external review comments) — the root never creates one alone.
 - **J8 is the loop control** — semantic convergence judgment; `loop_max_iterations` (default 2) is only the runaway backstop.
-- `/hq:respond` and `/hq:archive` remain standalone post-PR tools.
+- `/hq:copilot` and `/hq:archive` remain standalone post-PR tools.
 
 ## Consult Format
 
@@ -568,7 +568,7 @@ All located under `${CLAUDE_PLUGIN_ROOT}/plugin/v3/scripts/`:
 
 ## Telemetry
 
-Run analytics are **dual-written**: human-readable records (decision reports, FBs, retro) stay in the project `.hq/`; a structured event row additionally lands in the **central sink `~/.hq/events.jsonl`** via `scripts/hq-event.sh` (closed kind catalog + emission points: `commands/loop.md § Telemetry`). Aggregation key is the normalized origin (`owner/repo`); branch / worktree path are attributes, so worktree churn never fragments history. The helper is non-blocking — telemetry failures warn and never gate the pipeline. Events carry titles / ids / verdicts, never diff content or code. A sqlite query layer over the JSONL is deferred work (`plan.md §12.5 E7`).
+Run analytics are **dual-written**: human-readable records (decision reports, FBs, retro) stay in the project `.hq/`; a structured event row additionally lands in the **central sink `~/.hq/events.jsonl`** via `scripts/hq-event.sh` (closed kind catalog + emission points: `commands/loop.md § Telemetry`). Aggregation key is the normalized origin (`owner/repo`); branch / worktree path are attributes, so worktree churn never fragments history. The helper is non-blocking — telemetry failures warn and never gate the pipeline. Events carry titles / ids / verdicts, never diff content or code. Deferred (named, not scheduled): a sqlite import/query layer over the JSONL for cross-run statistics — triggered by the first real analysis need; and per-repo start-memory sharing under `~/.hq/repos/<owner-repo>/` so worktrees of the same repo share learnings.
 
 ## Feedback Loop
 
@@ -604,7 +604,7 @@ Review is **pure review** — no agent fixes anything. Every fix decision is the
 1. FB lands in `feedbacks/` (pending).
 2. Loop Stage 4: the root judges it (J5 — see `commands/loop.md § Triage judgment criteria`): **fix** (→ fix-directive queue) / **plan** (→ `## Plan` append) / **accept** (→ PR `## Known Issues` residual) / **escalate candidate** (→ Stage 7 user confirmation).
 3. The file moves to `feedbacks/done/` with a `disposition: <fix|plan|accept|escalate> — <reason>` line appended. This move happens at triage time — there is no other path to `done/`.
-4. `hq:feedback` Issues are created only at Stage 7 from user-selected candidates (`Refs #<PR>`), and by `/hq:respond` for external review comments.
+4. `hq:feedback` Issues are created only at Stage 7 from user-selected candidates (`Refs #<PR>`), and by `/hq:copilot` for external review comments.
 
 `feedbacks/` should be empty of pending files after Stage 4; `/hq:archive` defensively checks this.
 

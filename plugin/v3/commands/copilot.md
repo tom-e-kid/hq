@@ -1,10 +1,10 @@
 ---
-name: respond
+name: copilot
 description: Respond to external PR review threads — root-judged dispositions (fix / dismiss / escalate-candidate) with evidence-gathering agents and a user-gated hq:feedback escalation
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash(git:*), Bash(gh:*), Agent, AskUserQuestion, TaskCreate, TaskUpdate
 ---
 
-# RESPOND — Handle External PR Review Threads
+# COPILOT — Handle External PR Review Threads
 
 Process unaddressed review threads on the current PR (Copilot, human reviewers, etc.). You — the model reading this — are the **root agent**: you judge; agents gather evidence and execute; **they never make final calls**. Per-thread dispositions (`fix` / `dismiss` / `escalate-candidate`) are yours, made on agent-collected evidence and recorded in a decision record — the same root-judge contract as `/hq:loop` (J1–J8), applied to post-PR external input.
 
@@ -39,7 +39,7 @@ Set each to `in_progress` when starting and `completed` when done (phases skippe
 - PR: !`gh pr view --json number,url,title,state --jq '"#" + (.number|tostring) + " " + .title + " (" + .state + ") " + .url' 2>/dev/null || echo "none"`
 - Repo: !`gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || echo "unknown"`
 - PR author login ("our" identity): !`gh pr view --json author --jq '.author.login' 2>/dev/null || echo "unknown"`
-- Project Overrides (`.hq/respond.md`): !`cat .hq/respond.md 2>/dev/null || echo "none"`
+- Project Overrides (`.hq/copilot.md`): !`cat .hq/copilot.md 2>/dev/null || echo "none"`
 
 ## Phase 1: Preconditions
 
@@ -117,7 +117,7 @@ Asymmetric-cost biases: a wrong fix costs a quality incident; a deferral costs a
 
 For each `escalate-candidate`, assign a **severity** (Critical / High / Medium / Low) as part of the disposition, recorded in the decision record — Phase 7 presents this already-judged value, never improvising one.
 
-**Consolidated decision record** — write one Markdown record covering all threads to `.hq/tasks/<branch-dir>/reports/respond-<YYYY-MM-DD-HHMM>.md` (branch-dir: `/` → `-`): what was judged, the evidence weighed, and the per-thread decision + rationale (including where you departed from the analyzer's recommendation, and why). When the branch has no task folder (a PR not produced by the loop), write the record to the repo-local scratch equivalent **`.hq/respond/<branch-dir>/respond-<YYYY-MM-DD-HHMM>.md`** instead. Skip the record only when `.hq/` itself is absent (project not bootstrapped) — and say so in the Phase 8 report.
+**Consolidated decision record** — write one Markdown record covering all threads to `.hq/tasks/<branch-dir>/reports/copilot-<YYYY-MM-DD-HHMM>.md` (branch-dir: `/` → `-`): what was judged, the evidence weighed, and the per-thread decision + rationale (including where you departed from the analyzer's recommendation, and why). When the branch has no task folder (a PR not produced by the loop), write the record to the repo-local scratch equivalent **`.hq/copilot/<branch-dir>/copilot-<YYYY-MM-DD-HHMM>.md`** instead. Skip the record only when `.hq/` itself is absent (project not bootstrapped) — and say so in the Phase 8 report.
 
 ## Phase 5: Execute fixes (executor agent — regression-gated)
 
@@ -145,7 +145,7 @@ After all fixes are committed and the gate passed: `git push`.
 - **Dismiss threads** — reply with a **specific, evidence-based explanation**: concrete references (e.g., "validated by the caller at `src/auth.ts:45`", "the framework guarantees X per [docs]", "addressed in commit `abc123`"). Vague dismissals ("not applicable", "disagree") are forbidden. **Do not resolve** — the reviewer decides whether the evidence settles their concern.
 - **Escalate-candidate threads** — no reply yet; their replies depend on the user's Phase 7 decision.
 
-Reply tone: respectful and professional — reviewers (human or automated) are trying to help. Reply language: match the reviewer's language (Copilot comments in English → English replies), per the conversation-language principle of `hq:workflow § Language`; `.hq/respond.md` may adjust tone / language.
+Reply tone: respectful and professional — reviewers (human or automated) are trying to help. Reply language: match the reviewer's language (Copilot comments in English → English replies), per the conversation-language principle of `hq:workflow § Language`; `.hq/copilot.md` may adjust tone / language.
 
 A failed reply or resolve call gets one retry; a second failure is reported unprocessed in Phase 8, never silently dropped.
 

@@ -114,7 +114,7 @@
 <div class="wrap">
   <header class="hero">
     <p class="eyebrow">hq plugin v3 — loop consolidation</p>
-    <div><span class="banner">Phase 5 予定フローモデル — 未実装（設計: plan.md §11）</span></div>
+    <div><span class="banner">loop consolidation フローモデル — 実装済み（develop）</span></div>
     <h1>/hq:loop フロー全体図</h1>
     <p class="lede">単体コマンド（draft / start / triage）を廃止し、<code>/hq:loop</code> を唯一のパイプライン入口にする統合モデル。設計原理: <b>決定論で片付かない意味的判断はすべて root agent（loop を受け持つ session model）が下す</b>。決定論レール（スクリプト・構造ゲート・regression gate）は決定論のまま、subagent は証拠収集と実行に徹する。PR は triage 完了後に「最終対応案」として最後に作られる。</p>
     <div class="legend">
@@ -135,7 +135,7 @@
         <div class="card-head"><span class="stage-no">STAGE 0</span><h2>Resume — 現在地を判定</h2>
           <span class="runner"><span class="chip j">root model</span></span></div>
         <ul class="steps">
-          <li><span class="pnum">·</span><div class="pbody"><b>状態検出（決定論）</b><span class="sub"><code>plan.md</code> の有無・checkbox 状態・PR の有無から入口を機械判定: plan なし → Stage 1 ／ 未チェック項目あり → Stage 2 ／ FB 未トリアージ → Stage 3–4 ／ PR 済み → Stage 7 か <code>/hq:respond</code>・<code>/hq:archive</code> を案内。旧 /hq:start・/hq:triage のユースケースはここに吸収される。</span></div></li>
+          <li><span class="pnum">·</span><div class="pbody"><b>状態検出（決定論）</b><span class="sub"><code>plan.md</code> の有無・checkbox 状態・PR の有無から入口を機械判定: plan なし → Stage 1 ／ 未チェック項目あり → Stage 2 ／ FB 未トリアージ → Stage 3–4 ／ PR 済み → Stage 7 か <code>/hq:copilot</code>・<code>/hq:archive</code> を案内。旧 /hq:start・/hq:triage のユースケースはここに吸収される。</span></div></li>
           <li class="judge"><span class="pnum">J1</span><div class="pbody"><b>曖昧な状態の解釈</b><span class="tag j">ROOT</span><span class="sub">artifacts が矛盾する・複数解釈がありうるとき（例: branch はあるが plan が手編集されている）、どの stage に入るかを root が判断する。</span></div></li>
         </ul>
         <div class="uses"><b>USES</b> commands/loop.md · scripts/read-context.sh · scripts/find-plan.sh</div>
@@ -259,12 +259,11 @@
       <div class="art"><span class="path">.hq/tasks/&lt;branch-dir&gt;/plan.md</span><p>root と executor の作業台帳（gitignore 下）。PR には埋め込まない — 本質（Why/Approach）は J6 が PR ナラティブへ昇華する。archive で done/ へ。</p></div>
       <div class="art"><span class="path">feedbacks/ → PR ## Known Issues</span><p>FB は <b>PR 作成前</b>に J5 で裁かれる。PR に載るのは triage 済み残存（accepted / escalated）のみ。done/ への移動は disposition 確定時。</p></div>
       <div class="art"><span class="path">.hq/tasks/&lt;dir&gt;/reports/</span><p>J1–J7 の決定記録。「root が何をどう判断したか」の監査面。Stage 6 の retro と Stage 7 の報告が消費する。</p></div>
-      <div class="art"><span class="path">残るコマンド</span><p><code>/hq:loop</code>（唯一のパイプライン入口）・<code>/hq:respond</code>（外部レビューコメント対応）・<code>/hq:archive</code>（done / cancel）。draft / start / triage の単体コマンドと auto-triager agent は廃止。</p></div>
+      <div class="art"><span class="path">残るコマンド</span><p><code>/hq:loop</code>（唯一のパイプライン入口）・<code>/hq:copilot</code>（外部レビューコメント対応）・<code>/hq:archive</code>（done / cancel）。draft / start / triage の単体コマンドと auto-triager agent は廃止。</p></div>
     </div>
   </section>
 
   <footer>
-    Phase 5 予定モデル（未実装）— 設計: plugin/v3/docs/plan.md §11<br>
     specs: commands/loop.md（Stage 0–7 + J1–J7）· rules/draft-protocol.md · rules/execute-protocol.md · rules/workflow.md · rules/feedback.md · skills/pr/SKILL.md · agents/{executor, code-reviewer, security-scanner, integrity-checker, retro-distiller}.md
   </footer>
 </div>

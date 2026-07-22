@@ -14,7 +14,7 @@ covers_acceptance: <optional — unique substring of the `## Acceptance` item th
   substring of that item's text, enough to disambiguate it within the plan body.
 - Leave it unset in FBs originating from the root's build review (J3 minor gaps) or
   the Stage 3 reviewers — those findings generally do not map 1:1 to Acceptance items.
-- Leave it unset in FBs from external sources (`/hq:respond`, ad-hoc drops).
+- Leave it unset in FBs from external sources (`/hq:copilot`, ad-hoc drops).
 
 See `plugin/v3/rules/workflow.md` § Feedback Loop for the rationale (linear audit trail
 for the Phase 5 1-by-1 toggle rule).
