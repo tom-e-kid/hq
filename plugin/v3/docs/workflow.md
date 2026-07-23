@@ -17,7 +17,7 @@ Core artifacts:
 - **`hq:task`** — GitHub Issue (label `hq:task`): the requirement ("what"). Optional trigger.
 - **`hq:plan`** — local file `.hq/tasks/<branch-dir>/plan.md`: the implementation plan ("how"). Created at Stage 1, identified by its branch name. The loop's internal work log — never embedded in the PR; archived with the task folder.
 - **`hq:pr`** — the PR that ships a plan. Labeled `hq:pr`; body = narrative + `## Manual Verification` + post-triage `## Known Issues` + `Refs #<task>`.
-- **`hq:feedback`** — GitHub Issue for escalated residuals. Created only with explicit user confirmation (loop Stage 7, or `/hq:respond`).
+- **`hq:feedback`** — GitHub Issue for escalated residuals. Created only with explicit user confirmation (loop Stage 7, or `/hq:copilot` / `/hq:copilot-loop`).
 
 ## Pipeline map
 
@@ -36,7 +36,7 @@ Core artifacts:
 ├─ Stage 6 RETRO    (distiller)  retrospective + start-memory distillation
 └─ Stage 7 REPORT   (root+user)  judgment audit trail + feedback confirmation (J7)
 
-Post-PR tools: /hq:respond (external review comments) · /hq:archive (done / cancel)
+Post-PR tools: /hq:copilot / /hq:copilot-loop (external review comments) · /hq:archive (done / cancel)
 ```
 
 Full stage + judgment spec: `commands/loop.md`. Visual: `docs/hq-loop-flow.html`.
@@ -58,7 +58,7 @@ Full stage + judgment spec: `commands/loop.md`. Visual: `docs/hq-loop-flow.html`
 
 Helper scripts (`plugin/v3/scripts/`): `plan-check-item.sh` (checkbox toggle), `find-plan.sh` (branch lookup), `read-context.sh`, `phase-timing.sh` (slots 4–10; mapping in `loop.md § Timing slots`), `quality-review.sh` (J3/J4 event records), `hq-event.sh` (central telemetry, non-blocking).
 
-Agents (`plugin/v3/agents/`): `executor` (build; model inherit) · `code-reviewer` / `security-scanner` (sonnet) / `integrity-checker` (review) · `retro-distiller` (sonnet) · `review-comment-analyzer` (used by `/hq:respond`).
+Agents (`plugin/v3/agents/`): `executor` (build; model inherit) · `code-reviewer` / `security-scanner` (sonnet) / `integrity-checker` (review) · `retro-distiller` (sonnet) · `review-comment-analyzer` (used by the copilot protocol).
 
 ## Key design decisions (with spec pointers)
 

@@ -233,6 +233,6 @@ Invariants not already stated by the phases above or the Security note:
 - **Stop on pre-check failure** — never force-archive. The user must resolve prerequisites themselves.
 - **Explicit `cancel` argument is the confirmation** — no extra interactive prompt. Mistyping is handled by the strict argument parser (only empty or `cancel` accepted).
 - **Mode is set once at argument parsing (`## Argument Parsing`) and never changes** — every phase branches on the same mode value.
-- **No `hq:feedback` creation** — this command does NOT escalate anything. Escalation happens at `/hq:loop` Stage 7 (user-confirmed) or via `/hq:respond`.
+- **No `hq:feedback` creation** — this command does NOT escalate anything. Escalation happens at `/hq:loop` Stage 7 (user-confirmed) or via `/hq:copilot` / `/hq:copilot-loop`.
 - **Never use `git branch -D` on the base branch** — always switch off the feature branch first.
 - **Never use `--no-verify`** — not applicable here, but the general hook-bypass prohibition stands.

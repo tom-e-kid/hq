@@ -13,7 +13,7 @@ Two structural principles:
 - **PR-last** — the PR is created only after triage completes (Stage 5). It is the final proposal, not an intermediate hand-off. Triage operates on local FB files, not on a PR body.
 - **Three user interaction systems** — ① the Stage 1 go/stop gate, ② consults you initiate from J3/J5/J8 (rare), ③ the Stage 7 feedback confirmation. Everything else is autonomous. `hq:feedback` Issue creation is user-gated at ③ — the one call you never make alone.
 
-`/hq:respond` (external review comments) and `/hq:archive` (done / cancel close-out) remain separate post-PR tools.
+`/hq:copilot` / `/hq:copilot-loop` (external review comments) and `/hq:archive` (done / cancel close-out) remain separate post-PR tools.
 
 ## Context
 
@@ -74,7 +74,7 @@ Every run additionally emits structured events to the **central sink** `~/.hq/ev
 | `timing` | Stage 7, once | `slot<N>=<seconds>` per measured slot |
 | `run_end` | loop exit (any path) | `outcome=<shipped\|plan-only\|canceled\|failed>` `iterations=<n>` |
 
-The executor emits `build_result` and the retro-distiller emits `retro` themselves (their protocols specify it). The kind catalog is **closed** — extending it is a deliberate edit to `plan.md §12` and this table, not a runtime improvisation.
+The executor emits `build_result` and the retro-distiller emits `retro` themselves (their protocols specify it). The kind catalog is **closed** — extending it is a deliberate edit to this table, not a runtime improvisation.
 
 ## Decision records (applies to every judgment J1–J8)
 
@@ -91,7 +91,7 @@ Determine the entry point from artifacts (mechanical first):
 | no `.hq/tasks/<branch-dir>/plan.md` for the target | Stage 1 (fresh plan; `$ARGUMENTS` / conversation is the input) |
 | plan exists, unchecked `## Plan` or `## Acceptance` items | Stage 2 (`fresh` — executor auto-resumes) |
 | built, pending FBs in `feedbacks/` | Stage 3 or 4 (by whether reviewer agents have run this iteration) |
-| PR already exists for the branch | Stage 7 leftovers if any; otherwise report state and point to `/hq:respond` / `/hq:archive` |
+| PR already exists for the branch | Stage 7 leftovers if any; otherwise report state and point to `/hq:copilot` / `/hq:copilot-loop` / `/hq:archive` |
 
 Target resolution: `$ARGUMENTS` naming an existing branch/substring → `find-plan.sh`; otherwise the current branch; otherwise fresh.
 
