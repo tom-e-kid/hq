@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+._*
+
+# エディタ
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# 環境変数・シークレット
+.env
+.env.*
+
+**/*.local.*
+.devflows
+.cache
+
+# hq — `.hq/` を名指す無視の行は無い。中身は repo の事実だけ（base branch・その repo 固有の
+# 注意書き）で、run ごとの作業ファイルは ~/.hq の側に置く。repo 全体に効く規則は、他のどの directory とも同じく
+# `.hq/` の下にも及ぶ —— 紛れ込んだ `.DS_Store` は、上の `.DS_Store` の行で無視される。
+#
+# 以前ここには `.hq/tasks/` の行があった。落としたのは、無視されたパスは diff に現れず、
+# **commit のたびに走る fence がそこだけ見られない**ためである。無視の行が残っている限り、
+# 「repo の中に例外は無い」は成り立たない（外部レビュー、2026-08-14）。
+
+# Apps
+node_modules/
+dist/

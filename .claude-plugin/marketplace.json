@@ -1,0 +1,14 @@
+{
+  "name": "tom-e-kid",
+  "owner": {
+    "name": "tom-e-kid",
+    "url": "https://github.com/tom-e-kid"
+  },
+  "plugins": [
+    {
+      "name": "hq",
+      "source": "./",
+      "description": "Runs one branch's development cycle — plan, build, verify, triage, fix, open the pull request — as separate commands, or as a single loop."
+    }
+  ]
+}

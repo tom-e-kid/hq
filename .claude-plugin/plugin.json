@@ -1,0 +1,14 @@
+{
+  "name": "hq",
+  "version": "0.0.0",
+  "commands": [
+    "./plugin/commands"
+  ],
+  "agents": [
+    "./plugin/agents/reviewer.md",
+    "./plugin/agents/implementer.md"
+  ],
+  "hooks": [
+    "./plugin/hooks/hooks.json"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "attribution": { "commit": "", "pr": "" },
+  "permissions": {
+    "allow": [
+      "Bash(bun:*)",
+      "Bash(find:*)",
+      "Bash(git:*)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "Bash(mise run:*)",
+      "Bash(sed:*)",
+      "Bash(sort:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:telemetry.vercel.com)",
+      "Write",
+      "Update"
+    ]
+  }
+}

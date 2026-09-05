@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Refuses a commit that would add content this repository must not publish.
+#
+# WIRED BY CONFIG, NOT BY COPYING. `.git/hooks` is not tracked, so a hook that
+# lives only there is a hook a fresh clone does not have. Turn it on once per
+# clone:
+#
+#     git config core.hooksPath githooks
+#
+# THAT COMMAND IS THE HOLE IN THIS GUARD, and it is named here rather than
+# hidden: a clone where nobody ran it commits without any of this. The tree
+# face of the same scanner runs inside `.claude/scripts/check.sh`, which is
+# the repository's gate, so a leak that gets past here is still caught before
+# the work is offered — later, but caught.
+# TWO CHECKS, AND THEY MISS DIFFERENT THINGS. The first enforces a list of
+# terms and a set of shapes — fast, free, and blind to any name nobody wrote
+# down. The second asks a model whether the commit names a company, a
+# customer, a person or another project, which is not a question a pattern can
+# be asked. Both run; the first one failing does not skip the second, because
+# a reader who fixes one and commits again should not then meet the other.
+set -u
+ROOT=$(git rev-parse --show-toplevel) || exit 0
+STATUS=0
+bash "$ROOT/.claude/scripts/secrets-check.sh" staged || STATUS=1
+bash "$ROOT/.claude/scripts/semantic-check.sh" staged || STATUS=1
+exit "$STATUS"
