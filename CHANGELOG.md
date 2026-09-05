@@ -23,7 +23,9 @@ source of truth). Two rules matter day to day:
   turn. Two agents (a builder and a verifier), gates that intercept tool calls
   where the question is decidable, and telemetry appended to a stream outside
   the repository. `docs/design.md` is the canon and carries, per module, the
-  list of things nothing guarantees.
+  list of things nothing guarantees; it is written to be read without reaching
+  outside this repository, so it cites no pull request number, date or row
+  count that a reader here cannot resolve.
 
   This repository begins at the tree as it stood; the work that led here was
   done elsewhere and its history is not carried over. Nothing in `plugin/` is
