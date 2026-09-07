@@ -15,6 +15,8 @@ source of truth). Two rules matter day to day:
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-07
+
 ### Added
 
 - **The initial public tree.** A Claude Code plugin that runs one branch's
@@ -36,4 +38,5 @@ source of truth). Two rules matter day to day:
   the repository gate). Refuses private keys, provider tokens, absolute home
   paths, addresses, and terms named in a blocklist kept outside the repository.
 
-[Unreleased]: https://github.com/tom-e-kid/hq/commits/develop
+[Unreleased]: https://github.com/tom-e-kid/hq/compare/v0.1.0...develop
+[0.1.0]: https://github.com/tom-e-kid/hq/releases/tag/v0.1.0
